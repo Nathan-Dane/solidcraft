@@ -1,10 +1,10 @@
 //! Workspace tooling: `cargo xtask <command>`.
 //!
-//! Pure Rust (std + serde_json + sha2). External tools (`cargo`) are invoked through
+//! Pure Rust (std + serde_json). External tools (`cargo`) are invoked through
 //! `std::process::Command`.
 
+mod app_icons;
 mod assets;
-mod assets_generate;
 mod book;
 mod features;
 mod layers;
@@ -20,6 +20,7 @@ usage: cargo xtask <command>
 commands:
   layers          enforce the crate dependency layering (plan/architecture.md §3)
   assets          check that every non-code asset file is attributed in ATTRIBUTION.md
+  app-icons       regenerate shared app-icon exports for Linux, FreeBSD and Windows
   features        list SolidCraft's commands by area in docs/features.md (from the registry)
   oracle [--cli BIN]
                   replay the reference tests (tests/oracle/*/recipe.json), compare with each
@@ -48,7 +49,8 @@ fn main() -> ExitCode {
     let rest: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();
     let result = match args.first().map(String::as_str) {
         Some("layers") => cmd_layers(),
-        Some("assets") => assets_generate::command(&root(), &rest),
+        Some("assets") => assets::run(&root()),
+        Some("app-icons") => app_icons::run(&root()),
         Some("features") => features::run(&root()),
         Some("oracle") => cmd_oracle(rest.iter().position(|a| *a == "--cli").and_then(|i| rest.get(i + 1)).copied()),
         Some("action-matrix") => {
