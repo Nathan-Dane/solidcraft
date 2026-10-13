@@ -15,6 +15,14 @@ assets/
   README.md
   manifest.json                        # resource IDs, sources, exports, consumers
   icons/
+    shared/
+      source/app_icon.rs                # shared app mark's Rust artwork master
+    ui/
+      README.md                        # icon/glyph index and design conventions
+      source/
+        icons.rs                       # collected 24 × 24 Rust drawing library
+        glyphs.rs                      # reusable caption, timeline, marker artwork
+        work/                          # native design documents, when available
     macos/
       source/
         SolidCraft.icon/               # current editable Composer project
@@ -54,9 +62,38 @@ assets/
 ```
 
 The tree is the migration target; `manifest.json` is not implemented yet.
-Rust drawing/generation code stays in its owning modules and is indexed by the
-manifest. Shared icon code remains `apps/app_icon.rs`; UI code stays in `ui-egui`.
+Collect artwork masters, including Rust-drawn icons, under `assets/icons/`.
+Compile them through their owning layer's existing interface: UI rendering stays
+in `ui-egui`, and the shared app mark serves desktop, CLI and packaging builds.
 Build logic stays in `packaging/` and `xtask/`. Root licence files stay canonical.
+
+### UI icon collection
+
+`icons/ui/source/icons.rs` becomes the canonical source of the existing toolbar,
+browser, palette, menu and constraint icons. Preserve their IDs, 24 × 24 design
+grid, original geometry and semantic ink/fill/accent colours. Keep
+`crates/ui-egui/src/icons.rs` as the small rendering facade so existing
+`icons::paint(...)` consumers continue to use one stable interface.
+
+Collect reusable timeline transport, title-bar caption, pin/lock, disclosure and
+assembly/constraint marker artwork in `source/glyphs.rs`. Extract only drawing
+definitions from their current widgets; widget state, layout, picking, camera
+projection and commands remain in the UI. Include navigation-axis/cube artwork
+and the original agent-pointer mark in this collection, with their consumers
+recorded in the manifest. The UI layer compiles these masters; lower layers gain
+no egui dependency.
+
+`icons/ui/README.md` indexes every icon/glyph ID, source, consumer and licence.
+Keep available native work files in `source/work/`; the current UI icon masters
+are Rust drawing code, with no separate Illustrator/VectorCraft projects found.
+Generate a labelled light/dark icon sheet under `target/` for design review,
+using the same drawing masters and theme tokens as the app. Review exports are
+derived previews; shipped UI icons continue to be drawn in Rust.
+
+Validate command icon references and direct UI icon IDs against the collection,
+preserve the existing fallback for unknown IDs, and attribute collected artwork
+with its existing provenance. Do not duplicate masters in the facade or in
+generated preview images.
 
 ### Design workflow
 
@@ -127,12 +164,16 @@ or require Apple tools on other platforms.
 
 ## Files to collect
 
-There are 21 current resource files and 13 historical icon files.
+There are 21 current non-code resource files and 13 historical icon files, plus
+the Rust artwork masters and glyph definitions to collect from UI modules.
 Paths are relative to the repository root. Each font's licence stays beside it.
 
 | Resource / authoritative source | Current files | Proposed destination under `assets/` | Consumers |
 | --- | --- | --- | --- |
 | Approved macOS icon | `assets/SolidCraft.icon/icon.json`; `Assets/02-grid.svg`, `Assets/02-grid-dark.svg`, `Assets/03-solid-blue-cutout.svg` within that bundle | `icons/macos/source/SolidCraft.icon/` | Icon Composer, `actool` |
+| Shared app mark | `apps/app_icon.rs` | `icons/shared/source/app_icon.rs` | Desktop and CLI icon APIs; Windows build script; packaging icon generation |
+| UI icon library | `crates/ui-egui/src/icons.rs` | `icons/ui/source/icons.rs` | Stable `ui-egui::icons::paint` facade; toolbar, browser, palette, menus and constraint tools |
+| Other UI glyph artwork | Drawing definitions in `timeline.rs`, `titlebar.rs`, `toolbar.rs`, `browser.rs`, `sketch_tools.rs`, `dialogs_assembly.rs`, `viewport.rs`, `navigation_cube.rs`, `agent_cursor.rs` under `crates/ui-egui/src/` | `icons/ui/source/glyphs.rs`, with native work files in `source/work/` if available | Existing widgets through the UI rendering facade; behaviour and layout stay with the widgets |
 | Compiled macOS icons | `assets/Assets.car`, `assets/icon.icns`, generated together from the approved composition | `icons/macos/exports/` | `packaging/macos/package.sh` |
 | Historical macOS artwork | `assets/icon.vectorcraft` (editable source), `assets/icon.svg`, `assets/icon.png`, all ten PNGs in `assets/icon.iconset/` | `archive/icons/macos-v1/source/` and `exports/` | Preserve all 13 files as isolated design history; no current packaging/runtime consumer |
 | Sketch text font | `crates/sketch/fonts/LiberationSans-Regular.ttf`, `OFL.txt` in that directory | `fonts/liberation-sans/` | `crates/sketch/src/fonts.rs` embeds the font; `xtask/src/licences.rs` reads its licence |
@@ -151,8 +192,7 @@ add explicit rows for relocated locale catalogs and platform resources.
 
 | Resource | Authoritative location | Handling / consumers |
 | --- | --- | --- |
-| Shared app mark | `apps/app_icon.rs` | Keep its code ownership; desktop, CLI and Windows `build.rs` include it directly; index its generated exports and rebuild trigger |
-| UI icons and glyphs | `crates/ui-egui/src/icons.rs`, `viewport.rs`, `navigation_cube.rs`, `timeline.rs`, `sketch_tools.rs` in that directory | Keep drawing code in its owning UI layer; inventory it here |
+| Icon rendering interfaces | `apps/app_icon.rs`, `crates/ui-egui/src/icons.rs` | Keep stable consumer interfaces; collect their artwork masters under `assets/icons/shared/` and `assets/icons/ui/` as above |
 | Theme, appearances and rendering | `crates/ui-egui/src/theme.rs`, inline shaders in `gpu.rs`, `crates/doc/src/appearance.rs`, material definitions in `crates/doc/src/document.rs` | Keep original code in its owning layers; no external texture/environment artwork to relocate |
 | Dependency fonts and shader | egui's built-in fonts; `vendor/egui-wgpu/src/egui.wgsl` | Keep dependency/vendor ownership; see `THIRD-PARTY-LICENSES.txt` and `ATTRIBUTION.md` |
 | Optional desktop fonts | System font paths and `CRAFT_FONTS_DIR` in `crates/ui-egui/src/fonts.rs`; user sketch fonts and `SOLIDCRAFT_FONT_DIRS` in `crates/sketch/src/fonts.rs` | External resources; no files to collect |
