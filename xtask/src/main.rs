@@ -1,9 +1,10 @@
 //! Workspace tooling: `cargo xtask <command>`.
 //!
-//! Pure Rust (std + serde_json). External tools (`cargo`) are invoked through
+//! Pure Rust (std + serde_json + sha2). External tools (`cargo`) are invoked through
 //! `std::process::Command`.
 
 mod assets;
+mod assets_generate;
 mod book;
 mod features;
 mod layers;
@@ -47,7 +48,7 @@ fn main() -> ExitCode {
     let rest: Vec<&str> = args.iter().skip(1).map(String::as_str).collect();
     let result = match args.first().map(String::as_str) {
         Some("layers") => cmd_layers(),
-        Some("assets") => assets::run(&root()),
+        Some("assets") => assets_generate::command(&root(), &rest),
         Some("features") => features::run(&root()),
         Some("oracle") => cmd_oracle(rest.iter().position(|a| *a == "--cli").and_then(|i| rest.get(i + 1)).copied()),
         Some("action-matrix") => {
