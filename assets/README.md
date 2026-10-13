@@ -1,7 +1,7 @@
 # SolidCraft application resources
 
 Resource audit for [#433](https://github.com/bherbruck/solidcraft/issues/433),
-against `main` at `e30f3c9`. Paths below are current; destinations are proposed.
+against `main` at `0b1e615`. Paths below are current; destinations are proposed.
 This revision inventories resources without relocating them.
 
 ## Proposed structure
@@ -152,7 +152,7 @@ add explicit rows for relocated locale catalogs and platform resources.
 | Resource | Authoritative location | Handling / consumers |
 | --- | --- | --- |
 | Shared app mark | `apps/app_icon.rs` | Keep its code ownership; desktop, CLI and Windows `build.rs` include it directly; index its generated exports and rebuild trigger |
-| UI icons and glyphs | `crates/ui-egui/src/icons.rs`, `viewport.rs`, `timeline.rs`, `sketch_tools.rs` in that directory | Keep drawing code in its owning UI layer; inventory it here |
+| UI icons and glyphs | `crates/ui-egui/src/icons.rs`, `viewport.rs`, `navigation_cube.rs`, `timeline.rs`, `sketch_tools.rs` in that directory | Keep drawing code in its owning UI layer; inventory it here |
 | Theme, appearances and rendering | `crates/ui-egui/src/theme.rs`, inline shaders in `gpu.rs`, `crates/doc/src/appearance.rs`, material definitions in `crates/doc/src/document.rs` | Keep original code in its owning layers; no external texture/environment artwork to relocate |
 | Dependency fonts and shader | egui's built-in fonts; `vendor/egui-wgpu/src/egui.wgsl` | Keep dependency/vendor ownership; see `THIRD-PARTY-LICENSES.txt` and `ATTRIBUTION.md` |
 | Optional desktop fonts | System font paths and `CRAFT_FONTS_DIR` in `crates/ui-egui/src/fonts.rs`; user sketch fonts and `SOLIDCRAFT_FONT_DIRS` in `crates/sketch/src/fonts.rs` | External resources; no files to collect |
