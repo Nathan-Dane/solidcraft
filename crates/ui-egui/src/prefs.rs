@@ -376,8 +376,24 @@ pub fn apply(app: &mut SolveApp, ctx: &egui::Context) {
     {
         app.ui.dark = t == egui::Theme::Dark;
     }
+    // egui's end-of-frame shortcuts only change its context; the saved preference would
+    // overwrite that change next frame. Consume the desktop shortcuts into the preference.
+    if ctx.options(|o| o.zoom_with_keyboard) && !crate::keymap::capturing(app) {
+        use egui::gui_zoom::kb_shortcuts::{ZOOM_IN, ZOOM_IN_SECONDARY, ZOOM_OUT, ZOOM_RESET};
+        if ctx.input_mut(|i| i.consume_shortcut(&ZOOM_RESET)) {
+            app.preferences.ui_scale = 1.0;
+        } else {
+            let zoom_in = ctx.input_mut(|i| i.consume_shortcut(&ZOOM_IN) || i.consume_shortcut(&ZOOM_IN_SECONDARY));
+            let zoom_out = ctx.input_mut(|i| i.consume_shortcut(&ZOOM_OUT));
+            if zoom_in != zoom_out {
+                app.preferences.ui_scale = (app.preferences.ui_scale + if zoom_in { 0.1 } else { -0.1 }).clamp(0.5, 2.5);
+            }
+        }
+    }
+    // Scaling while the pointer is held moves the slider under the pointer, feeding a
+    // different value back into it. Commit the layout change after the drag ends.
     let z = app.preferences.ui_scale.clamp(0.5, 2.5);
-    if z.is_finite() && (ctx.zoom_factor() - z).abs() > 1e-3 {
+    if z.is_finite() && !ctx.input(|i| i.pointer.any_down()) && (ctx.zoom_factor() - z).abs() > 1e-3 {
         ctx.set_zoom_factor(z);
     }
 }
@@ -414,7 +430,9 @@ pub fn zoom_sign(app: &SolveApp) -> f64 {
 }
 
 /// Orbit by pixel deltas: around the view's centre, or, with "orbit around the cursor", around
-/// the model point that was under the cursor when the drag began (kept still on screen).
+/// the model point that was under the cursor when the drag began (kept still on screen). A drag
+/// that begins over empty space turns around the centre of the visible geometry instead, so the
+/// model never swings around a far-off point. The pivot is chosen once, when the drag begins.
 pub fn orbit(app: &mut SolveApp, rect: egui::Rect, dx: f64, dy: f64, press: Option<Pos2>) {
     if !app.preferences.orbit_cursor {
         app.cam.orbit(dx, dy);
@@ -438,7 +456,8 @@ pub fn orbit(app: &mut SolveApp, rect: egui::Rect, dx: f64, dy: f64, press: Opti
     }
 }
 
-/// The model point under a screen position, or the point at the view's depth.
+/// The model point under a screen position. Over empty space: the centre of the visible bodies
+/// and sketches (what Fit frames), or the view's centre when nothing is visible.
 fn pivot_under(app: &SolveApp, proj: &crate::viewport::Proj, at: Pos2) -> Vec3 {
     use crate::viewport::Hit;
     for h in crate::viewport::pick(app, proj, at) {
@@ -448,10 +467,8 @@ fn pivot_under(app: &SolveApp, proj: &crate::viewport::Proj, at: Pos2) -> Vec3 {
             _ => {}
         }
     }
-    let (o, d) = proj.ray(at);
-    let n = app.cam.back();
-    let den = d.dot(n);
-    if den.abs() > 1e-9 { o + d * ((app.cam.target - o).dot(n) / den) } else { app.cam.target }
+    let b = solidcraft_engine::view::bounds(&app.session);
+    if b.is_empty() { app.cam.target } else { b.center() }
 }
 
 /// Units per millimetre and the unit's name.
@@ -769,7 +786,10 @@ fn page(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
             });
             ui.end_row();
             ui.label(app.tr("ui.ui_scale"));
-            ui.add(egui::Slider::new(&mut app.preferences.ui_scale, 0.75..=2.0).step_by(0.05).custom_formatter(|v, _| format!("{:.0} %", v * 100.0)));
+            let scale = ui.add(
+                egui::Slider::new(&mut app.preferences.ui_scale, 0.5..=2.5).step_by(0.05).custom_formatter(|v, _| format!("{:.0} %", v * 100.0)),
+            );
+            crate::scenario::publish_rect("prefs:scale", scale.rect);
             ui.end_row();
             ui.label(app.tr("ui.units_of_new_designs"));
             egui::ComboBox::from_id_salt("pref_units").selected_text(app.preferences.default_units.clone()).show_ui(ui, |ui| {
@@ -815,7 +835,7 @@ fn page(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
             });
             ui.end_row();
             let snap_help = if app.preferences.nav == OPENSCAD_NAV { "" } else { "; hold Shift during orbit to snap" };
-            note(ui, &format!("{}{snap_help}; the wheel zooms", nav_preset(&app.preferences.nav).help));
+            note(ui, &format!("{}; Ctrl+left drag on empty space orbits{snap_help}; the wheel zooms", nav_preset(&app.preferences.nav).help));
             ui.label("Context menu");
             ui.checkbox(&mut app.preferences.radial_context_menu, "Radial context menu");
             ui.end_row();
@@ -1319,6 +1339,31 @@ mod tests {
         assert!(s.distance(at) < 2.0, "{s:?}");
     }
 
+    /// A drag that starts over empty space turns around the visible geometry's centre, not a
+    /// point far off to the side; with nothing visible it turns around the view's centre.
+    #[test]
+    fn orbiting_from_empty_space_turns_around_the_visible_geometry() {
+        let mut app = SolveApp::new(solidcraft_engine::Session::default(), Default::default());
+        app.run("solid.box", json!({"length": 40, "width": 40, "height": 40})).unwrap();
+        app.preferences.orbit_cursor = true;
+        let rect = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0));
+        app.fit_view();
+        let corner = egui::pos2(10.0, 10.0);
+        let proj = crate::viewport::projection(&app, rect);
+        let hits = crate::viewport::pick(&app, &proj, corner);
+        use crate::viewport::Hit;
+        assert!(!hits.iter().any(|h| matches!(h, Hit::Face { .. } | Hit::Edge { .. } | Hit::Vertex { .. })), "the corner is empty space");
+        let centre = solidcraft_engine::view::bounds(&app.session).center();
+        orbit(&mut app, rect, 40.0, 25.0, Some(corner));
+        assert_eq!(app.viewport.orbit_pivot, Some(centre));
+
+        let mut app = SolveApp::new(solidcraft_engine::Session::default(), Default::default());
+        app.preferences.orbit_cursor = true;
+        app.cam.target = solidcraft_engine::geom::Vec3::new(5.0, -3.0, 2.0);
+        orbit(&mut app, rect, 40.0, 25.0, Some(corner));
+        assert_eq!(app.viewport.orbit_pivot, Some(solidcraft_engine::geom::Vec3::new(5.0, -3.0, 2.0)));
+    }
+
     /// The Y up preference turns the view: the camera's up axis follows it, startup included.
     #[test]
     fn up_axis_preference_turns_the_view() {
@@ -1335,5 +1380,59 @@ mod tests {
         app.preferences.up_axis = "z".into();
         apply(&mut app, &ctx);
         assert_eq!(app.cam.up, UpAxis::Z);
+    }
+}
+
+#[cfg(test)]
+mod ui_scale_regression_tests {
+    use super::*;
+    use egui::{Event, Modifiers, PointerButton, pos2};
+
+    #[test]
+    fn desktop_zoom_shortcuts_update_and_persist_the_scale_preference() {
+        let mut h = crate::scenario::Harness::new();
+        h.call("ui.key", json!({"key":"Minus","cmd":true}));
+        assert!((h.app.preferences.ui_scale - 0.9).abs() < 1e-4);
+        assert!((h.ctx.zoom_factor() - 0.9).abs() < 1e-4);
+        h.frames(12);
+        assert!((h.ctx.zoom_factor() - 0.9).abs() < 1e-4, "must not flash back to the old preference");
+        h.step(&json!({"restart":"close"})).unwrap();
+        assert!((h.app.preferences.ui_scale - 0.9).abs() < 1e-4);
+        h.call("ui.key", json!({"key":"Equals","cmd":true}));
+        assert!((h.ctx.zoom_factor() - 1.0).abs() < 1e-4);
+        h.call("ui.key", json!({"key":"Plus","cmd":true}));
+        assert!((h.ctx.zoom_factor() - 1.1).abs() < 1e-4);
+        h.call("ui.key", json!({"key":"0","cmd":true}));
+        assert!((h.ctx.zoom_factor() - 1.0).abs() < 1e-4);
+        h.call("ui.prefs", json!({"ui_scale":0.5}));
+        h.call("ui.key", json!({"key":"Minus","cmd":true}));
+        assert_eq!(h.app.preferences.ui_scale, 0.5);
+        h.call("ui.prefs", json!({"ui_scale":2.5}));
+        h.call("ui.key", json!({"key":"Plus","cmd":true}));
+        assert_eq!(h.app.preferences.ui_scale, 2.5);
+    }
+
+    #[test]
+    fn dragging_the_scale_slider_keeps_its_window_still_until_release() {
+        let mut h = crate::scenario::Harness::new();
+        h.call("ui.prefs", json!({"open":"General"}));
+        let window = crate::scenario::rect_of("prefs:window").unwrap();
+        let slider = crate::scenario::rect_of("prefs:scale").unwrap();
+        let a = pos2(slider.left() + 20.0, slider.center().y);
+        let b = pos2(slider.left() + 90.0, slider.center().y);
+        h.app.synthetic.push(Event::PointerMoved(a));
+        h.app.synthetic.push(Event::PointerButton { pos: a, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
+        h.frames(3);
+        h.app.synthetic.push(Event::PointerMoved(b));
+        h.frames(4);
+        assert_ne!(h.app.preferences.ui_scale, 1.0, "the slider changes its value during the drag");
+        assert_eq!(h.ctx.zoom_factor(), 1.0, "layout must remain stable until release");
+        assert_eq!(crate::scenario::rect_of("prefs:window").unwrap(), window);
+        h.app.synthetic.push(Event::PointerButton { pos: b, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
+        h.frames(5);
+        assert!((h.ctx.zoom_factor() - h.app.preferences.ui_scale).abs() < 1e-4);
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert_eq!(h.app.preferences.ui_scale, 1.0, "Cancel restores the original scale");
+        assert_eq!(h.ctx.zoom_factor(), 1.0);
     }
 }

@@ -115,7 +115,9 @@ fn curved_internal_void_and_disconnected_material_keep_analytic_volume() {
     }
     let imported = step_import(&step_export(&[&body], "curved nested cavities").unwrap()).unwrap();
     assert!(imported.warnings.is_empty(), "{:?}", imported.warnings);
-    let imported: Vec<_> = imported.bodies.into_iter().flat_map(|b| b.body.lumps().unwrap()).collect();
+    // The two pieces are written as two solids (each with its own void), so they come back as
+    // two bodies.
+    let imported: Vec<_> = imported.bodies.into_iter().map(|b| b.body).collect();
     assert_eq!(imported.len(), 2);
     let imported_meshes: Vec<_> = imported.iter().map(|b| b.tessellate_with(0.01, true).unwrap()).collect();
     for (p, want) in [(Vec3::ZERO, 0), (Vec3::X * 3.0, 1), (Vec3::X * 7.0, 0), (Vec3::X * 15.0, 1)] {
@@ -300,4 +302,20 @@ fn grouping_lumps_does_not_infer_absent_or_misaligned_sources() {
     assert!(absent.lumps().unwrap().iter().all(|b| b.face_sources().is_none()));
     let malformed = body.with_face_sources(Some(std::sync::Arc::new(vec![None])));
     assert!(malformed.lumps().unwrap_err().to_string().contains("face source table"));
+}
+
+/// A long thin cylinder (a through hole's tool) far from the origin, its seam turned: its
+/// vertices span only its length, so the coarse orientation mesh can give it a negative volume.
+/// It must still come out outward, or a Cut with it removes the wrong side (#559).
+#[test]
+fn a_long_thin_cylinder_comes_out_outward() {
+    use solidcraft_geom::{Loop2, Plane, Region2, Vec2, Vec3};
+    let plane = Plane::from_normal(Vec3::new(0., 24., 30.), Vec3::Z).unwrap();
+    for (lo, seam) in [(-181.0, 0.613), (-100.0, 0.613), (-10.0, 0.613), (-181.0, 0.0)] {
+        let disc = Region2 { outer: Loop2::circle_from(Vec2::ZERO, 0.5, seam), holes: vec![] };
+        let tool = crate::extrude(&plane, &[disc], lo, 0.9).unwrap().pop().unwrap();
+        let volume = tool.tessellate(0.01).unwrap().measure().volume;
+        let want = std::f64::consts::PI * 0.25 * (0.9 - lo);
+        assert!((volume - want).abs() < want * 0.02, "{lo} {seam}: {volume} vs {want}");
+    }
 }

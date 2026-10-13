@@ -10,7 +10,7 @@ mod planar_regularize;
 #[path = "planar_sources.rs"]
 mod planar_sources;
 #[path = "shell_groups.rs"]
-mod shell_groups;
+pub(crate) mod shell_groups;
 
 pub(crate) type Solid = mt::Solid;
 
@@ -40,15 +40,56 @@ pub struct Body {
     pub(crate) history: Option<std::sync::Arc<crate::history::History>>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum FaceSource {
-    ExtrudeSide { segment: solidcraft_geom::Seg2, plane: Option<solidcraft_geom::Plane>, coalesced: bool },
-    CertifiedExtrudeSide { producer: u64, sketch: u64, curve: String, plane: Option<solidcraft_geom::Plane> },
-    ExtrudeCap { high: bool, region: solidcraft_geom::Region2, plane: solidcraft_geom::Plane },
-    CertifiedExtrudeCap { producer: u64, sketch: u64, high: bool, outer: Vec<String>, holes: Vec<Vec<String>>, plane: solidcraft_geom::Plane },
-    Box { producer: Option<u64>, axis: u8, high: bool, plane: solidcraft_geom::Plane },
-    ShellPlanar { producer: Option<u64>, source: Box<FaceSource>, inner: bool, plane: solidcraft_geom::Plane },
-    Imported { item: u64, face: u64, payload_sha256: Option<String>, producer: Option<u64> },
+    ExtrudeSide {
+        segment: solidcraft_geom::Seg2,
+        plane: Option<solidcraft_geom::Plane>,
+        coalesced: bool,
+    },
+    CertifiedExtrudeSide {
+        producer: u64,
+        sketch: u64,
+        curve: String,
+        plane: Option<solidcraft_geom::Plane>,
+    },
+    ExtrudeCap {
+        high: bool,
+        region: solidcraft_geom::Region2,
+        plane: solidcraft_geom::Plane,
+    },
+    CertifiedExtrudeCap {
+        producer: u64,
+        sketch: u64,
+        high: bool,
+        outer: Vec<String>,
+        holes: Vec<Vec<String>>,
+        plane: solidcraft_geom::Plane,
+    },
+    Box {
+        producer: Option<u64>,
+        axis: u8,
+        high: bool,
+        plane: solidcraft_geom::Plane,
+    },
+    /// A cylinder primitive's cap: `high` at the far end (its `top`), else at the base.
+    CylinderCap {
+        producer: u64,
+        high: bool,
+        plane: solidcraft_geom::Plane,
+    },
+    ShellPlanar {
+        producer: Option<u64>,
+        source: Box<FaceSource>,
+        inner: bool,
+        plane: solidcraft_geom::Plane,
+    },
+    Imported {
+        item: u64,
+        face: u64,
+        payload_sha256: Option<String>,
+        producer: Option<u64>,
+    },
 }
 
 pub type CapSignature = (Vec<String>, Vec<Vec<String>>);
@@ -58,16 +99,18 @@ impl FaceSource {
     fn plane_mut(&mut self) -> Option<&mut solidcraft_geom::Plane> {
         match self {
             Self::ExtrudeSide { plane, .. } | Self::CertifiedExtrudeSide { plane, .. } => plane.as_mut(),
-            Self::ExtrudeCap { plane, .. } | Self::CertifiedExtrudeCap { plane, .. } | Self::Box { plane, .. } | Self::ShellPlanar { plane, .. } => {
-                Some(plane)
-            }
+            Self::ExtrudeCap { plane, .. }
+            | Self::CertifiedExtrudeCap { plane, .. }
+            | Self::Box { plane, .. }
+            | Self::CylinderCap { plane, .. }
+            | Self::ShellPlanar { plane, .. } => Some(plane),
             Self::Imported { .. } => None,
         }
     }
 }
 
 /// How a body looks beyond its colour, for export: its opacity and its faces' own colours.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct Paint {
     /// 1 = opaque.
     pub opacity: f32,
@@ -75,7 +118,7 @@ pub struct Paint {
 }
 
 /// A face's own colour: the B-rep face index (`face_iter` order), sRGB as 0..1, opacity.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct FacePaint {
     pub face: usize,
     pub color: [f32; 3],
@@ -105,17 +148,38 @@ pub struct FaceInfo {
 
 type MeshedShell = truck_topology::Shell<mt::Point3, PolylineCurve<mt::Point3>, Option<PolygonMesh>>;
 
+/// The most one facet of the display mesh turns (radians): a curved face or edge is divided
+/// until no facet spans more of it than this, however small its radius is beside the body.
+/// 20 degrees: a quarter turn is drawn with at least five facets, a full circle with at least 18.
+pub const DISPLAY_ANGLE: f64 = std::f64::consts::PI / 9.0;
+
+/// The sag, as a fraction of the chord tolerance, below which the angle no longer divides a
+/// facet: at [`DISPLAY_ANGLE`] and the application's tolerance of 1/1000 of the body, a radius
+/// under about 1/15000 of the body gets fewer facets than the angle asks for, and one under
+/// a millionth of it only those of the chord tolerance.
+const DISPLAY_ANGLE_FLOOR: f64 = 1e-3;
+
+/// The finest angle a display mesh is divided by (one degree).
+const MIN_DISPLAY_ANGLE: f64 = std::f64::consts::PI / 180.0;
+
 /// Triangulate each shell (not the solid: truck's solid constructor panics on the open or
 /// non-manifold shells an import can produce). Boundaries that lie on their surface only within
 /// tolerance (imports, boolean results) are projected onto it.
 fn mesh_shells(solid: &Solid, tol: f64) -> Vec<MeshedShell> {
+    mesh_shells_within(solid, Deflection::chord(tol))
+}
+
+/// [`mesh_shells`] divided by a chord tolerance and, when it has one, a bound on the angle a
+/// facet spans. Each edge is divided once for both its faces, so the faces still share its
+/// points.
+fn mesh_shells_within(solid: &Solid, deflection: Deflection) -> Vec<MeshedShell> {
     solid
         .boundaries()
         .iter()
         // The robust search tries the exact one first, so exact geometry costs nothing extra; a
         // face can also come back as an empty mesh rather than none (boolean results with
         // approximate intersection curves), so always use it.
-        .map(|sh| sh.robust_triangulation(tol))
+        .map(|sh| sh.robust_triangulation_within(deflection))
         .collect()
 }
 
@@ -413,13 +477,26 @@ impl Body {
             if lo.x.is_finite() { (hi - lo).len() } else { 1.0 }
         };
         let tol = (span * 0.01).clamp(1e-3, 1.0);
-        let (v, missing) = guard("orient", || {
-            let shells = mesh_shells(&solid, tol);
-            let volume = shells.iter().map(|s| s.to_polygon().volume()).sum::<f64>();
-            let missing =
-                shells.iter().flat_map(|s| s.face_iter()).filter(|f| f.surface().is_none_or(|m| m.faces().triangle_iter().next().is_none())).count();
-            Ok((volume, missing))
-        })?;
+        let orient = |tol: f64| {
+            guard("orient", || {
+                let shells = mesh_shells(&solid, tol);
+                let volume = shells.iter().map(|s| s.to_polygon().volume()).sum::<f64>();
+                let missing = shells
+                    .iter()
+                    .flat_map(|s| s.face_iter())
+                    .filter(|f| f.surface().is_none_or(|m| m.faces().triangle_iter().next().is_none()))
+                    .count();
+                Ok((volume, missing))
+            })
+        };
+        let (mut v, mut missing) = orient(tol)?;
+        // A long thin round part (a through hole's tool: a cylinder whose vertices all lie on
+        // its seam, so they span its length only) meshed that coarsely can come out with a
+        // negative volume when it is outward already: check finely before turning it inside out.
+        let fine = (tol * 0.02).max(1e-4);
+        if v < 0.0 && fine < tol {
+            (v, missing) = orient(fine)?;
+        }
         if v < 0.0 {
             solid.not();
         }
@@ -504,6 +581,7 @@ impl Body {
             FaceSource::ExtrudeCap { plane, .. }
             | FaceSource::CertifiedExtrudeCap { plane, .. }
             | FaceSource::Box { plane, .. }
+            | FaceSource::CylinderCap { plane, .. }
             | FaceSource::ShellPlanar { plane, .. } => Some(*plane),
             FaceSource::Imported { .. } => self.planar_face(index),
         }
@@ -527,6 +605,32 @@ impl Body {
         })
         .ok()
         .flatten()
+    }
+
+    /// Certify the two caps of a body built by [`crate::cylinder`]. Its wall stays uncertified.
+    pub fn with_cylinder_certificate(mut self, producer: u64) -> Result<Self> {
+        if producer == 0 {
+            return Err(KernelError::Invalid("invalid cylinder producer".into()));
+        }
+        let Some(sources) = &self.face_sources else {
+            return Err(KernelError::Failed("cylinder construction source".into()));
+        };
+        let mut sources = sources.as_ref().clone();
+        let mut ends = [false; 2];
+        for source in sources.iter_mut() {
+            if let Some(FaceSource::ExtrudeCap { high, plane, .. }) = source {
+                let end = ends.get_mut(usize::from(*high)).ok_or_else(|| KernelError::Failed("cylinder cap role".into()))?;
+                if std::mem::replace(end, true) {
+                    return Err(KernelError::Failed("duplicate cylinder cap role".into()));
+                }
+                *source = Some(FaceSource::CylinderCap { producer, high: *high, plane: *plane });
+            }
+        }
+        if ends != [true; 2] {
+            return Err(KernelError::Failed("cylinder cap role count".into()));
+        }
+        self.face_sources = Some(std::sync::Arc::new(sources));
+        Ok(self)
     }
 
     pub fn with_box_certificate(mut self, producer: u64) -> Result<Self> {
@@ -768,13 +872,24 @@ impl Body {
     /// Like [`Body::tessellate`]; with `refine`, triangles that cut through curved faces are
     /// split until within `tol` of the surface (for measuring).
     pub fn tessellate_with(&self, tol: f64, refine: bool) -> Result<Mesh> {
+        self.tessellate_within(tol, f64::INFINITY, refine)
+    }
+
+    /// [`Body::tessellate_with`] in which no facet turns more than `angle` radians either
+    /// (infinite: the chord tolerance alone).
+    fn tessellate_within(&self, tol: f64, angle: f64, refine: bool) -> Result<Mesh> {
         let tol = if tol.is_finite() && tol > 0.0 { tol } else { 0.05 };
         let tol = tol.max(self.size() * 1e-6);
         if let Some(m) = &self.mesh {
             return Ok(m.to_mesh());
         }
+        let deflection = if angle.is_finite() && angle > 0.0 {
+            Deflection { chord: tol, angle: angle.max(MIN_DISPLAY_ANGLE), floor: tol * DISPLAY_ANGLE_FLOOR }
+        } else {
+            Deflection::chord(tol)
+        };
         guard("tessellate", || {
-            let meshed = mesh_shells(&self.solid, tol);
+            let meshed = mesh_shells_within(&self.solid, deflection);
             let mut out = Mesh::default();
             let solid_faces: Vec<&mt::Face> = self.solid.face_iter().collect();
             for (fi, face) in meshed.iter().flat_map(|s| s.face_iter()).enumerate() {
@@ -871,7 +986,20 @@ impl Body {
 
     /// Display mesh: like [`Body::tessellate`], with seam edges flagged.
     pub fn display_mesh(&self, tol: f64) -> Result<Mesh> {
-        let mut m = self.tessellate(tol)?;
+        self.flagged(self.tessellate(tol)?)
+    }
+
+    /// Display mesh whose curved faces and edges look curved whatever the body's size: like
+    /// [`Body::display_mesh`], and no facet turns more than `angle` radians (see
+    /// [`DISPLAY_ANGLE`]). A chord tolerance that follows the body's size is larger than the
+    /// sagitta of a small radius on a large body (a sheet-metal bend, a small hole), which the
+    /// tolerance alone leaves as one flat facet.
+    pub fn display_mesh_angular(&self, tol: f64, angle: f64) -> Result<Mesh> {
+        self.flagged(self.tessellate_within(tol, angle, false)?)
+    }
+
+    /// A tessellation with its edges flagged for display (seams, tangent joins, protected creases).
+    fn flagged(&self, mut m: Mesh) -> Result<Mesh> {
         if self.is_mesh() {
             return Ok(m);
         }
@@ -1031,6 +1159,12 @@ impl Body {
         self.lumps_with_clearance(4.0 * (self.size() * 1e-3).max(1e-3))
     }
 
+    /// A union's pieces must be clear of each other by the contact distance of [`Body::meets`];
+    /// closer shells are touching material that was never fused (#396).
+    pub(crate) fn union_lumps(&self) -> Result<Vec<Body>> {
+        self.lumps_with_clearance(2.0 * (self.size() * 1e-4).max(1e-6))
+    }
+
     fn lumps_with_clearance(&self, clearance: f64) -> Result<Vec<Body>> {
         if self.mesh.is_some() || self.solid.boundaries().len() < 2 {
             return Ok(vec![self.clone()]);
@@ -1150,6 +1284,10 @@ mod lump_tests;
 #[cfg(test)]
 #[path = "refine_cache_tests.rs"]
 mod refine_cache_tests;
+
+#[cfg(test)]
+#[path = "display_mesh_tests.rs"]
+mod display_mesh_tests;
 
 #[cfg(test)]
 #[path = "regularization_protection_tests.rs"]

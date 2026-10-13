@@ -537,7 +537,7 @@ fn fillet_radius_fit_reduces_and_shows_the_applied_radius() {
     assert_eq!(p["fit"], json!("reduce"));
     let job = crate::preview::compute(&app.session, &[(id.clone(), p.clone())], crate::preview::Colors::from_tokens(&crate::theme::Tokens::dark()))
         .unwrap();
-    assert_eq!(job.applied, Some(3.0));
+    assert_eq!(job.applied, Some((3.0, 3.0)));
     // Applied and edited again, the fillet keeps its fit.
     app.session.execute(&id, &p).unwrap();
     let fillet = app.session.doc.features.last().unwrap().id;
@@ -546,7 +546,7 @@ fn fillet_radius_fit_reduces_and_shows_the_applied_radius() {
     // Its edit preview shows the radius it uses too.
     let cmds = apply_commands(&app, &e).unwrap();
     let job = crate::preview::compute(&app.session, &cmds, crate::preview::Colors::from_tokens(&crate::theme::Tokens::dark())).unwrap();
-    assert_eq!(job.applied, Some(3.0));
+    assert_eq!(job.applied, Some((3.0, 3.0)));
 }
 
 /// Apply a dialog's commands to the session; the new feature's id.
@@ -710,6 +710,31 @@ fn surface_dialogs_make_their_commands() {
 }
 
 #[test]
+fn patch_dialog_fills_a_loop_of_edges_that_is_not_planar() {
+    // A box with its top cut away by a sideways cylinder: its rim is a closed loop of four
+    // curved edges, not in a plane. Picking them in the Patch dialog fills it with one face.
+    let mut app = app_with(json!([
+        {"command": "solid.box", "params": {"length": 28, "width": 28, "height": 20, "corner": [-14, -14, 0], "body_name": "Saddle"}},
+        {"command": "solid.cylinder", "params": {"radius": 40, "height": 120, "base": [0, -60, 50], "axis": "Y", "operation": "cut", "targets": ["Saddle"]}}
+    ]));
+    let z = |x: f64| 50.0 - (1600.0 - x * x).sqrt();
+    let rim = [Vec3::new(14.0, 0.0, z(14.0)), Vec3::new(0.0, 14.0, z(0.0)), Vec3::new(-14.0, 0.0, z(-14.0)), Vec3::new(0.0, -14.0, z(0.0))];
+    let mut d = start(&mut app, vec![], "surface.patch");
+    d.inputs[0].items = rim.iter().enumerate().map(|(i, p)| Sel::Edge { body: "Saddle".into(), index: i, point: *p }).collect();
+    let cmds = apply_commands(&app, &d).unwrap();
+    assert_eq!(cmds.len(), 1);
+    assert_eq!(cmds[0].0, "surface.patch");
+    app.session.execute(&cmds[0].0, &cmds[0].1).unwrap();
+    let st = app.session.model.state();
+    let fill = st.bodies.iter().find(|b| b.name != "Saddle").unwrap();
+    assert!(fill.body.is_surface() && fill.body.face_count() == 1);
+    // One smooth face over the rim: its area is close to the cylinder's inside the rim.
+    let area = fill.mesh().measure().area;
+    let want = 28.0 * 40.0 * 2.0 * (14.0f64 / 40.0).asin();
+    assert!((area - want).abs() < want * 1e-2, "{area} vs {want}");
+}
+
+#[test]
 fn split_body_by_a_curved_face_sends_it_as_a_tool() {
     let mut app = app_with(json!([
         {"command": "solid.box", "params": {"length": 40, "width": 30, "height": 20}},
@@ -728,4 +753,87 @@ fn split_body_by_a_curved_face_sends_it_as_a_tool() {
     d.inputs[1].items = vec![side];
     let p = apply_commands(&app, &d).unwrap().remove(0).1;
     assert!(p["tool"]["point"].is_array() && p.get("plane").is_none(), "{p}");
+}
+
+/// Runs a primitive's dialog with `sels` pre-selected and returns the new body's centroid.
+fn primitive_on(app: &mut SolveApp, sels: Vec<Sel>, id: &str, edit: impl FnOnce(&mut Dialog)) -> (serde_json::Value, Vec3) {
+    let mut d = start(app, sels, id);
+    edit(&mut d);
+    let (cmd, p) = apply_commands(app, &d).unwrap().remove(0);
+    let name = app.session.execute(&cmd, &p).unwrap()["created_bodies"][0].as_str().unwrap().to_string();
+    let st = app.session.model.state();
+    (p, st.body(&name).unwrap().mesh().measure().centroid)
+}
+
+/// The face of Body1 whose centre is at `c`, picked at `p`.
+fn picked(app: &SolveApp, c: Vec3, p: Vec3) -> Sel {
+    let Sel::Face { body, index, .. } = face(app, c) else { panic!("a face") };
+    Sel::Face { body, index, point: p }
+}
+
+fn near(a: Vec3, b: Vec3) -> bool {
+    a.dist(b) < 0.05
+}
+
+#[test]
+fn primitives_go_on_the_picked_face() {
+    // #580: a sphere (or any primitive) made with a face selected went to the origin.
+    let mut app = boxed();
+    let top = picked(&app, Vec3::new(20.0, 15.0, 20.0), Vec3::new(8.0, 10.0, 20.0));
+    let (p, c) = primitive_on(&mut app, vec![top.clone()], "solid.sphere", |_| {});
+    assert_eq!(p["center"], json!([8.0, 10.0, 20.0]), "{p}");
+    assert!(near(c, Vec3::new(8.0, 10.0, 20.0)), "{c:?}");
+
+    let (p, c) = primitive_on(&mut app, vec![top.clone()], "solid.cylinder", |_| {});
+    assert_eq!(p["axis"], json!([0.0, 0.0, 1.0]), "standing on the top face: {p}");
+    assert!(near(c, Vec3::new(8.0, 10.0, 30.0)), "{c:?}");
+
+    // A box stands on the face, centred on the picked point across it.
+    let (_, c) = primitive_on(&mut app, vec![top.clone()], "solid.box", |_| {});
+    assert!(near(c, Vec3::new(8.0, 10.0, 30.0)), "{c:?}");
+
+    let (p, c) = primitive_on(&mut app, vec![top], "solid.torus", |_| {});
+    assert_eq!(p["center"], json!([8.0, 10.0, 20.0]), "{p}");
+    assert!(near(c, Vec3::new(8.0, 10.0, 20.0)), "{c:?}");
+}
+
+#[test]
+fn a_box_stands_out_of_a_face_that_faces_down_an_axis() {
+    let mut app = boxed();
+    // The x = 0 side faces -X: the box goes the other way, away from the body.
+    let side = picked(&app, Vec3::new(0.0, 15.0, 10.0), Vec3::new(0.0, 12.0, 8.0));
+    let (_, c) = primitive_on(&mut app, vec![side.clone()], "solid.box", |_| {});
+    assert!(near(c, Vec3::new(-10.0, 12.0, 8.0)), "{c:?}");
+    // Sizes that are expressions stay expressions in the corner.
+    app.session.execute("parameters.add", &json!({"name": "s", "expression": "6 mm"})).unwrap();
+    let (p, c) = primitive_on(&mut app, vec![side.clone()], "solid.box", |d| {
+        if let Kind::Primitive { fields, .. } = &mut d.kind {
+            fields.iter_mut().for_each(|f| f.1 = "s".into());
+        }
+    });
+    assert_eq!(p["corner"][0], json!("0 mm - (s)"), "{p}");
+    assert!(near(c, Vec3::new(-3.0, 12.0, 8.0)), "{c:?}");
+    // The cylinder's axis points out of the face.
+    let (p, c) = primitive_on(&mut app, vec![side], "solid.cylinder", |_| {});
+    assert_eq!(p["axis"], json!([-1.0, 0.0, 0.0]), "{p}");
+    assert!(near(c, Vec3::new(-10.0, 12.0, 8.0)), "{c:?}");
+}
+
+#[test]
+fn a_primitive_without_a_pick_or_with_its_position_cleared_stays_at_the_origin() {
+    let mut app = boxed();
+    let (p, c) = primitive_on(&mut app, vec![], "solid.sphere", |_| {});
+    assert!(p.get("center").is_none(), "{p}");
+    assert!(near(c, Vec3::ZERO), "{c:?}");
+    let top = face(&app, Vec3::new(20.0, 15.0, 20.0));
+    let (p, _) = primitive_on(&mut app, vec![top], "solid.sphere", |d| {
+        if let Kind::Primitive { at, .. } = &mut d.kind {
+            *at = None;
+        }
+    });
+    assert!(p.get("center").is_none(), "{p}");
+    // A vertex places it too.
+    let v = Sel::Vertex { body: "Body1".into(), point: Vec3::new(40.0, 30.0, 20.0) };
+    let (p, _) = primitive_on(&mut app, vec![v], "solid.sphere", |_| {});
+    assert_eq!(p["center"], json!([40.0, 30.0, 20.0]), "{p}");
 }

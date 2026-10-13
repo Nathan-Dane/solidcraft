@@ -21,11 +21,25 @@ constraint status and **Finish Sketch** button remain visible.
 
 ## Geometry
 
+**Point** is available directly on the default Sketch **CREATE** toolbar. Click it, then
+click in the sketch to place a point. Existing toolbar customizations are kept; use
+**Reset Toolbar** from the toolbar's context menu to restore the default buttons.
+
 Lines and polylines (L), rectangles (two-point R, three-point, centre), circles (centre C,
 two-point, three-point, tangent), arcs (three-point, centre, tangent), polygons, slots, ellipses,
 fit-point and control-point splines, conics, points and text. **Construction** (X) turns curves
 into reference geometry that doesn't form profiles. Modify tools include trim (T), extend, break,
 fillet, chamfer, offset (O), mirror, patterns, move/copy and scale.
+
+Polygon tools show their edge outline while positioning the second point, so the orientation
+can be checked before placement. Inscribed and circumscribed polygons retain their support
+circle and update the outline when the inline **Sides** value changes.
+
+**Text** is set in the built-in font (Liberation Sans) unless it is given another: `sketch.text` and
+`sketch.edit_text` take a `font`, the family or full name of an installed font ("DejaVu Sans") or the path
+of a `.ttf` / `.otf` file, and the **Edit Text** dialog has a **Font** field for it. An unknown font is an
+error, and the font is kept with the text in the design, so the text stays editable in it. `SOLIDCRAFT_FONT_DIRS`
+adds folders to the ones searched for installed fonts.
 
 **Project** (P) and **Intersect** bring model edges into the sketch as linked geometry that
 follows later changes. Sketching on a face projects its edges automatically.
@@ -34,6 +48,10 @@ faces, vertices or bodies, or axes and planes, then press P. The entire supporte
 is projected in one undo step. A rejected projection keeps the selection for correction;
 an empty or mixed selection starts the ordinary picking tool. External sketch selections
 retain their source sketch, even when the active sketch uses the same point or curve names.
+
+A sketch on a construction plane built from the model (through a sketch line, through three
+points, midway between two faces…) projects, intersects, includes and holds text like a sketch
+on any other plane, and its links follow when a parameter moves that plane.
 
 Run from a script or the control channel, every command that adds sketch geometry returns the
 ids of what it added (`created: {points, curves, constraints, dimensions}`). Ids are stable and
@@ -79,6 +97,11 @@ another offset. Periodic intent is stored on each curve and survives save, reope
 While drawing a fit spline, click its starting point after three distinct samples to close
 it smoothly. Right-click finishes an ordinary natural fit. Offset accepts both ellipse
 handles and dense fitted curves; the second click sets the side and distance from the curve.
+
+While drawing in a planar sketch, **Construction** (X) changes the line type without
+ending the tool or losing picked points and inline values. The preview and hover feedback
+keep construction dashes and centerline dash-dot patterns visible. With curves selected,
+Construction changes those curves as before.
 
 Enable **3D Sketch** in the Sketch Palette to draw lines, fit splines and points off the plane.
 While placing these points, you can snap to points on other visible sketches. For a bridge

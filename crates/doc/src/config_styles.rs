@@ -108,9 +108,10 @@ impl Document {
         use super::FaceCertificate;
         let Some(feature) = self.feature(producer) else { return false };
         match (certificate, &feature.kind) {
-            (FaceCertificate::Box { .. }, FeatureKind::Box { operation: crate::Operation::NewBody, .. }) => true,
-            (FaceCertificate::ExtrudeCap { sketch, .. }, FeatureKind::Extrude { sketch: current, extent, operation: crate::Operation::NewBody, .. }) => sketch == current && extent.taper.is_none(),
-            (FaceCertificate::ExtrudeSide { sketch, curve }, FeatureKind::Extrude { sketch: current, extent, operation: crate::Operation::NewBody, .. }) => {
+            (FaceCertificate::Box { .. }, FeatureKind::Box { operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => true,
+            (FaceCertificate::CylinderCap { .. }, FeatureKind::Cylinder { operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => true,
+            (FaceCertificate::ExtrudeCap { sketch, .. }, FeatureKind::Extrude { sketch: current, extent, operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => sketch == current && extent.taper.is_none(),
+            (FaceCertificate::ExtrudeSide { sketch, curve }, FeatureKind::Extrude { sketch: current, extent, operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => {
                 sketch == current && extent.taper.is_none()
                     && self.feature(*sketch).is_some_and(|feature| matches!(&feature.kind, FeatureKind::Sketch { sketch, .. } if sketch.curves.iter().any(|candidate| candidate.id == *curve && !candidate.construction && matches!(candidate.kind, solidcraft_sketch::CurveKind::Line { .. } | solidcraft_sketch::CurveKind::Circle { .. } | solidcraft_sketch::CurveKind::Arc { .. }))))
             }
@@ -129,18 +130,22 @@ impl Document {
         let feature = self.feature(target.origin_feature).ok_or_else(|| DocError::Unknown("face origin feature is gone".into()))?;
         if let Some(certificate) = &target.certificate {
             let valid = match (certificate, &feature.kind) {
-                (super::FaceCertificate::Box { axis, high }, FeatureKind::Box { operation: crate::Operation::NewBody, .. }) => {
+                (super::FaceCertificate::Box { axis, high }, FeatureKind::Box { operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => {
                     ["x", "y", "z"].get(*axis as usize).is_some_and(|axis| role == format!("{}{axis}", if *high { "+" } else { "-" }))
                 }
-                (super::FaceCertificate::ExtrudeCap { sketch, high, outer, holes }, FeatureKind::Extrude { sketch: producer_sketch, extent, operation: crate::Operation::NewBody, .. }) => {
+                (super::FaceCertificate::CylinderCap { high }, FeatureKind::Cylinder { operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => {
+                    role == super::cylinder_cap_role(*high)
+                }
+                (super::FaceCertificate::ExtrudeCap { sketch, high, outer, holes }, FeatureKind::Extrude { sketch: producer_sketch, extent, operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => {
                     sketch == producer_sketch && extent.taper.is_none()
                         && role == format!("cap:{}:{}", if *high { "high" } else { "low" }, super::cap_key(outer, holes))
                 }
-                (super::FaceCertificate::ExtrudeSide { sketch, curve }, FeatureKind::Extrude { sketch: producer_sketch, extent, operation: crate::Operation::NewBody, .. }) => {
+                (super::FaceCertificate::ExtrudeSide { sketch, curve }, FeatureKind::Extrude { sketch: producer_sketch, extent, operation: crate::Operation::NewBody | crate::Operation::Join, .. }) => {
                     sketch == producer_sketch && extent.taper.is_none() && role == format!("side:{curve}")
                         && self.feature(*sketch).is_some_and(|feature| matches!(&feature.kind, FeatureKind::Sketch { sketch, .. } if sketch.curves.iter().any(|candidate| candidate.id == *curve && !candidate.construction && matches!(candidate.kind, solidcraft_sketch::CurveKind::Line { .. } | solidcraft_sketch::CurveKind::Circle { .. } | solidcraft_sketch::CurveKind::Arc { .. }))))
                 }
                 (super::FaceCertificate::Imported { .. }, FeatureKind::Import { .. }) => role.strip_prefix("face:").is_some_and(|index| index.parse::<usize>().is_ok()),
+                (super::FaceCertificate::Lineage, _) => !role.is_empty(),
                 (super::FaceCertificate::ShellPlanar { source_producer, source, inner }, FeatureKind::Shell { .. }) => {
                     *source_producer != target.origin_feature
                         && self.flat_certificate_producer_matches(*source_producer, source)
@@ -181,6 +186,9 @@ impl Document {
         if body.body.is_mesh() || body.definition_name() != target.body {
             return Err(DocError::Invalid("configured face definition does not match".into()));
         }
+        if let Some(super::FaceCertificate::Lineage) = &target.certificate {
+            return self.lineage_face_indices(body, &target.name);
+        }
         if let Some(super::FaceCertificate::ShellPlanar { source_producer, source, inner }) = &target.certificate {
             let indices: Vec<_> = body.body.face_sources().into_iter().flatten().enumerate().filter_map(|(index, current)| {
                 matches!(current, Some(solidcraft_kernel::FaceSource::ShellPlanar { producer: Some(producer), source: current_source, inner: current_inner, .. }) if *producer == target.origin_feature && inner == current_inner && super::flat_source_matches(source, current_source, *source_producer)).then_some(index)
@@ -192,7 +200,10 @@ impl Document {
             }
             return Ok(indices);
         }
-        if matches!(target.certificate, Some(super::FaceCertificate::Box { .. } | super::FaceCertificate::ExtrudeCap { .. })) {
+        if matches!(
+            target.certificate,
+            Some(super::FaceCertificate::Box { .. } | super::FaceCertificate::CylinderCap { .. } | super::FaceCertificate::ExtrudeCap { .. })
+        ) {
             let indices: Vec<_> = body
                 .body
                 .face_sources()
@@ -205,6 +216,10 @@ impl Document {
                             Some(super::FaceCertificate::Box { axis, high }),
                             Some(solidcraft_kernel::FaceSource::Box { producer: Some(producer), axis: current_axis, high: current_high, .. }),
                         ) => *producer == target.origin_feature && axis == current_axis && high == current_high,
+                        (
+                            Some(super::FaceCertificate::CylinderCap { high }),
+                            Some(solidcraft_kernel::FaceSource::CylinderCap { producer, high: current_high, .. }),
+                        ) => *producer == target.origin_feature && high == current_high,
                         (
                             Some(super::FaceCertificate::ExtrudeCap { sketch, high, outer, holes }),
                             Some(solidcraft_kernel::FaceSource::CertifiedExtrudeCap {
@@ -227,10 +242,10 @@ impl Document {
                     matched.then_some(index)
                 })
                 .collect();
-            if indices.len() != 1 {
+            if indices.is_empty() {
                 return Err(DocError::Unknown("attached planar face certificate is missing or ambiguous".into()));
             }
-            return Ok(indices);
+            return self.certified_pieces(body, indices, target.origin_feature);
         }
         if let Some(super::FaceCertificate::ExtrudeSide { sketch, curve }) = &target.certificate {
             let indices: Vec<_> = body.body.face_sources().into_iter().flatten().enumerate().filter_map(|(index, source)| {
@@ -239,7 +254,7 @@ impl Document {
             if indices.is_empty() {
                 return Err(DocError::Unknown("constructed side certificate no longer exists".into()));
             }
-            return Ok(indices);
+            return Ok(self.without_copies(body, indices));
         }
         if let Some(super::FaceCertificate::Imported { payload_sha256, item, face }) = &target.certificate {
             let indices: Vec<_> = body.body.face_sources().into_iter().flatten().enumerate().filter_map(|(index, source)| {
@@ -248,7 +263,7 @@ impl Document {
             if indices.is_empty() {
                 return Err(DocError::Unknown("immutable import face certificate no longer exists".into()));
             }
-            return Ok(indices);
+            return Ok(self.without_copies(body, indices));
         }
         let names = crate::naming::face_names(body);
         let indices: Vec<usize> =

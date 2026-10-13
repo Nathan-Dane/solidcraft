@@ -1,7 +1,13 @@
 //! Versioned design packages. Geometry is rebuilt from authoritative inputs; no
-//! evaluated cache is trusted here. All archive access stays in memory, never on disk.
+//! evaluated cache is trusted here. Entries are never extracted to filesystem paths.
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::{Cursor, Read, Write};
+use std::io::{Cursor, Read, Seek, SeekFrom, Write};
+use std::sync::Arc;
+
+mod native_cache;
+mod thumbnail;
+pub use native_cache::{DesignGeometry, read_design_geometry};
+pub use thumbnail::{THUMBNAIL_SIZE, read_design_thumbnail, read_design_thumbnail_file};
 
 use serde_json::{Map, Value, json};
 use sha2::{Digest, Sha256};
@@ -96,6 +102,29 @@ pub fn write_design_container_with_compression(doc: &Document, compression: Desi
 
 /// Optional display cache failure never prevents saving the authoritative design.
 pub fn write_design_container_with_preview(doc: &Document, compression: DesignCompression, preview: Option<&DesignPreview>) -> Result<Vec<u8>> {
+    write_design_container_with_cache(doc, compression, preview, None)
+}
+
+/// Save an optional warm native cache without making document saving depend on it.
+/// Display meshes remain separately opt-in; no evaluation or meshing happens here.
+pub fn write_design_container_with_cache(
+    doc: &Document,
+    compression: DesignCompression,
+    preview: Option<&DesignPreview>,
+    geometry: Option<&[DesignGeometry]>,
+) -> Result<Vec<u8>> {
+    write_design_container_with_thumbnail(doc, compression, preview, geometry, None)
+}
+
+/// Include a bounded portable PNG picture when one is already available.
+/// Unsupported headers or oversized pictures are omitted without changing the design.
+pub fn write_design_container_with_thumbnail(
+    doc: &Document,
+    compression: DesignCompression,
+    preview: Option<&DesignPreview>,
+    geometry: Option<&[DesignGeometry]>,
+    thumbnail: Option<&[u8]>,
+) -> Result<Vec<u8>> {
     let mut writer = PackageWriter { zip: zip::ZipWriter::new(Cursor::new(Vec::new())), names: BTreeSet::new(), expanded: 0, resolved: 0 };
     let mut features = Vec::with_capacity(doc.features.len());
     for feature in &doc.features {
@@ -143,6 +172,19 @@ pub fn write_design_container_with_preview(doc: &Document, compression: DesignCo
     let metadata = serde_json::to_vec(&metadata).map_err(invalid)?;
     writer.part("document.json", &metadata, true)?;
     writer.part("container.json", &serde_json::to_vec(&json!({"format": VERSION})).map_err(invalid)?, false)?;
+    if let Some((manifest, data)) = geometry.and_then(|g| native_cache::encode_geometry(g, &metadata).ok())
+        && writer.names.len().saturating_add(2) <= MAX_ENTRIES
+        && writer
+            .expanded
+            .saturating_add(manifest.len())
+            .saturating_add(data.len())
+            .saturating_add(writer.names.len().saturating_mul(256))
+            .saturating_add(65_536)
+            <= MAX_DESIGN_BYTES
+    {
+        writer.part("cache/key.json", &manifest, false)?;
+        writer.part("cache/brep.bin", &data, compression == DesignCompression::Compact)?;
+    }
     if let Some((manifest, data)) = preview.and_then(|p| encode_preview(p, &metadata).ok())
         && writer.names.len().saturating_add(2) <= MAX_ENTRIES
         && writer
@@ -155,6 +197,9 @@ pub fn write_design_container_with_preview(doc: &Document, compression: DesignCo
     {
         writer.part("cache/preview.json", &manifest, false)?;
         writer.part("cache/preview.bin", &data, false)?;
+    }
+    if let Some(png) = thumbnail {
+        thumbnail::write(&mut writer, png, &metadata)?;
     }
     let bytes = writer.zip.finish().map_err(invalid)?.into_inner();
     if bytes.len() > MAX_DESIGN_BYTES {
@@ -219,18 +264,26 @@ fn decode_mesh(bytes: &[u8], mesh: &mut MeshData) -> Result<()> {
     validate_mesh(mesh)
 }
 
-struct PackageReader<'a> {
-    zip: zip::ZipArchive<Cursor<&'a [u8]>>,
+struct PackageReader<R: Read + Seek> {
+    zip: zip::ZipArchive<R>,
     blobs: BTreeMap<String, Vec<u8>>,
     hydrated: usize,
+    document: Option<Arc<[u8]>>,
 }
 
-impl<'a> PackageReader<'a> {
-    fn new(bytes: &'a [u8]) -> Result<Self> {
+impl<R: Read + Seek> PackageReader<R> {
+    fn new(mut source: R) -> Result<Self> {
+        let length = source.seek(SeekFrom::End(0)).map_err(invalid)?;
+        if length > MAX_DESIGN_BYTES as u64 {
+            return Err(invalid("compressed file too large"));
+        }
+        let tail_length = length.min(65_557) as usize;
+        source.seek(SeekFrom::Start(length - tail_length as u64)).map_err(invalid)?;
+        let mut tail = vec![0; tail_length];
+        source.read_exact(&mut tail).map_err(invalid)?;
         // zip's name index can coalesce duplicate central-directory entries. Our
         // bounded format does not need ZIP64/multiple disks: verify the declared
         // entry count as well so duplicate names cannot silently select a payload.
-        let tail = bytes.get(bytes.len().saturating_sub(65_557)..).ok_or_else(|| invalid("missing ZIP directory"))?;
         let eocd = tail.windows(4).rposition(|v| v == b"PK\x05\x06").ok_or_else(|| invalid("missing ZIP directory"))?;
         let end = tail.get(eocd..).filter(|v| v.len() >= 22).ok_or_else(|| invalid("truncated ZIP directory"))?;
         let u16_at = |offset| -> Result<u16> {
@@ -241,7 +294,7 @@ impl<'a> PackageReader<'a> {
         if declared > MAX_ENTRIES || u16_at(4)? != 0 || u16_at(6)? != 0 || u16_at(8)? as usize != declared || end.len() != 22 + u16_at(20)? as usize {
             return Err(invalid("too many entries or unsupported ZIP directory"));
         }
-        let mut zip = zip::ZipArchive::new(Cursor::new(bytes)).map_err(invalid)?;
+        let mut zip = zip::ZipArchive::new(source).map_err(invalid)?;
         if u16_at(4)? != 0
             || u16_at(6)? != 0
             || u16_at(8)? as usize != zip.len()
@@ -267,7 +320,15 @@ impl<'a> PackageReader<'a> {
                 return Err(invalid("expanded package too large"));
             }
         }
-        Ok(Self { zip, blobs: BTreeMap::new(), hydrated: 0 })
+        Ok(Self { zip, blobs: BTreeMap::new(), hydrated: 0, document: None })
+    }
+    // Bind provisional caches and authoritative reconstruction to identical metadata,
+    // even if another process overwrites the open file in place. Blobs remain hash-checked.
+    fn document(&mut self, limit: usize) -> Result<Arc<[u8]>> {
+        if self.document.is_none() {
+            self.document = Some(self.limited_part("document.json", limit)?.into());
+        }
+        self.document.as_ref().filter(|d| d.len() <= limit).cloned().ok_or_else(|| invalid("metadata budget"))
     }
     fn part(&mut self, name: &str) -> Result<Vec<u8>> {
         self.limited_part(name, MAX_DESIGN_BYTES)
@@ -342,11 +403,10 @@ pub fn read_design_preview(bytes: &[u8]) -> Option<DesignPreview> {
     if bytes.len() > MAX_DESIGN_BYTES || !is_design_container(bytes) {
         return None;
     }
-    read_preview(bytes).ok()
+    DesignContainerReader::new(Cursor::new(bytes)).ok()?.preview()
 }
 
-fn read_preview(bytes: &[u8]) -> Result<DesignPreview> {
-    let mut reader = PackageReader::new(bytes)?;
+fn read_preview<R: Read + Seek>(reader: &mut PackageReader<R>) -> Result<DesignPreview> {
     let container: Value = serde_json::from_slice(&reader.limited_part("container.json", 4096)?).map_err(invalid)?;
     if !matches!(container.get("format").and_then(Value::as_str), Some(VERSION | LEGACY_VERSION)) {
         return Err(invalid("unsupported container version"));
@@ -357,7 +417,7 @@ fn read_preview(bytes: &[u8]) -> Result<DesignPreview> {
     {
         return Err(invalid("incompatible preview"));
     }
-    if manifest.get("document").and_then(Value::as_str) != Some(digest(&reader.part("document.json")?).as_str()) {
+    if manifest.get("document").and_then(Value::as_str) != Some(digest(&reader.document(16 << 20)?).as_str()) {
         return Err(invalid("stale preview"));
     }
     let data = reader.limited_part("cache/preview.bin", MAX_PREVIEW_BYTES)?;
@@ -398,13 +458,103 @@ fn read_preview(bytes: &[u8]) -> Result<DesignPreview> {
     Ok(preview)
 }
 
+/// A bounded container reader over a seekable source.
+///
+/// Opening inspects the directory, not the source blobs. `preview` reads only the
+/// optional display entries and document metadata; `read_document` then resolves
+/// and validates authoritative blobs against the same retained metadata snapshot.
+/// Concurrent source changes either retain that document or fail validation.
+/// This type does not turn untrusted cached data into editable geometry.
+pub struct DesignContainerReader<R: Read + Seek> {
+    reader: PackageReader<R>,
+}
+
+impl<R: Read + Seek> DesignContainerReader<R> {
+    /// Open a container (not plain JSON), enforcing the same budgets as byte IO.
+    pub fn new(source: R) -> Result<Self> {
+        Ok(Self { reader: PackageReader::new(source)? })
+    }
+
+    /// Optional display-only data. Corruption or incompatibility is a cache miss.
+    pub fn preview(&mut self) -> Option<DesignPreview> {
+        // An explicitly saved mesh avoids tessellation. Native cache is the default
+        // fallback, generating a bounded provisional mesh without source imports.
+        read_preview(&mut self.reader).ok().or_else(|| native_cache::geometry_preview(self.geometry()?).ok())
+    }
+
+    /// Portable PNG picture only; no source blobs or geometry are evaluated.
+    pub fn thumbnail(&mut self) -> Option<Vec<u8>> {
+        thumbnail::read(&mut self.reader).ok()
+    }
+
+    /// Native geometry is provisional, never a substitute for rebuilding the document.
+    pub fn geometry(&mut self) -> Option<Vec<DesignGeometry>> {
+        let document = self.reader.document(16 << 20).ok()?;
+        native_cache::read_geometry_with(&mut self.reader, &document).ok()
+    }
+
+    /// Consume the reader, resolving every required blob before returning a document.
+    pub fn read_document(mut self) -> Result<Document> {
+        read_document(&mut self.reader)
+    }
+}
+
 pub(super) fn read(bytes: &[u8]) -> Result<Document> {
-    let mut reader = PackageReader::new(bytes)?;
+    DesignContainerReader::new(Cursor::new(bytes))?.read_document()
+}
+
+/// Open from disk (or browser VFS), publishing only provisional display before
+/// authoritative blob hydration. Desktop keeps one seekable file handle instead
+/// of buffering the complete archive. JSON continues through the normal migrations.
+pub fn read_design_file(path: &str, notify: Option<impl FnOnce(DesignPreview)>) -> Result<Document> {
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut source = {
+        let metadata = std::fs::metadata(path).map_err(invalid)?;
+        if !metadata.is_file() {
+            return Err(invalid("not a regular file"));
+        }
+        if metadata.len() > MAX_DESIGN_BYTES as u64 {
+            return Err(invalid("file too large"));
+        }
+        let file = std::fs::File::open(path).map_err(invalid)?;
+        if !file.metadata().map_err(invalid)?.is_file() {
+            return Err(invalid("not a regular file"));
+        }
+        file
+    };
+    #[cfg(target_arch = "wasm32")]
+    let mut source = Cursor::new(crate::vfs::read(path, MAX_DESIGN_BYTES).map_err(invalid)?);
+    let size = source.seek(SeekFrom::End(0)).map_err(invalid)?;
+    if size > MAX_DESIGN_BYTES as u64 {
+        return Err(invalid("file too large"));
+    }
+    source.seek(SeekFrom::Start(0)).map_err(invalid)?;
+    let mut prefix = [0u8; 4];
+    if size >= 4 {
+        source.read_exact(&mut prefix).map_err(invalid)?;
+    }
+    source.seek(SeekFrom::Start(0)).map_err(invalid)?;
+    if is_design_container(&prefix) {
+        let mut reader = DesignContainerReader::new(source)?;
+        if let Some(notify) = notify
+            && let Some(preview) = reader.preview()
+        {
+            notify(preview);
+        }
+        reader.read_document()
+    } else {
+        let mut bytes = Vec::new();
+        source.take(MAX_DESIGN_BYTES as u64 + 1).read_to_end(&mut bytes).map_err(invalid)?;
+        crate::read_design(&bytes)
+    }
+}
+
+fn read_document<R: Read + Seek>(reader: &mut PackageReader<R>) -> Result<Document> {
     let version: Value = serde_json::from_slice(&reader.part("container.json")?).map_err(invalid)?;
     if !matches!(version.get("format").and_then(Value::as_str), Some(VERSION | LEGACY_VERSION)) {
         return Err(invalid("unsupported container version"));
     }
-    let bytes = reader.part("document.json")?;
+    let bytes = reader.document(MAX_DESIGN_BYTES)?;
     let metadata: Value = serde_json::from_slice(&bytes).map_err(invalid)?;
     let text = std::str::from_utf8(&bytes).map_err(invalid)?;
     // Migrations and all document validation run on the small parametric metadata.
@@ -449,6 +599,203 @@ pub(super) fn read(bytes: &[u8]) -> Result<Document> {
 mod tests {
     use super::*;
     use solidcraft_geom::Vec2;
+
+    struct CountingReader {
+        source: Cursor<Vec<u8>>,
+        count: std::rc::Rc<std::cell::Cell<usize>>,
+    }
+
+    impl Read for CountingReader {
+        fn read(&mut self, bytes: &mut [u8]) -> std::io::Result<usize> {
+            let count = self.source.read(bytes)?;
+            self.count.set(self.count.get() + count);
+            Ok(count)
+        }
+    }
+
+    impl Seek for CountingReader {
+        fn seek(&mut self, position: SeekFrom) -> std::io::Result<u64> {
+            self.source.seek(position)
+        }
+    }
+
+    #[test]
+    fn seekable_reader_rejects_oversized_source_before_reading() {
+        struct Oversized;
+        impl Read for Oversized {
+            fn read(&mut self, _: &mut [u8]) -> std::io::Result<usize> {
+                panic!("oversized input must be rejected before any allocation or read");
+            }
+        }
+        impl Seek for Oversized {
+            fn seek(&mut self, _: SeekFrom) -> std::io::Result<u64> {
+                Ok(MAX_DESIGN_BYTES as u64 + 1)
+            }
+        }
+        assert!(DesignContainerReader::new(Oversized).is_err());
+    }
+
+    #[test]
+    fn seekable_preview_defers_large_source_blob_until_document_read() {
+        let mut doc = Document::new("Deferred source");
+        let step = "ISO-10303-21;".repeat(200_000);
+        doc.add_feature(FeatureKind::Import { file: "large.step".into(), step: step.clone(), components: Vec::new() }, None).unwrap();
+        let preview = DesignPreview { meshes: vec![mesh()] };
+        let bytes = write_design_container_with_preview(&doc, DesignCompression::Fast, Some(&preview)).unwrap();
+        let count = std::rc::Rc::new(std::cell::Cell::new(0));
+        let source = CountingReader { source: Cursor::new(bytes), count: count.clone() };
+        let mut reader = DesignContainerReader::new(source).unwrap();
+        assert_eq!(reader.preview().unwrap().meshes[0].positions, preview.meshes[0].positions);
+        // ZIP directory scans may touch a bounded suffix of a stored blob. They
+        // must not load its multi-megabyte payload to obtain the saved picture.
+        assert!(count.get() < 256 * 1024, "read {} bytes before display", count.get());
+        let restored = reader.read_document().unwrap();
+        assert_eq!(restored.to_json(), doc.to_json());
+        assert!(count.get() >= step.len());
+    }
+
+    #[test]
+    fn seekable_reader_validates_required_blobs_after_preview() {
+        let doc = document();
+        let preview = DesignPreview { meshes: vec![mesh()] };
+        let mut bytes = write_design_container_with_preview(&doc, DesignCompression::Fast, Some(&preview)).unwrap();
+        let marker = b"ISO-10303-21;";
+        let offset = bytes.windows(marker.len()).position(|part| part == marker).unwrap();
+        bytes[offset] ^= 1;
+        let mut reader = DesignContainerReader::new(Cursor::new(bytes)).unwrap();
+        assert!(reader.preview().is_some());
+        assert!(reader.read_document().is_err());
+    }
+
+    #[test]
+    fn seekable_reader_without_preview_preserves_authoritative_document() {
+        let doc = document();
+        let bytes = write_design_container(&doc).unwrap();
+        let mut source = Cursor::new(bytes);
+        source.set_position(17); // Constructor starts from the whole source, not its cursor.
+        let mut reader = DesignContainerReader::new(source).unwrap();
+        assert!(reader.preview().is_none());
+        assert_eq!(reader.read_document().unwrap().to_json(), doc.to_json());
+        assert!(DesignContainerReader::new(Cursor::new(vec![0u8; 1])).is_err());
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn file_reader_refuses_nonfiles_before_notifying_preview() {
+        let directory = std::env::temp_dir();
+        let result = read_design_file(directory.to_str().unwrap(), Some(|_| panic!("non-file supplied a preview")));
+        assert!(result.is_err_and(|e| e.to_string().contains("not a regular file")));
+    }
+
+    fn native_geometry() -> Vec<DesignGeometry> {
+        vec![DesignGeometry {
+            name: "Cube".into(),
+            body: solidcraft_kernel::box_solid(solidcraft_geom::Vec3::ZERO, solidcraft_geom::Vec3::new(10., 20., 30.)).unwrap(),
+        }]
+    }
+
+    #[test]
+    fn native_cache_round_trip_and_preview_defer_original_sources() {
+        let mut doc = Document::new("Native cache");
+        let step = "ISO-10303-21;".repeat(200_000);
+        doc.add_feature(FeatureKind::Import { file: "large.step".into(), step: step.clone(), components: Vec::new() }, None).unwrap();
+        let bodies = native_geometry();
+        let bytes = write_design_container_with_cache(&doc, DesignCompression::Fast, None, Some(&bodies)).unwrap();
+        let entries = parts(&bytes);
+        assert!(entries.contains_key("cache/brep.bin"));
+        assert!(!entries.contains_key("cache/preview.bin"));
+        assert_eq!(read_design_geometry(&bytes).unwrap()[0].body.face_count(), bodies[0].body.face_count());
+        assert_eq!(bytes, write_design_container_with_cache(&doc, DesignCompression::Fast, None, Some(&bodies)).unwrap());
+        let count = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut reader = DesignContainerReader::new(CountingReader { source: Cursor::new(bytes), count: count.clone() }).unwrap();
+        assert!(!reader.preview().unwrap().meshes.is_empty());
+        assert!(count.get() < 256 * 1024, "read {} bytes before native display", count.get());
+        assert_eq!(reader.read_document().unwrap().to_json(), doc.to_json());
+        assert!(count.get() >= step.len());
+    }
+
+    #[test]
+    fn native_cache_mismatch_is_only_a_cache_miss() {
+        let doc = document();
+        let bytes = write_design_container_with_cache(&doc, DesignCompression::Fast, None, Some(&native_geometry())).unwrap();
+        let original = parts(&bytes);
+        for key in ["format", "producer", "app", "document", "payload"] {
+            let mut entries = original.clone();
+            let mut manifest: Value = serde_json::from_slice(&entries["cache/key.json"]).unwrap();
+            manifest[key] = json!("unsupported-or-stale");
+            entries.insert("cache/key.json".into(), serde_json::to_vec(&manifest).unwrap());
+            let bytes = package(&entries);
+            assert!(read_design_geometry(&bytes).is_none());
+            assert!(read_design_preview(&bytes).is_none());
+            assert_eq!(crate::read_design(&bytes).unwrap().to_json(), doc.to_json());
+        }
+        let mut entries = original;
+        entries.get_mut("cache/brep.bin").unwrap()[0] ^= 1;
+        let bytes = package(&entries);
+        assert!(read_design_geometry(&bytes).is_none());
+        assert_eq!(crate::read_design(&bytes).unwrap().to_json(), doc.to_json());
+    }
+
+    #[test]
+    fn metadata_snapshot_survives_in_place_changes_after_preview() {
+        use std::{cell::RefCell, rc::Rc};
+        struct Shared {
+            bytes: Rc<RefCell<Vec<u8>>>,
+            position: u64,
+        }
+        impl Read for Shared {
+            fn read(&mut self, out: &mut [u8]) -> std::io::Result<usize> {
+                let bytes = self.bytes.borrow();
+                let mut cursor = Cursor::new(bytes.as_slice());
+                cursor.set_position(self.position);
+                let n = cursor.read(out)?;
+                self.position = cursor.position();
+                Ok(n)
+            }
+        }
+        impl Seek for Shared {
+            fn seek(&mut self, pos: SeekFrom) -> std::io::Result<u64> {
+                let bytes = self.bytes.borrow();
+                let mut cursor = Cursor::new(bytes.as_slice());
+                cursor.set_position(self.position);
+                self.position = cursor.seek(pos)?;
+                Ok(self.position)
+            }
+        }
+        let doc = document();
+        let preview = DesignPreview { meshes: vec![mesh()] };
+        let bytes = write_design_container_with_preview(&doc, DesignCompression::Fast, Some(&preview)).unwrap();
+        let offset = zip::ZipArchive::new(Cursor::new(&bytes)).unwrap().by_name("document.json").unwrap().data_start() as usize;
+        let bytes = Rc::new(RefCell::new(bytes));
+        let mut reader = DesignContainerReader::new(Shared { bytes: bytes.clone(), position: 0 }).unwrap();
+        assert!(reader.preview().is_some());
+        bytes.borrow_mut()[offset] ^= 0xff;
+        assert_eq!(reader.read_document().unwrap().to_json(), doc.to_json());
+        assert!(crate::read_design(&bytes.borrow()).is_err());
+    }
+
+    #[test]
+    fn native_cache_prefixes_and_mutations_never_panic() {
+        let bytes = write_design_container_with_cache(&document(), DesignCompression::Fast, None, Some(&native_geometry())).unwrap();
+        for n in (0..bytes.len()).step_by((bytes.len() / 128).max(1)) {
+            assert!(
+                std::panic::catch_unwind(|| {
+                    let _ = read_design_preview(&bytes[..n]);
+                    let _ = read_design_geometry(&bytes[..n]);
+                })
+                .is_ok()
+            );
+            let mut changed = bytes.clone();
+            changed[n] ^= 0xff;
+            assert!(
+                std::panic::catch_unwind(|| {
+                    let _ = read_design_preview(&changed);
+                    let _ = read_design_geometry(&changed);
+                })
+                .is_ok()
+            );
+        }
+    }
 
     fn mesh() -> MeshData {
         MeshData {
@@ -510,6 +857,53 @@ mod tests {
             zip.write_all(bytes).unwrap();
         }
         zip.finish().unwrap().into_inner()
+    }
+
+    #[test]
+    fn portable_thumbnail_is_keyed_bounded_and_does_not_read_sources() {
+        // IO validates an opaque PNG header/hash; UI tests exercise real PNG decoding.
+        let mut png = b"\x89PNG\r\n\x1a\n\0\0\0\rIHDR".to_vec();
+        png.extend(240u32.to_be_bytes());
+        png.extend(150u32.to_be_bytes());
+        let mut doc = Document::from_json(&document().to_json()).unwrap();
+        if let FeatureKind::Import { step, .. } = &mut doc.features[0].kind {
+            *step = "source data".repeat(250_000);
+        }
+        let bytes = write_design_container_with_thumbnail(&doc, DesignCompression::Fast, None, None, Some(&png)).unwrap();
+        let count = std::rc::Rc::new(std::cell::Cell::new(0));
+        let mut reader = DesignContainerReader::new(CountingReader { source: Cursor::new(bytes.clone()), count: count.clone() }).unwrap();
+        assert_eq!(reader.thumbnail(), Some(png.clone()));
+        assert!(count.get() < 256 * 1024);
+        assert_eq!(reader.read_document().unwrap(), doc);
+        let original = parts(&bytes);
+        for field in ["format", "app", "document", "payload"] {
+            let mut entries = original.clone();
+            let mut key: Value = serde_json::from_slice(&entries["cache/thumbnail.json"]).unwrap();
+            key[field] = json!("mismatch");
+            entries.insert("cache/thumbnail.json".into(), serde_json::to_vec(&key).unwrap());
+            let changed = package(&entries);
+            assert!(read_design_thumbnail(&changed).is_none());
+            assert_eq!(crate::read_design(&changed).unwrap(), doc);
+        }
+        let mut entries = original.clone();
+        let source = entries.keys().find(|k| k.ends_with(".step")).unwrap().clone();
+        entries.insert(source, b"corrupt source".to_vec());
+        let changed = package(&entries);
+        assert_eq!(read_design_thumbnail(&changed), Some(png));
+        assert!(crate::read_design(&changed).is_err());
+        for n in [0, 1, 8, bytes.len() / 2, bytes.len() - 1] {
+            assert!(read_design_thumbnail(&bytes[..n]).is_none());
+        }
+        for i in (0..bytes.len()).step_by((bytes.len() / 128).max(1)) {
+            let mut changed = bytes.clone();
+            changed[i] ^= 0xff;
+            assert!(std::panic::catch_unwind(|| read_design_thumbnail(&changed)).is_ok());
+        }
+        for invalid in [vec![], vec![0; 300_000]] {
+            let bytes = write_design_container_with_thumbnail(&doc, DesignCompression::Fast, None, None, Some(&invalid)).unwrap();
+            assert!(read_design_thumbnail(&bytes).is_none());
+            assert_eq!(crate::read_design(&bytes).unwrap(), doc);
+        }
     }
 
     #[test]
@@ -676,7 +1070,7 @@ mod tests {
         let mut entries = parts(&bytes);
         let mut metadata: Value = serde_json::from_slice(&entries["document.json"]).unwrap();
         let reference = metadata["features"][0].clone();
-        let mut reader = PackageReader::new(&bytes).unwrap();
+        let mut reader = PackageReader::new(Cursor::new(&bytes)).unwrap();
         reader.hydrated = MAX_EXPANDED;
         assert!(reader.blob(&reference, "step_blob", "step").unwrap_err().to_string().contains("resolved payloads too large"));
         for name in ["../escape.step", "blobs/not-a-hash.step", "blobs/00.png"] {
@@ -696,6 +1090,10 @@ mod tests {
                 std::panic::catch_unwind(|| {
                     let _ = crate::read_design(&bytes[..end]);
                     let _ = read_design_preview(&bytes[..end]);
+                    if let Ok(mut reader) = DesignContainerReader::new(Cursor::new(&bytes[..end])) {
+                        let _ = reader.preview();
+                        let _ = reader.read_document();
+                    }
                 })
                 .is_ok(),
                 "truncated at {end}"
@@ -713,6 +1111,10 @@ mod tests {
                 std::panic::catch_unwind(|| {
                     let _ = crate::read_design(&changed);
                     let _ = read_design_preview(&changed);
+                    if let Ok(mut reader) = DesignContainerReader::new(Cursor::new(&changed)) {
+                        let _ = reader.preview();
+                        let _ = reader.read_document();
+                    }
                 })
                 .is_ok()
             );

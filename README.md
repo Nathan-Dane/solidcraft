@@ -6,9 +6,9 @@ Sketch, constrain, and build solids with a parametric feature timeline. Change a
 and watch your model rebuild. Run it on your desktop, in your browser, or let AI agents
 model through the built-in MCP server.
 
-![SolidCraft: draw a rounded electronics enclosure, sketch its USB port directly on a face, add four mounting bosses and resize it through Parameters](docs/screenshots/enclosure-demo-0.2.1.gif)
+![SolidCraft 0.8: model a Raspberry Pi 4 case from an empty design: a sketch dimensioned with parameters, extrude, fillets and shell, a rim rounded in one pick, standoffs patterned on the board's mounting holes, port cut-outs, vent slots, "Pi 4" engraved in a font, a PETG material with its mass in Properties, and a height change in Parameters](docs/screenshots/demo-0.8.gif)
 
-*Start with an empty design and draw the original parametric electronics enclosure in the English desktop UI: rounded corners, a shell, a USB port sketched directly on the wall and a four-boss pattern. Change width from 80 → 100 mm and wall thickness from 2 → 3 mm in Parameters and watch it rebuild. Original animated pointer and click cues; 4× playback. [Full video](https://github.com/bherbruck/solidcraft/raw/refs/heads/main/docs/screenshots/enclosure-demo-0.2.1.mp4), generated with the [demo script](examples/demo/record_ui.sh).*
+*A Raspberry Pi 4 case from an empty design: a sketch dimensioned with the board's parameters, extrude, fillet, shell, the rim rounded in one pick, an M2.5 standoff patterned on the 58 × 49 mm hole rectangle, port cut-outs, vent slots, "Pi 4" engraved in DejaVu Sans Bold and a PETG material defined in the design, with its mass in Properties, then height 24 → 32 mm in Parameters and it all rebuilds. 9× playback. [Full video](https://github.com/bherbruck/solidcraft/raw/refs/heads/main/docs/screenshots/demo-0.8.mp4), recorded with the [demo script](examples/demo/record_ui.sh).*
 
 ## Download
 
@@ -68,6 +68,16 @@ are listed by area in [docs/features.md](docs/features.md); status and plans are
 Open work and known bugs are in [GitHub issues](https://github.com/bherbruck/solidcraft/issues),
 and help is welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+## Built with SolidCraft
+
+<a href="https://github.com/0xlillith/solidcraft-rover"><img src="docs/screenshots/rover-build.gif" alt="SELENE, a scientific rover by 0xlillith, assembling itself as the timeline plays through its 3,323 steps in SolidCraft: tub, wheels, electronics, suspension, sampling arm, solar wings, dish and camera turret" loading="lazy"></a>
+
+*SELENE, a scientific rover built entirely through SolidCraft's MCP server by
+[@0xlillith](https://github.com/0xlillith/solidcraft-rover): 3,323 editable timeline steps that
+rebuild with no errors, replayed here at 2× speed.
+[Full video](https://github.com/bherbruck/solidcraft/raw/refs/heads/main/docs/screenshots/rover-build.mp4)
+· [download the editable model](https://github.com/0xlillith/solidcraft-rover/releases/tag/v1.0.0).*
+
 ## What works
 
 - **Sketches** on origin planes, offset planes or planar faces: lines, rectangles, circles,
@@ -81,11 +91,15 @@ and help is welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
   the boundary and keeps existing extrusions usable.
   Curve drawing and picking adapt together to zoom and display scale, including small circles
   at Fit and sketches in placed components.
-- **Constraints and dimensions** solved by our own solver (damped Gauss–Newton with
-  degree-of-freedom analysis): coincident, horizontal/vertical, parallel, perpendicular, tangent,
-  equal, concentric, collinear, midpoint, symmetry, fix; linear, aligned, horizontal, vertical,
-  radius, diameter and angle dimensions driven by parameters. Over-constraining edits are
-  rejected; fully constrained geometry turns black.
+- **Constraints and dimensions** solved by our own solver. Points the constraints fix relative
+  to known geometry are placed exactly by construction (loci intersections and rigid-cluster
+  decomposition, after Owen 1991 and Fudos–Hoffmann 1997); Levenberg–Marquardt solves the rest,
+  and the rank of its Jacobian gives the remaining degrees of freedom. Constraints: coincident,
+  point on curve, horizontal/vertical, parallel, perpendicular, tangent, curvature (G2), equal,
+  concentric, collinear, midpoint, symmetry, fix; linear, aligned, horizontal, vertical,
+  point-to-line, radius, diameter, angle, arc sweep, arc length and slot length dimensions driven
+  by parameters. Over-constraining edits are rejected; fully constrained geometry turns black.
+  Dragging solves the sketch every frame and rebuilds the model once, when the drag ends.
   Select a line or its two endpoints, type its dimension and press Enter to commit one undo
   step. Fit keeps sketch geometry clear of the palette and navigation controls.
 - **Profiles** found automatically, including regions split by lines and holes inside outlines.
@@ -108,7 +122,8 @@ and help is welcome: see [CONTRIBUTING.md](CONTRIBUTING.md).
   separately from through-hole outlines in the flat preview and DXF.
 - **Files**: design containers (`.solidcraft`) with lossless binary mesh payloads;
   plain JSON remains supported for opening, Save As and export. Desktop Open can show a saved
-  experimental preview (explicit `preview: true` engine saves) while checking geometry before editing. Export to STEP (AP242 with body names, colours and
+  provisional picture from warm geometry caches while rebuilding before editing; caches never
+  replace the parametric design. Export to STEP (AP242 with body names, colours and
   components as assemblies; revolved faces as native planes, cylinders, cones, spheres and tori),
   IGES 5.3 (manifold solid B-reps with names and colours), 3MF, STL (binary/ASCII) and OBJ;
   3MF, STL and OBJ import as mesh bodies (they render, measure, move and export; solid features
