@@ -1,7 +1,7 @@
 # SolidCraft application resources
 
 Resource audit for [#433](https://github.com/bherbruck/solidcraft/issues/433),
-against `main` at `0b1e615`. Paths below are current; destinations are proposed.
+against `main` at `2bb24d1`. Paths below are current; destinations are proposed.
 This revision inventories resources without relocating them.
 
 ## Proposed structure
@@ -15,22 +15,41 @@ assets/
   README.md
   manifest.json                        # resource IDs, sources, exports, consumers
   icons/
-    shared/
-      source/app_icon.rs                # shared app mark's Rust artwork master
+    app/
+      shared/
+        source/app_icon.rs              # common non-macOS artwork master
+        source/work/                   # native work files, when available
+      macos/
+        source/SolidCraft.icon/         # approved Composer project + SVG layers
+        exports/Assets.car
+        exports/icon.icns
+      windows/
+        exports/solidcraft-executable.ico # current DIB sizes/transparency mask
+        exports/solidcraft.ico          # current PNG-based installer ICO
+      linux/
+        exports/hicolor/               # 16–512 px, existing desktop icon name
+      freebsd/
+        README.md                      # uses Linux hicolor exports, no duplicate
+      web/
+        README.md                      # browser resource bindings; no favicon yet
     ui/
       README.md                        # icon/glyph index and design conventions
       source/
         icons.rs                       # collected 24 × 24 Rust drawing library
-        glyphs.rs                      # reusable caption, timeline, marker artwork
+        glyphs.rs                      # caption, timeline, badge/menu artwork
+        navigation.rs                  # axis/cube artwork and arrows
+        markers.rs                     # constraint/snap/dimension artwork
+        pointer.rs                     # original agent pointer
         work/                          # native design documents, when available
-    macos/
-      source/
-        SolidCraft.icon/               # current editable Composer project
-          icon.json
-          Assets/                      # approved SVG layers
-      exports/
-        Assets.car                     # committed for older Xcode runners
-        icon.icns                      # matching legacy macOS fallback
+  branding/
+    web/source/og.png                   # original shared web/docs preview card
+    web/source/work/                    # editable documents, when available
+  styles/
+    ui/palettes.rs                      # original palette/token defaults
+    web/loading.css                    # current web loading/canvas styles
+  appearances/library.rs               # built-in model appearance presets
+  materials/library.rs                 # built-in physical material data/colours
+  shaders/viewport.wgsl                 # original viewport shader
   fonts/
     liberation-sans/
       LiberationSans-Regular.ttf
@@ -54,6 +73,8 @@ assets/
     windows/
       solidcraft.wxs
       solidcraft.en-us.wxl
+    freebsd/README.md                   # shares freedesktop metadata with Linux
+    web/README.md                       # HTML/Trunk host and public URL bindings
   archive/
     icons/
       macos-v1/
@@ -67,6 +88,32 @@ Compile them through their owning layer's existing interface: UI rendering stays
 in `ui-egui`, and the shared app mark serves desktop, CLI and packaging builds.
 Build logic stays in `packaging/` and `xtask/`. Root licence files stay canonical.
 
+### All application icon platforms
+
+All artwork and required package exports have a home under `icons/app/`.
+Windows, Linux and FreeBSD use the **same** shared Rust master; platform folders
+hold the format-specific exports and bindings. Preserve existing artwork and
+both Windows ICO encodings. Generate in `target/resources/`, then commit the
+required package exports alongside their recorded source/output digests.
+Packaging and Nix copy these canonical exports rather than generating separate
+artwork in their own folders. Temporary files, review sheets and package copies
+remain in ignored build directories; Cargo build scripts still write only to
+`OUT_DIR`.
+
+| Platform / use | Canonical source or export | Existing consumer to update |
+| --- | --- | --- |
+| Windows executable, taskbar and switcher | `icons/app/windows/exports/solidcraft-executable.ico`; preserve current DIB representations at 16, 24, 32, 48, 64, 128, 256 px | `apps/solidcraft/build.rs` embeds the collected export; desktop runtime uses the shared master at 64 px |
+| Windows installer and shortcuts | `icons/app/windows/exports/solidcraft.ico`; preserve current PNG representations at 16, 20, 24, 32, 40, 48, 64, 128, 256 px | `packaging/windows/package.ps1`, WiX `IconPath`, `SOLIDCRAFT_ICONS` override |
+| Linux desktop, Nix, deb/rpm, tar, Flatpak and Snap | `icons/app/linux/exports/hicolor/<size>x<size>/apps/ai.storyteller.solidcraft.png`, sizes 16, 24, 32, 48, 64, 128, 256, 512 | `packaging/env.sh::make_icons`, Linux packaging, Flatpak/Snap staging, `flake.nix`; desktop runtime uses the shared master |
+| AppImage | Alias/copy of the Linux 256 px export; no second artwork master | `packaging/linux/package.sh` root PNG and `.DirIcon`; `AppRun` installs the same hicolor files |
+| FreeBSD desktop and packages | References the Linux hicolor exports and shared master | `packaging/freebsd/package.sh`; preserve installed `share/icons/hicolor` paths |
+| macOS Finder, Dock and switcher | Composer project, `Assets.car`, matching `icon.icns` under `icons/app/macos/` | macOS packaging and bundle `CFBundleIconName`/`CFBundleIconFile`; retain precompiled exports for older Xcode runners |
+| Web application | Shared UI icon collection; `branding/web/source/og.png` for social/link previews | `apps/solidcraft-web/index.html`, docs `head.hbs`, Pages build. No favicon or PWA icon currently exists; record that absence, do not invent shipped files |
+
+The generic 1024 px PNG currently emitted by `make_icons` has no identified
+package consumer. Keep this optional CLI export under `target/resources/`,
+indexed as a generated utility output rather than another production master.
+
 ### UI icon collection
 
 `icons/ui/source/icons.rs` becomes the canonical source of the existing toolbar,
@@ -76,7 +123,9 @@ grid, original geometry and semantic ink/fill/accent colours. Keep
 `icons::paint(...)` consumers continue to use one stable interface.
 
 Collect reusable timeline transport, title-bar caption, pin/lock, disclosure and
-assembly/constraint marker artwork in `source/glyphs.rs`. Extract only drawing
+menu artwork in `source/glyphs.rs`; navigation artwork in `navigation.rs`,
+constraint/snap/dimension markers in `markers.rs`, and the agent pointer in
+`pointer.rs`. Extract only drawing
 definitions from their current widgets; widget state, layout, picking, camera
 projection and commands remain in the UI. Include navigation-axis/cube artwork
 and the original agent-pointer mark in this collection, with their consumers
@@ -94,6 +143,32 @@ Validate command icon references and direct UI icon IDs against the collection,
 preserve the existing fallback for unknown IDs, and attribute collected artwork
 with its existing provenance. Do not duplicate masters in the facade or in
 generated preview images.
+
+### Other application design resources
+
+| Resource to collect | Current authoritative source | Destination / consumer boundary |
+| --- | --- | --- |
+| UI palettes and default visual tokens | Palette/default values in `crates/ui-egui/src/theme.rs` | `styles/ui/palettes.rs`; `theme.rs` retains theme selection and its public `Tokens` interface |
+| Web loading/canvas styling | Inline CSS in `apps/solidcraft-web/index.html` | `styles/web/loading.css`; the app HTML/Trunk entry point remains with its host and references this stylesheet |
+| Model appearance presets | `LIBRARY` in `crates/doc/src/appearance.rs` | `appearances/library.rs`; document appearance behavior stays in `doc` |
+| Physical material defaults | Material names, densities and default colours in `crates/doc/src/document.rs` | `materials/library.rs`; user-defined materials remain in user designs; no UI dependency in model data |
+| Viewport shader | Inline `SHADER` in `crates/ui-egui/src/gpu.rs` | `shaders/viewport.wgsl`; GPU pipeline creation and runtime bindings stay in the UI renderer |
+| Shared web/docs preview branding | `docs/book/src/og.png`, also referenced by the web app | `branding/web/source/og.png`; copy to the existing published `/solidcraft/og.png` path. Preserve the existing PNG when no editable master is available |
+
+Root font/locales/platform directories below collect both bundled fonts and
+licences, all four translation catalogs, macOS plist/install text, freedesktop
+desktop/MIME/AppStream data and Windows installer/localization templates.
+FreeBSD reuses the Linux metadata; web records its Trunk/HTML consumers. Retain
+all native design documents and their linked inputs when available, including
+the existing legacy VectorCraft document in the archive.
+
+Dependency-owned fonts (Ubuntu Light, Hack, Noto Emoji and the emoji icon font)
+and both vendored renderer shaders (`egui.wgsl`, `texture_copy.wgsl`) stay with
+their dependencies and are explicitly indexed with their licences. System fonts,
+optional font packs, user-imported fonts, canvases/decals and user material data
+are external/user resources, not copies to add to the application collection.
+OS-provided pointers, title-bar controls and native dialogs are system resources;
+index their host bindings without copying operating-system artwork.
 
 ### Design workflow
 
@@ -116,10 +191,12 @@ temporary renders, tool caches, previews and package staging under `target/` or
 or a recursive copy of all `assets/`.
 
 Provide one regeneration entry point per generated resource, invoked from the
-repository root: proposed `cargo xtask assets --generate icon.app.macos` compiles
-in `target/`, verifies the result, then updates both checked-in icon exports and
-their recorded source/output digests. The existing commands below remain usable
-until that helper is implemented.
+repository root. Proposed `cargo xtask assets --generate icon.app.macos` and
+`--generate icon.app.windows` stage outputs in `target/resources/`, then update
+the required checked-in exports and their source/output digests. Linux generation
+also serves FreeBSD; UI preview generation uses the collected drawing library.
+Record every platform's formats, sizes, producer, aliases and consumers in the
+manifest. The existing commands below remain usable until those helpers exist.
 
 ### Code workflow and validation
 
@@ -149,9 +226,12 @@ require Illustrator, VectorCraft or Icon Composer.
 The proposed `manifest.json` is a validation/index file, not a runtime registry.
 Each entry has a stable ID, purpose, platforms, status (`current` or `archive`),
 master/source files, shipped exports, generator command or `none`, licence/notice
-paths and consumers. Paths are repository-relative and exact; code-generated
-entries point to their owning Rust module. `ATTRIBUTION.md` remains the provenance
-record; font licences remain beside their fonts.
+paths and consumers. Record output formats/sizes, installed/public paths,
+shared-resource aliases and ownership (`repository`, `dependency`, `system` or
+`user`). Explicitly distinguish committed package exports from temporary outputs
+and absent resources. Paths are repository-relative and exact; collected Rust
+masters record their compiling layer and facade. `ATTRIBUTION.md` remains the
+provenance record; font licences remain beside their fonts.
 
 Extend `cargo xtask assets` to check every declared file and consumer, unique IDs,
 full coverage of `assets/` (with explicit documentation exemptions), attribution,
@@ -164,17 +244,18 @@ or require Apple tools on other platforms.
 
 ## Files to collect
 
-There are 21 current non-code resource files and 13 historical icon files, plus
-the Rust artwork masters and glyph definitions to collect from UI modules.
+There are 22 current non-code resource files (including the shared preview card)
+and 13 historical icon files, plus the Rust artwork, presets, inline shader/CSS
+and generated platform exports described above.
 Paths are relative to the repository root. Each font's licence stays beside it.
 
 | Resource / authoritative source | Current files | Proposed destination under `assets/` | Consumers |
 | --- | --- | --- | --- |
-| Approved macOS icon | `assets/SolidCraft.icon/icon.json`; `Assets/02-grid.svg`, `Assets/02-grid-dark.svg`, `Assets/03-solid-blue-cutout.svg` within that bundle | `icons/macos/source/SolidCraft.icon/` | Icon Composer, `actool` |
-| Shared app mark | `apps/app_icon.rs` | `icons/shared/source/app_icon.rs` | Desktop and CLI icon APIs; Windows build script; packaging icon generation |
+| Approved macOS icon | `assets/SolidCraft.icon/icon.json`; `Assets/02-grid.svg`, `Assets/02-grid-dark.svg`, `Assets/03-solid-blue-cutout.svg` within that bundle | `icons/app/macos/source/SolidCraft.icon/` | Icon Composer, `actool` |
+| Shared app mark | `apps/app_icon.rs` | `icons/app/shared/source/app_icon.rs` | Desktop and CLI icon APIs; Windows build script; packaging icon generation |
 | UI icon library | `crates/ui-egui/src/icons.rs` | `icons/ui/source/icons.rs` | Stable `ui-egui::icons::paint` facade; toolbar, browser, palette, menus and constraint tools |
-| Other UI glyph artwork | Drawing definitions in `timeline.rs`, `titlebar.rs`, `toolbar.rs`, `browser.rs`, `sketch_tools.rs`, `dialogs_assembly.rs`, `viewport.rs`, `navigation_cube.rs`, `agent_cursor.rs` under `crates/ui-egui/src/` | `icons/ui/source/glyphs.rs`, with native work files in `source/work/` if available | Existing widgets through the UI rendering facade; behaviour and layout stay with the widgets |
-| Compiled macOS icons | `assets/Assets.car`, `assets/icon.icns`, generated together from the approved composition | `icons/macos/exports/` | `packaging/macos/package.sh` |
+| Other UI glyph artwork | Drawing definitions in `timeline.rs`, `titlebar.rs`, `toolbar.rs`, `browser.rs`, `frame.rs`, `context_menu.rs`, `sketch_tools.rs`, `dim_view.rs`, `dialogs_assembly.rs`, `viewport.rs`, `navigation_cube.rs`, `agent_cursor.rs` under `crates/ui-egui/src/` | `icons/ui/source/{glyphs,navigation,markers,pointer}.rs`, with native work files in `source/work/` if available | Existing widgets through the UI rendering facade; behaviour and layout stay with the widgets |
+| Compiled macOS icons | `assets/Assets.car`, `assets/icon.icns`, generated together from the approved composition | `icons/app/macos/exports/` | `packaging/macos/package.sh` |
 | Historical macOS artwork | `assets/icon.vectorcraft` (editable source), `assets/icon.svg`, `assets/icon.png`, all ten PNGs in `assets/icon.iconset/` | `archive/icons/macos-v1/source/` and `exports/` | Preserve all 13 files as isolated design history; no current packaging/runtime consumer |
 | Sketch text font | `crates/sketch/fonts/LiberationSans-Regular.ttf`, `OFL.txt` in that directory | `fonts/liberation-sans/` | `crates/sketch/src/fonts.rs` embeds the font; `xtask/src/licences.rs` reads its licence |
 | Web Japanese UI font | `apps/solidcraft-web/fonts/BIZUDPGothic-Regular.ttf`, `OFL.txt` in that directory | `fonts/biz-udp-gothic/` | `apps/solidcraft-web/index.html` copies both with Trunk; `src/main.rs` fetches the font; `xtask/src/licences.rs` reads its licence |
@@ -192,9 +273,9 @@ add explicit rows for relocated locale catalogs and platform resources.
 
 | Resource | Authoritative location | Handling / consumers |
 | --- | --- | --- |
-| Icon rendering interfaces | `apps/app_icon.rs`, `crates/ui-egui/src/icons.rs` | Keep stable consumer interfaces; collect their artwork masters under `assets/icons/shared/` and `assets/icons/ui/` as above |
-| Theme, appearances and rendering | `crates/ui-egui/src/theme.rs`, inline shaders in `gpu.rs`, `crates/doc/src/appearance.rs`, material definitions in `crates/doc/src/document.rs` | Keep original code in its owning layers; no external texture/environment artwork to relocate |
-| Dependency fonts and shader | egui's built-in fonts; `vendor/egui-wgpu/src/egui.wgsl` | Keep dependency/vendor ownership; see `THIRD-PARTY-LICENSES.txt` and `ATTRIBUTION.md` |
+| Icon rendering interfaces | `apps/app_icon.rs`, `crates/ui-egui/src/icons.rs` | Keep stable consumer interfaces; collect artwork under `assets/icons/app/shared/` and `assets/icons/ui/` |
+| Theme, appearances and rendering | Owning modules listed above | Collect static design data/shader source; retain selection, document behavior and GPU bindings in their owning layers |
+| Dependency fonts and shaders | egui's built-in fonts; `vendor/egui-wgpu/src/{egui,texture_copy}.wgsl` | Keep dependency/vendor ownership; see `THIRD-PARTY-LICENSES.txt` and `ATTRIBUTION.md` |
 | Optional desktop fonts | System font paths and `CRAFT_FONTS_DIR` in `crates/ui-egui/src/fonts.rs`; user sketch fonts and `SOLIDCRAFT_FONT_DIRS` in `crates/sketch/src/fonts.rs` | External resources; no files to collect |
 | Licence and notice texts | Root `LICENSE-MIT`, `LICENSE-APACHE`, `NOTICE`, `THIRD-PARTY-LICENSES.txt`, `ATTRIBUTION.md` | Keep canonical root files; engine embeds licence texts, About embeds attribution, packaging copies licences/notice; `cargo xtask licences` generates the third-party list |
 | Package README | Root `README.md` | Keep canonical documentation; packaging copies it |
@@ -214,6 +295,8 @@ dependency resources retain their own licences. WiX ships the root licence texts
 - Update includes/rebuild triggers, Trunk copy paths, packaging input paths,
   `flake.nix`, `xtask/src/licences.rs`, `ATTRIBUTION.md`, `docs/localization.md`,
   `docs/compatibility.md` and `.github/workflows/packaging-lint.yml` paths/triggers.
+  Include Windows executable/installer icon bindings, Linux/FreeBSD/Nix icon
+  copies, AppImage aliases, the web stylesheet and web/docs preview-card copying.
 - Extend `xtask/src/assets.rs` beyond its current extension-based attribution scan:
   cover `.car`, `.vectorcraft`, Composer `icon.json`, catalogs and metadata;
   reject missing referenced files and unaccounted application resources.
@@ -223,7 +306,9 @@ dependency resources retain their own licences. WiX ships the root licence texts
 
 Build logic stays in `packaging/` and `xtask/`, including nfpm, Flatpak and Snap
 manifests, AppRun and install scripts. The web HTML/Trunk config remains its build
-entry point. Documentation media (`docs/screenshots/`, generated book images),
+entry point; mdBook's templates/config remain documentation build logic. The
+shared preview card is collected as branding because the web app also uses it.
+Documentation media (`docs/screenshots/`, generated book images),
 test/oracle fixtures, examples, user designs and review captures keep their
 purpose-specific locations; attribution checks still apply where appropriate.
 
