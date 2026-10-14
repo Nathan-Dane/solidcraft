@@ -321,7 +321,11 @@ fn installed_families_are_listed_by_name_once_without_the_built_in_one() {
     // A second copy of the tiny font, the built-in font and the repository's second font: each family once,
     // sorted; the built-in family is not among the installed ones, broken files and other files are skipped.
     std::fs::write(folder.0.join("copy.ttf"), tiny_font()).unwrap();
-    std::fs::copy(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("fonts").join("LiberationSans-Regular.ttf"), folder.0.join("lib.ttf")).unwrap();
+    std::fs::copy(
+        PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/liberation-sans/LiberationSans-Regular.ttf"),
+        folder.0.join("lib.ttf"),
+    )
+    .unwrap();
     std::fs::copy(web_fonts().join("BIZUDPGothic-Regular.ttf"), folder.0.join("biz.ttf")).unwrap();
     let families = crate::families_in(std::slice::from_ref(&folder.0));
     assert_eq!(families, ["BIZ UDPGothic", "Tiny Block"]);
