@@ -258,7 +258,8 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         tabs_ui.set_clip_rect(tabs_rect.intersect(ui.clip_rect()));
         crate::documents::tabs(app, &mut tabs_ui, r, tabs_start, tabs_end);
         let response = ui.interact(report, ui.id().with("sc_report_button"), Sense::click());
-        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), "Report a bug"));
+        let report_text = crate::i18n::tr("ui.report_a_bug");
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), report_text));
         crate::scenario::publish_handle("titlebar:report", report.center());
         ui.painter().rect_filled(report, 4.0, if response.hovered() || response.has_focus() { t.hover } else { t.app_bar });
         ui.painter().rect_stroke(report, 4.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
@@ -268,7 +269,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             ui.painter().text(
                 pos2(report.left() + 29.0, report.center().y),
                 Align2::LEFT_CENTER,
-                "Report a bug",
+                report_text,
                 FontId::proportional(13.0),
                 t.app_bar_text,
             );
@@ -390,8 +391,16 @@ fn file_menu(app: &mut SolveApp, ctx: &egui::Context) {
                     export(app, "3mf");
                     close = true;
                 }
+                if item_if(ui, "Export 3MF with Face Tags…", "", shown) {
+                    export_as(app, "3mf", Some("3mf-tagged"));
+                    close = true;
+                }
                 if item_if(ui, "Export OBJ…", "", shown) {
                     export(app, "obj");
+                    close = true;
+                }
+                if item_if(ui, "Export URDF…", "", shown) {
+                    export(app, "urdf");
                     close = true;
                 }
                 if item(ui, "Export Design as JSON…", "") {
@@ -450,10 +459,18 @@ fn save_as_with_extension(app: &mut SolveApp, extension: &str) {
 }
 
 fn export(app: &mut SolveApp, ext: &str) {
+    export_as(app, ext, None);
+}
+
+/// Export to a file with extension `ext`, in `format` when the extension alone doesn't name it.
+fn export_as(app: &mut SolveApp, ext: &str, format: Option<&str>) {
     let name = format!("{}.{ext}", app.session.doc.name);
-    if let Some(p) = app.services.pick_save.as_ref().and_then(|f| f(&name, &[ext]))
-        && app.run("file.export", json!({"path": p})).is_ok()
-    {
+    let Some(p) = app.services.pick_save.as_ref().and_then(|f| f(&name, &[ext])) else { return };
+    let params = match format {
+        Some(f) => json!({"path": p, "format": f}),
+        None => json!({"path": p}),
+    };
+    if app.run("file.export", params).is_ok() {
         app.set_status(format!("Exported {p}"), false);
     }
 }
@@ -569,7 +586,9 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             let sketch_create = tab == "SKETCH" && *panel == "CREATE";
             let stride = if sketch_create { 68.0 } else { 40.0 };
             let enabled_panel = !cmds.is_empty() || *panel == "SELECT";
-            let popup_id = ui.id().with(("panel_menu", panel));
+            // Per tab: panels of the same name on other tabs (MODIFY, CREATE…) list other commands,
+            // and the drop-down's area remembers its size by this id (#874).
+            let popup_id = ui.id().with(("panel_menu", &tab, panel));
             // Dropped on the panel's free space (all of a collapsed panel): the button goes to
             // its end.
             let drawn = if collapsed { 0 } else { shown.len() };
@@ -781,8 +800,10 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                             }
                         }
                         // The rows scroll when the drop-down would run past the window's bottom.
+                        // `min_scrolled_height` lets the rows grow past the size the area kept from
+                        // an earlier, shorter list (#874); they still shrink to fit their content.
                         let room = (ui.ctx().content_rect().bottom() - ui.cursor().top() - 12.0).max(ROW_H * 3.0);
-                        egui::ScrollArea::vertical().id_salt("panel_menu_rows").max_height(room).show(ui, |ui| {
+                        egui::ScrollArea::vertical().id_salt("panel_menu_rows").max_height(room).min_scrolled_height(room).show(ui, |ui| {
                             for c in &cmds {
                                 let pinned = crate::toolbar_custom::pinned_on(app, &tab, c.id).is_some();
                                 match dropdown_row(app, ui, c, row_w, pinned) {
@@ -1374,7 +1395,8 @@ mod home_tests {
             let name = if cmd { format!("Ctrl+{key}") } else { key.to_string() };
             actions.push((name, Box::new(move |h| drop(h.call("ui.key", json!({"key": key, "cmd": cmd}))))));
         }
-        for item in ["Insert STEP…", "Insert Mesh…", "Save", "Save As…", "Export STL…", "Export STEP…", "Export 3MF…", "Export OBJ…"] {
+        for item in ["Insert STEP…", "Insert Mesh…", "Save", "Save As…", "Export STL…", "Export STEP…", "Export 3MF…", "Export OBJ…", "Export URDF…"]
+        {
             actions.push((
                 format!("File › {item}"),
                 Box::new(move |h| {
@@ -1409,6 +1431,22 @@ mod home_tests {
         h.call("ui.click", json!({"x": at.x, "y": at.y}));
         h.settle();
         assert!(h.app.session.path.is_some() && !h.app.session.is_dirty(), "the design saves once Home is closed");
+    }
+
+    /// File › Export URDF… writes the robot description and its meshes next to the picked file.
+    #[test]
+    fn file_menu_exports_a_urdf() {
+        let mut h = crate::scenario::Harness::new();
+        h.app.home.open = false;
+        h.app.run("solid.box", json!({"length": 10, "width": 10, "height": 10})).unwrap();
+        h.frames(2);
+        h.ctx.data_mut(|d| d.insert_temp(egui::Id::new("sc_file_menu"), false));
+        let at = crate::scenario::handle_at("appbar:folder").unwrap();
+        h.call("ui.click", json!({"x": at.x, "y": at.y}));
+        let _ = h.step(&json!({"widget": "Export URDF…"}));
+        h.settle();
+        let files: Vec<String> = std::fs::read_dir(&h.dir).unwrap().map(|e| e.unwrap().file_name().to_string_lossy().into_owned()).collect();
+        assert!(files.iter().any(|f| f.ends_with(".urdf")) && files.iter().any(|f| f.ends_with("-base.stl")), "{files:?}");
     }
 
     /// The disabled buttons' tooltip is translated in every catalog (not English fallback).
@@ -1448,6 +1486,33 @@ mod dropdown_tests {
         let [(_, at)] = hot.as_slice() else { panic!("one highlighted row: {hot:?}") };
         let menu = crate::scenario::rect_of("toolbar_dropdown").unwrap();
         assert!(menu.contains(*at), "the focused last row is out of view: {at:?} in {menu:?}");
+    }
+
+    /// Every row of a drop-down is shown when the window has room, even after a shorter list was
+    /// shown first: another tab's panel of the same name, or the same panel collapsed (#874).
+    #[test]
+    fn a_drop_down_shows_all_its_rows_after_a_shorter_one() {
+        let mut h = crate::scenario::Harness::new();
+        h.app.home.open = false;
+        h.call("ui.resize", json!({"width":1600,"height":1000}));
+        let open = |h: &mut crate::scenario::Harness, tab: &str| {
+            h.app.ui.tab = tab.into();
+            h.frames(4);
+            h.step(&json!({"click":{"handle":format!("panel:{tab}:MODIFY")}})).unwrap();
+            h.frames(6);
+            let menu = crate::scenario::rect_of("toolbar_dropdown").expect("the drop-down is open");
+            let rows = crate::scenario::handles("dropdown:");
+            h.step(&json!({"key":"Escape"})).unwrap();
+            h.frames(4);
+            (menu, rows)
+        };
+        let (short, short_rows) = open(&mut h, "MESH");
+        let (menu, rows) = open(&mut h, "PLASTIC");
+        assert!(rows.len() > short_rows.len(), "PLASTIC MODIFY lists more than MESH MODIFY: {rows:?} vs {short_rows:?}");
+        assert!(menu.height() > short.height(), "the longer list is taller: {menu:?} vs {short:?}");
+        for (id, at) in &rows {
+            assert!(menu.contains(*at), "{id} at {at:?} is cut off by the drop-down {menu:?}");
+        }
     }
 }
 
