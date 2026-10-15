@@ -7,6 +7,9 @@ consistent, professional visual language. This proposal establishes the decision
 and review criteria for replacing them. It contains no replacement artwork or
 implementation changes.
 
+Progress on the artwork is tracked in [ui-icon-inventory.md](ui-icon-inventory.md); the collected
+masters are in `assets/icons/ui/design/`.
+
 The resource organisation in [PR #833](https://github.com/bherbruck/solidcraft/pull/833)
 provides the intended home for the eventual icon masters and exports. The redesign
 should use that structure once it lands.

@@ -1,0 +1,23 @@
+{
+  "light": {
+    "geometry_ink": "#34465b",
+    "navigation_foreground": "#34465b",
+    "application_bar_foreground": "#e6eaf2"
+  },
+  "dark": {
+    "geometry_line_only_ink": "#b8c7d8",
+    "blue_stroke_substitution": {
+      "#236ead": "#66b8f5"
+    },
+    "navigation_foreground": "#e6eaf2",
+    "application_bar_foreground": "#e6eaf2"
+  },
+  "rules": [
+    "Use all-flat single-colour icons from icons-flat for navigation and app actions.",
+    "Use icons-flat/nav_settings.svg for navigation; icons-flat/settings.svg for the application bar.",
+    "Preserve black and white inside masks: they control transparency.",
+    "For flat visible artwork, recolour non-white paint to the context foreground and visible white counters to the context background. Do not recolour mask operators.",
+    "Namespace every SVG id and matching url(#id) reference when combining multiple instances.",
+    "Redo is the Undo master mirrored horizontally about the 64-unit viewBox centre."
+  ]
+}

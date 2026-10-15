@@ -1,0 +1,534 @@
+{
+  "asset_count": 88,
+  "viewBox": "0 0 64 64",
+  "assets": [
+    {
+      "id": "icons/accessibility",
+      "name": "Accessibility",
+      "file": "icons/accessibility.svg",
+      "sha256": "40bd57f46b7e9294948e755b5f1558e49641dd05d310a93ebb9458f7b07f906d"
+    },
+    {
+      "id": "icons/as_built",
+      "name": "As-built joint",
+      "file": "icons/as_built.svg",
+      "sha256": "1dc35173d16d979902e594086780466fd348cde2eb96cd8a402ddc80ea56e7ad"
+    },
+    {
+      "id": "icons/body",
+      "name": "Body",
+      "file": "icons/body.svg",
+      "sha256": "3d55ac584814bc138507a93260160b4d5f1d072763cba882a5124daed036bed4"
+    },
+    {
+      "id": "icons/center_of_mass",
+      "name": "Center of mass",
+      "file": "icons/center_of_mass.svg",
+      "sha256": "a24af04e6f6bb3521a300b1ef86bea943eb62ef81492ec2bd7f4df3ae793c3ca"
+    },
+    {
+      "id": "icons/chamfer",
+      "name": "Chamfer",
+      "file": "icons/chamfer.svg",
+      "sha256": "7f8df67e14d8ed665a3faeb0526db63f686ea1b8f1349f0c5b00b5e09a995576"
+    },
+    {
+      "id": "icons/combine",
+      "name": "Combine",
+      "file": "icons/combine.svg",
+      "sha256": "a70f01063dd2188d85f68de67fd5796ef20afd717ad98b0c48fbbacdeb660a1f"
+    },
+    {
+      "id": "icons/component",
+      "name": "Component",
+      "file": "icons/component.svg",
+      "sha256": "b8f40390fac8e023bc00511b952084adcbf2ada24950ac658acb97074922ec91"
+    },
+    {
+      "id": "icons/config",
+      "name": "Configuration table",
+      "file": "icons/config.svg",
+      "sha256": "1ab11187f5c9b9b02fa9b9804e4e0a96e0477aef7861d1bfa76dccf7007e3b16"
+    },
+    {
+      "id": "icons/curvature_comb",
+      "name": "Curvature comb",
+      "file": "icons/curvature_comb.svg",
+      "sha256": "47779f77163cc70850061df95250c8e518eddae7b372173d25cd19e57b3777d7"
+    },
+    {
+      "id": "icons/curvature_map",
+      "name": "Curvature map",
+      "file": "icons/curvature_map.svg",
+      "sha256": "0420886b6f54b848dfd47cd7d2068b241aa355f414cad3076b0bc10151ba44fe"
+    },
+    {
+      "id": "icons/draft_analysis",
+      "name": "Draft analysis",
+      "file": "icons/draft_analysis.svg",
+      "sha256": "2de3565014b14dcea000492421fb2136726e4fd8df02e1ef64a8b590cb5ed1f7"
+    },
+    {
+      "id": "icons/environment_map",
+      "name": "Environment map",
+      "file": "icons/environment_map.svg",
+      "sha256": "9b6add421abc18696b6a206c76167a19d4d76b7d35c7f95a552c2117d8b23bab"
+    },
+    {
+      "id": "icons/extrude",
+      "name": "Extrude",
+      "file": "icons/extrude.svg",
+      "sha256": "3f663791d2f1e3eb07f8b8b7edc0de5dee37b92d9dacf5d83ecd90e796c033f8"
+    },
+    {
+      "id": "icons/fastener",
+      "name": "Fastener",
+      "file": "icons/fastener.svg",
+      "sha256": "27d5d33470f69d3c80bb28f37e665c40414b5a177b6b148fa86af00dadb1f183"
+    },
+    {
+      "id": "icons/fillet",
+      "name": "Fillet",
+      "file": "icons/fillet.svg",
+      "sha256": "22ed2a99bc823d266558e6fce5762929cae3481e9740f5a07be1cc1a56e8eea1"
+    },
+    {
+      "id": "icons/folder",
+      "name": "Folder",
+      "file": "icons/folder.svg",
+      "sha256": "b61d6f840a061891daeee3ce914fabc25ab7de1f893959551f0c02894ac5e4fd"
+    },
+    {
+      "id": "icons/import",
+      "name": "Insert STEP",
+      "file": "icons/import.svg",
+      "sha256": "ade6562b2306cef315ebda10f974f03bcd90b98d05312f083d7b15f2a9d49fff"
+    },
+    {
+      "id": "icons/interference",
+      "name": "Interference",
+      "file": "icons/interference.svg",
+      "sha256": "9ad14d85af0117c31f493ef3eedb8bcac0203299f74e344abd5d9088ebe8bc40"
+    },
+    {
+      "id": "icons/iso_analysis",
+      "name": "Isocurve Analysis",
+      "file": "icons/iso_analysis.svg",
+      "sha256": "c084c11a5c21548c260ac9c956d599057cafd72ca803cc3a343407090e321501"
+    },
+    {
+      "id": "icons/joint",
+      "name": "Joint",
+      "file": "icons/joint.svg",
+      "sha256": "29492686f97102c91777eba739078b9bb5138ab392550d7f68e52ba556c0f908"
+    },
+    {
+      "id": "icons/measure",
+      "name": "Measure",
+      "file": "icons/measure.svg",
+      "sha256": "2864097c5106de3336f052daf5954b4959704334774162c60dc009390fc5df46"
+    },
+    {
+      "id": "icons/min_radius",
+      "name": "Minimum Radius Analysis",
+      "file": "icons/min_radius.svg",
+      "sha256": "9b0953378eca7556c0b3bf95a3cc738bd3861cab2413490b8b88e660c464ae4e"
+    },
+    {
+      "id": "icons/params",
+      "name": "Parameters",
+      "file": "icons/params.svg",
+      "sha256": "2f66a77a995cbd9613c136ed0da9093e265daf0a06056803a3992d155ac082d9"
+    },
+    {
+      "id": "icons/plane",
+      "name": "Offset plane",
+      "file": "icons/plane.svg",
+      "sha256": "cc2d194a95ff19076f4c99cd61825a655bd58de859f1e898978c66e24102fe06"
+    },
+    {
+      "id": "icons/plane_angle",
+      "name": "Plane at angle",
+      "file": "icons/plane_angle.svg",
+      "sha256": "4c1213e5469b42b463bce0de6c1b0240a9012b6b0e2211aa6d296c4100c1f5cf"
+    },
+    {
+      "id": "icons/revolve",
+      "name": "Revolve",
+      "file": "icons/revolve.svg",
+      "sha256": "2e0aa9238d0f89ca264f18580fe66eca5e80ccf9348289d9ecc03353faaecd1c"
+    },
+    {
+      "id": "icons/save",
+      "name": "Save",
+      "file": "icons/save.svg",
+      "sha256": "a19b088e77f1913f61356f177017d32dd286738e8a32c2a8080b8abff2fd17e6"
+    },
+    {
+      "id": "icons/scale",
+      "name": "Scale",
+      "file": "icons/scale.svg",
+      "sha256": "f3846eaaaa600971fb6e49b9ae7d84a8414cad512069dd1bd93c6422ebaab3d1"
+    },
+    {
+      "id": "icons/section",
+      "name": "Section",
+      "file": "icons/section.svg",
+      "sha256": "0f2dc8b1e990ebbd8ff4c4755f87955a64bb7f1131f4c22246272b8c3cdc1ab7"
+    },
+    {
+      "id": "icons/settings",
+      "name": "Settings",
+      "file": "icons/settings.svg",
+      "sha256": "fec7ea9f7878b69e4b9f12a05998d2d7436aa0bf38ceee1f4b48e543b7ac25f1"
+    },
+    {
+      "id": "icons/sketch",
+      "name": "Sketch / sketch feature",
+      "file": "icons/sketch.svg",
+      "sha256": "44d341138e2134af195c60be99d18090c537ace5a3355a4b2475677ef5fc7186"
+    },
+    {
+      "id": "icons/sweep",
+      "name": "Sweep",
+      "file": "icons/sweep.svg",
+      "sha256": "7550da7edb2b64789d6a36932d3767664f64d9471ac96847acb259d82edca701"
+    },
+    {
+      "id": "icons/undo",
+      "name": "Undo",
+      "file": "icons/undo.svg",
+      "sha256": "129c4f7360544ac4aa4f37698fc2a6a9b0f47d8f94a6b3ad5b75f403a37decdb"
+    },
+    {
+      "id": "icons/zebra",
+      "name": "Zebra",
+      "file": "icons/zebra.svg",
+      "sha256": "c404c171eabb38f6766a23b97ee18c70ba8c0ac0fed36d76031cf2870a904bc0"
+    },
+    {
+      "id": "icons/zoom",
+      "name": "Zoom",
+      "file": "icons/zoom.svg",
+      "sha256": "93f37ade14f5aa3a8926ee61200c2cd9526c6a79453322b5282a89a84014e264"
+    },
+    {
+      "id": "icons-small/accessibility",
+      "name": "Accessibility",
+      "file": "icons-small/accessibility.svg",
+      "sha256": "40bd57f46b7e9294948e755b5f1558e49641dd05d310a93ebb9458f7b07f906d"
+    },
+    {
+      "id": "icons-small/as_built",
+      "name": "As-built joint",
+      "file": "icons-small/as_built.svg",
+      "sha256": "1dc35173d16d979902e594086780466fd348cde2eb96cd8a402ddc80ea56e7ad"
+    },
+    {
+      "id": "icons-small/body",
+      "name": "Body",
+      "file": "icons-small/body.svg",
+      "sha256": "3d55ac584814bc138507a93260160b4d5f1d072763cba882a5124daed036bed4"
+    },
+    {
+      "id": "icons-small/center_of_mass",
+      "name": "Center of mass",
+      "file": "icons-small/center_of_mass.svg",
+      "sha256": "a24af04e6f6bb3521a300b1ef86bea943eb62ef81492ec2bd7f4df3ae793c3ca"
+    },
+    {
+      "id": "icons-small/chamfer",
+      "name": "Chamfer",
+      "file": "icons-small/chamfer.svg",
+      "sha256": "7f8df67e14d8ed665a3faeb0526db63f686ea1b8f1349f0c5b00b5e09a995576"
+    },
+    {
+      "id": "icons-small/combine",
+      "name": "Combine",
+      "file": "icons-small/combine.svg",
+      "sha256": "a70f01063dd2188d85f68de67fd5796ef20afd717ad98b0c48fbbacdeb660a1f"
+    },
+    {
+      "id": "icons-small/component",
+      "name": "Component",
+      "file": "icons-small/component.svg",
+      "sha256": "b8f40390fac8e023bc00511b952084adcbf2ada24950ac658acb97074922ec91"
+    },
+    {
+      "id": "icons-small/config",
+      "name": "Configuration table",
+      "file": "icons-small/config.svg",
+      "sha256": "1ab11187f5c9b9b02fa9b9804e4e0a96e0477aef7861d1bfa76dccf7007e3b16"
+    },
+    {
+      "id": "icons-small/curvature_comb",
+      "name": "Curvature comb",
+      "file": "icons-small/curvature_comb.svg",
+      "sha256": "47779f77163cc70850061df95250c8e518eddae7b372173d25cd19e57b3777d7"
+    },
+    {
+      "id": "icons-small/curvature_map",
+      "name": "Curvature map",
+      "file": "icons-small/curvature_map.svg",
+      "sha256": "0420886b6f54b848dfd47cd7d2068b241aa355f414cad3076b0bc10151ba44fe"
+    },
+    {
+      "id": "icons-small/draft_analysis",
+      "name": "Draft analysis",
+      "file": "icons-small/draft_analysis.svg",
+      "sha256": "2de3565014b14dcea000492421fb2136726e4fd8df02e1ef64a8b590cb5ed1f7"
+    },
+    {
+      "id": "icons-small/environment_map",
+      "name": "Environment map",
+      "file": "icons-small/environment_map.svg",
+      "sha256": "9b6add421abc18696b6a206c76167a19d4d76b7d35c7f95a552c2117d8b23bab"
+    },
+    {
+      "id": "icons-small/extrude",
+      "name": "Extrude",
+      "file": "icons-small/extrude.svg",
+      "sha256": "3f663791d2f1e3eb07f8b8b7edc0de5dee37b92d9dacf5d83ecd90e796c033f8"
+    },
+    {
+      "id": "icons-small/fastener",
+      "name": "Fastener",
+      "file": "icons-small/fastener.svg",
+      "sha256": "27d5d33470f69d3c80bb28f37e665c40414b5a177b6b148fa86af00dadb1f183"
+    },
+    {
+      "id": "icons-small/fillet",
+      "name": "Fillet",
+      "file": "icons-small/fillet.svg",
+      "sha256": "22ed2a99bc823d266558e6fce5762929cae3481e9740f5a07be1cc1a56e8eea1"
+    },
+    {
+      "id": "icons-small/folder",
+      "name": "Folder",
+      "file": "icons-small/folder.svg",
+      "sha256": "b61d6f840a061891daeee3ce914fabc25ab7de1f893959551f0c02894ac5e4fd"
+    },
+    {
+      "id": "icons-small/import",
+      "name": "Insert STEP",
+      "file": "icons-small/import.svg",
+      "sha256": "ade6562b2306cef315ebda10f974f03bcd90b98d05312f083d7b15f2a9d49fff"
+    },
+    {
+      "id": "icons-small/interference",
+      "name": "Interference",
+      "file": "icons-small/interference.svg",
+      "sha256": "9ad14d85af0117c31f493ef3eedb8bcac0203299f74e344abd5d9088ebe8bc40"
+    },
+    {
+      "id": "icons-small/iso_analysis",
+      "name": "Isocurve Analysis",
+      "file": "icons-small/iso_analysis.svg",
+      "sha256": "c084c11a5c21548c260ac9c956d599057cafd72ca803cc3a343407090e321501"
+    },
+    {
+      "id": "icons-small/joint",
+      "name": "Joint",
+      "file": "icons-small/joint.svg",
+      "sha256": "29492686f97102c91777eba739078b9bb5138ab392550d7f68e52ba556c0f908"
+    },
+    {
+      "id": "icons-small/measure",
+      "name": "Measure",
+      "file": "icons-small/measure.svg",
+      "sha256": "2864097c5106de3336f052daf5954b4959704334774162c60dc009390fc5df46"
+    },
+    {
+      "id": "icons-small/min_radius",
+      "name": "Minimum Radius Analysis",
+      "file": "icons-small/min_radius.svg",
+      "sha256": "9b0953378eca7556c0b3bf95a3cc738bd3861cab2413490b8b88e660c464ae4e"
+    },
+    {
+      "id": "icons-small/params",
+      "name": "Parameters",
+      "file": "icons-small/params.svg",
+      "sha256": "2f66a77a995cbd9613c136ed0da9093e265daf0a06056803a3992d155ac082d9"
+    },
+    {
+      "id": "icons-small/plane",
+      "name": "Offset plane",
+      "file": "icons-small/plane.svg",
+      "sha256": "cc2d194a95ff19076f4c99cd61825a655bd58de859f1e898978c66e24102fe06"
+    },
+    {
+      "id": "icons-small/plane_angle",
+      "name": "Plane at angle",
+      "file": "icons-small/plane_angle.svg",
+      "sha256": "4c1213e5469b42b463bce0de6c1b0240a9012b6b0e2211aa6d296c4100c1f5cf"
+    },
+    {
+      "id": "icons-small/revolve",
+      "name": "Revolve",
+      "file": "icons-small/revolve.svg",
+      "sha256": "2e0aa9238d0f89ca264f18580fe66eca5e80ccf9348289d9ecc03353faaecd1c"
+    },
+    {
+      "id": "icons-small/save",
+      "name": "Save",
+      "file": "icons-small/save.svg",
+      "sha256": "a19b088e77f1913f61356f177017d32dd286738e8a32c2a8080b8abff2fd17e6"
+    },
+    {
+      "id": "icons-small/scale",
+      "name": "Scale",
+      "file": "icons-small/scale.svg",
+      "sha256": "f3846eaaaa600971fb6e49b9ae7d84a8414cad512069dd1bd93c6422ebaab3d1"
+    },
+    {
+      "id": "icons-small/section",
+      "name": "Section",
+      "file": "icons-small/section.svg",
+      "sha256": "4f1521569401ccb750d98e6b83c8ed5537b67acc00ff37ac5c583f19ef19552b"
+    },
+    {
+      "id": "icons-small/settings",
+      "name": "Settings",
+      "file": "icons-small/settings.svg",
+      "sha256": "fec7ea9f7878b69e4b9f12a05998d2d7436aa0bf38ceee1f4b48e543b7ac25f1"
+    },
+    {
+      "id": "icons-small/sketch",
+      "name": "Sketch / sketch feature",
+      "file": "icons-small/sketch.svg",
+      "sha256": "44d341138e2134af195c60be99d18090c537ace5a3355a4b2475677ef5fc7186"
+    },
+    {
+      "id": "icons-small/sweep",
+      "name": "Sweep",
+      "file": "icons-small/sweep.svg",
+      "sha256": "7550da7edb2b64789d6a36932d3767664f64d9471ac96847acb259d82edca701"
+    },
+    {
+      "id": "icons-small/undo",
+      "name": "Undo",
+      "file": "icons-small/undo.svg",
+      "sha256": "129c4f7360544ac4aa4f37698fc2a6a9b0f47d8f94a6b3ad5b75f403a37decdb"
+    },
+    {
+      "id": "icons-small/zebra",
+      "name": "Zebra",
+      "file": "icons-small/zebra.svg",
+      "sha256": "c404c171eabb38f6766a23b97ee18c70ba8c0ac0fed36d76031cf2870a904bc0"
+    },
+    {
+      "id": "icons-small/zoom",
+      "name": "Zoom",
+      "file": "icons-small/zoom.svg",
+      "sha256": "93f37ade14f5aa3a8926ee61200c2cd9526c6a79453322b5282a89a84014e264"
+    },
+    {
+      "id": "icons-flat/chevron",
+      "name": "Chevron",
+      "file": "icons-flat/chevron.svg",
+      "sha256": "a660333064ded53578bc4afc9895cc0cfd17fb0dd38651bc1a0e029e8d8c2e13"
+    },
+    {
+      "id": "icons-flat/fit",
+      "name": "Fit view",
+      "file": "icons-flat/fit.svg",
+      "sha256": "df6517a36bf8f6b908e88261be2122d66e4ae83b249b5af3c25594cb6975653c"
+    },
+    {
+      "id": "icons-flat/folder",
+      "name": "Folder",
+      "file": "icons-flat/folder.svg",
+      "sha256": "61cf6e86b03f46516feb1baae50acdef298176eb8ae06489f99fb35dc1de89f2"
+    },
+    {
+      "id": "icons-flat/help",
+      "name": "Help",
+      "file": "icons-flat/help.svg",
+      "sha256": "68b35dc4a360abadb9f7867c9e3c5aef49dde40a21a4efaa89e5c28fae9094fa"
+    },
+    {
+      "id": "icons-flat/home",
+      "name": "Home",
+      "file": "icons-flat/home.svg",
+      "sha256": "c9f1b1198e7f6b16822dde2abce7a0b94ff3fed17d6deebc0646cc36c15c53aa"
+    },
+    {
+      "id": "icons-flat/lookat",
+      "name": "Look At",
+      "file": "icons-flat/lookat.svg",
+      "sha256": "ba18cf62b4efd663911aa1dd776333c92ec3ac0c94379cd91238fe91f1e52a99"
+    },
+    {
+      "id": "icons-flat/moon",
+      "name": "Dark mode",
+      "file": "icons-flat/moon.svg",
+      "sha256": "581246522d758cba4b5a36089031d74c77288beeb62b42f462c4e1194fdf2629"
+    },
+    {
+      "id": "icons-flat/nav_settings",
+      "name": "Navigation settings",
+      "file": "icons-flat/nav_settings.svg",
+      "sha256": "ecb20950135bfeedfeefa0fc2b76f6c5fa77b9745b32370ba740f07d7d851d67"
+    },
+    {
+      "id": "icons-flat/orbit",
+      "name": "Orbit",
+      "file": "icons-flat/orbit.svg",
+      "sha256": "9d908cf8cf0c1b64fd86f98a91489af42f20570778a23f75dd8ba090fae99d8f"
+    },
+    {
+      "id": "icons-flat/pan",
+      "name": "Pan",
+      "file": "icons-flat/pan.svg",
+      "sha256": "faffe673e7ea234621af5a74aae1c7f32ebee4f5a829b8988da039c9bf2cd321"
+    },
+    {
+      "id": "icons-flat/perspective",
+      "name": "Perspective",
+      "file": "icons-flat/perspective.svg",
+      "sha256": "813fd7035c420dd4ba6e73622b9366fe6b6d22e13915cf1fba9dd14a3b3a2620"
+    },
+    {
+      "id": "icons-flat/report",
+      "name": "Report a bug",
+      "file": "icons-flat/report.svg",
+      "sha256": "6de87777c85a4610ffbd46cd2c39435c8ddfae543cba06c27e4f3a0e93d94271"
+    },
+    {
+      "id": "icons-flat/save",
+      "name": "Save",
+      "file": "icons-flat/save.svg",
+      "sha256": "a19b088e77f1913f61356f177017d32dd286738e8a32c2a8080b8abff2fd17e6"
+    },
+    {
+      "id": "icons-flat/settings",
+      "name": "Settings",
+      "file": "icons-flat/settings.svg",
+      "sha256": "fec7ea9f7878b69e4b9f12a05998d2d7436aa0bf38ceee1f4b48e543b7ac25f1"
+    },
+    {
+      "id": "icons-flat/spin",
+      "name": "Continuous orbit",
+      "file": "icons-flat/spin.svg",
+      "sha256": "28b5a17251776f7ec7d0e1c5810d19897c91e26e3ce8b4098a8b8152f6a35046"
+    },
+    {
+      "id": "icons-flat/style",
+      "name": "Visual style",
+      "file": "icons-flat/style.svg",
+      "sha256": "1e174ee5751e8ebf69d32bea5f1ff222793d5f30bbe856175b42632fe5cbd2cc"
+    },
+    {
+      "id": "icons-flat/undo",
+      "name": "Undo",
+      "file": "icons-flat/undo.svg",
+      "sha256": "129c4f7360544ac4aa4f37698fc2a6a9b0f47d8f94a6b3ad5b75f403a37decdb"
+    },
+    {
+      "id": "icons-flat/zoom",
+      "name": "Zoom",
+      "file": "icons-flat/zoom.svg",
+      "sha256": "8e145920506da0c9959ac0ad6d90a2f659c01c5e9de66690a5ed952c8a52bdc3"
+    }
+  ]
+}
