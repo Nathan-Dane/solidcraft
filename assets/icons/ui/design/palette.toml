@@ -41,9 +41,49 @@ action = 4.25
 navigation = 5.6
 parameters = 4.2
 
-[families]         # accent overrides for the active ramp (not adopted yet; see the proposal)
-solid   = "blue"
-surface = "orange"
-form    = "purple"
-mesh    = "yellow"
-sketch_context = "#B4530A"
+# Accent colours. An accent replaces the roles it lists (normally the three `active-*` blues), so
+# an icon keeps its drawing and only changes colour: "extrude" in the Solid accent and
+# "surface_extrude" (see aliases.toml) are the same artwork in orange. Roles an accent does not
+# list keep their base value. Edit hex values here; nothing else needs to change.
+# The accents below are proposals: Solid is the default (the base palette), Surface orange,
+# Form purple, Mesh yellow, Sketch amber.
+
+[accents.surface.active-1]
+light = "#fbdcb9"
+dark  = "#5a3510"
+[accents.surface.active-2]
+light = "#e08a2c"
+dark  = "#e69a45"
+[accents.surface.active-3]
+light = "#b45a0a"
+dark  = "#f7c58a"
+
+[accents.form.active-1]
+light = "#dccdf6"
+dark  = "#3b2a66"
+[accents.form.active-2]
+light = "#8a5cd6"
+dark  = "#9b72e8"
+[accents.form.active-3]
+light = "#6a3fc2"
+dark  = "#c6aef7"
+
+[accents.mesh.active-1]
+light = "#fbefb0"
+dark  = "#5a4a0c"
+[accents.mesh.active-2]
+light = "#e0b400"
+dark  = "#e8c52a"
+[accents.mesh.active-3]
+light = "#a07f00"
+dark  = "#f6e07a"
+
+[accents.sketch.active-1]
+light = "#f6e0cf"
+dark  = "#5a3a1e"
+[accents.sketch.active-2]
+light = "#d9731a"
+dark  = "#e8913d"
+[accents.sketch.active-3]
+light = "#b4530a"
+dark  = "#f0b57c"

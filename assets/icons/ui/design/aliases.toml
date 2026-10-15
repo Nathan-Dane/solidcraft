@@ -1,5 +1,7 @@
 # App icon ids that reuse another master instead of carrying a copy.
-# `alias-id = "master-id"`; masters are svg/*/<id>.svg (the model/flat/workspace family wins over small/).
+#   alias = "master"                              same artwork, default (Solid) colours
+#   alias = { master = "m", accent = "surface" }  same artwork in another accent (palette.toml)
+# Icons that mean the same operation in another workspace belong here, so they stay identical.
 [alias]
 circle2 = "circle"
 circle3 = "circle"
@@ -14,3 +16,8 @@ spline_cv = "spline"
 sketch_rect_pattern = "pattern_rect"
 sketch_circ_pattern = "pattern_circ"
 plastic_rule = "plastic_assign"
+surface_extrude = { master = "extrude", accent = "surface" }
+surface_revolve = { master = "revolve", accent = "surface" }
+surface_sweep = { master = "sweep", accent = "surface" }
+surface_loft = { master = "loft", accent = "surface" }
+surface_fillet = { master = "fillet", accent = "surface" }

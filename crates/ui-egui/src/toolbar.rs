@@ -281,8 +281,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             if enabled && resp.hovered() {
                 ui.painter().rect_filled(br, 4.0, Color32::from_white_alpha(30));
             }
-            let dim = |c: Color32| if enabled { c } else { c.gamma_multiply(0.35) };
-            icons::paint(ui.painter(), br.shrink(5.0), icon, dim(t.app_bar_icon[0]), dim(t.app_bar_icon[1]), dim(t.app_bar_icon[2]));
+            icons::paint_on(ui.painter(), br.shrink(5.0), icon, Some(true), if enabled { 1.0 } else { 0.35 });
             let clicked = resp.on_hover_text(tip).clicked();
             enabled && clicked
         };
@@ -351,7 +350,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         ui.painter().rect_filled(report, 4.0, if response.hovered() || response.has_focus() { t.hover } else { t.app_bar });
         ui.painter().rect_stroke(report, 4.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
         let icon = Rect::from_center_size(pos2(report.left() + 14.0, report.center().y), vec2(18.0, 18.0));
-        icons::paint(ui.painter(), icon, "bug_report", t.app_bar_text, t.app_bar_text, t.app_bar);
+        icons::paint_on(ui.painter(), icon, "bug_report", Some(true), 1.0);
         if report_label {
             ui.painter().text(pos2(report.left() + REPORT_TEXT_X, report.center().y), Align2::LEFT_CENTER, report_text, report_font, t.app_bar_text);
         }
@@ -364,7 +363,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         if gresp.hovered() {
             ui.painter().rect_filled(gear, 4.0, Color32::from_white_alpha(30));
         }
-        icons::paint(ui.painter(), gear.shrink(4.0), "settings", t.app_bar_text, t.app_bar_text, t.app_bar);
+        icons::paint_on(ui.painter(), gear.shrink(4.0), "settings", Some(true), 1.0);
         crate::scenario::publish_handle("titlebar:preferences", gear.center());
         let prefs_tip = if cfg!(target_os = "macos") {
             format!("{} (Cmd+,)", app.tr("ui.preferences"))

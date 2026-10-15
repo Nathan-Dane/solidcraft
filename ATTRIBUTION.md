@@ -89,7 +89,6 @@ Editable drawing code, native projects and shipped exports are collected under `
 | assets/icons/app/windows/exports/solidcraft-executable.ico | SolidCraft contributors | Generated from assets/icons/app/shared/source/app_icon.rs with the original CLI/ICO encoders | MIT OR Apache-2.0 |
 | assets/icons/app/windows/exports/solidcraft.ico | SolidCraft contributors | Generated from assets/icons/app/shared/source/app_icon.rs with the original CLI/ICO encoders | MIT OR Apache-2.0 |
 | assets/icons/ui/source/glyphs.rs | SolidCraft / VectorCraft contributors | Original glyphs; caption geometry adapted from VectorCraft titlebar.rs (https://github.com/storytold/vectorcraft) | MIT OR Apache-2.0 |
-| assets/icons/ui/source/icons.rs | SolidCraft contributors | Original SolidCraft resource data or drawing code, collected without redesign | MIT OR Apache-2.0 |
 | assets/icons/ui/source/markers.rs | SolidCraft contributors | Original SolidCraft resource data or drawing code, collected without redesign | MIT OR Apache-2.0 |
 | assets/icons/ui/source/navigation.rs | SolidCraft contributors | Original SolidCraft resource data or drawing code, collected without redesign | MIT OR Apache-2.0 |
 | assets/icons/ui/source/pointer.rs | SolidCraft contributors | Original SolidCraft resource data or drawing code, collected without redesign | MIT OR Apache-2.0 |
@@ -119,7 +118,7 @@ Editable drawing code, native projects and shipped exports are collected under `
 | crates/io/src/native_cad/fixtures/block.3dm | SolidCraft contributors | original 10 × 20 × 30 mm test box written with McNeel's MIT-licensed rhino3dm Python package (`make_block_3dm.py` beside it); no third-party geometry | MIT OR Apache-2.0 |
 | assets/icons/ui/design/aliases.toml | SolidCraft contributors | icon ids that share a master, original SolidCraft data | MIT OR Apache-2.0 |
 | assets/icons/ui/design/inventory.csv | SolidCraft contributors | generated inventory of every app icon id with its design status and artwork file, original SolidCraft data | MIT OR Apache-2.0 |
-| assets/icons/ui/design/palette.toml | SolidCraft contributors | icon colour roles with light and dark values and stroke weights, original SolidCraft data | MIT OR Apache-2.0 |
+| assets/icons/ui/design/palette.toml | SolidCraft contributors | icon colour roles (light and dark) and accents, original SolidCraft data | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/bug_report.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/chevron.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/fit.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
@@ -139,101 +138,102 @@ Editable drawing code, native projects and shipped exports are collected under `
 | assets/icons/ui/design/svg/flat/style.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/undo.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/zoom.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/accessibility.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/align.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/appearance.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/arc3.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/as_built.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/auto_constrain.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/axis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/bendtable.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/body.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/boss.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/box.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/break.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/canvas.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/center_of_mass.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/chain.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/chamfer.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/circle.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/coil.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/combine.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/component.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/configuration_table.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/construction.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/curvature_comb.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/curvature_map.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/cylinder.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/dimension.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/dots.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/draft.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/draft_analysis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/dxf.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/ellipse.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/environment_map.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/extend.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/extrude.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/eye.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/fastener.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/fillet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/filter.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/flange.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/flat.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/fold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/folder.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/hem.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/hole.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/import.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/include.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/interference.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/intersect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/iso_analysis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/joint.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/line.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/loft.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/measure.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/min_radius.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/mirror.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/move.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/offset.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/offset_face.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/origin.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/params.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/pattern.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/pattern_circ.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/pattern_rect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/plane.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/plane_angle.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/plastic_assign.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/point.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/polygon.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/presspull.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/project.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/rect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/refold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/revolve.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/rib.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/scale.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/section.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/select.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sheet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sheet_rules.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/shell.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sketch.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sketch_fillet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sketch_mirror.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/slot.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/snap.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sphere.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/spline.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/split.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/surface.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/sweep.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/text.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/thread.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/trim.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/unfold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/zebra.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork from the icon source handoff and UX icon package | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/accessibility.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/align.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/appearance.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/arc3.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/as_built.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/auto_constrain.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/bendtable.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/body.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/boss.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/box.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/break.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/canvas.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/center_of_mass.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/chain.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/chamfer.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/circle.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/coil.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/combine.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/component.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/configuration_table.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/construction.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/curvature_comb.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/curvature_map.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/cylinder.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/dimension.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/dots.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/draft.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/draft_analysis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/dxf.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/ellipse.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/environment_map.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/extend.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/extrude.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/eye.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/fastener.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/fillet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/filter.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/flange.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/flat.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/fold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/folder.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/hem.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/hole.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/import.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/include.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/interference.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/intersect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/iso_analysis.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/joint.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/line.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/loft.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/measure.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/min_radius.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/mirror.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/move.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/offset.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/offset_face.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/origin.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/params.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/pattern.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/pattern_circ.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/pattern_rect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/placeholder.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_angle.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plastic_assign.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/polygon.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/presspull.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/project.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/rect.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/refold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/revolve.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/rib.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/scale.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/section.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/select.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sheet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sheet_rules.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/shell.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sketch.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sketch_fillet.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sketch_mirror.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/slot.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/snap.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sphere.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/spline.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/split.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/surface.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sweep.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/text.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/thread.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/trim.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/unfold.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/zebra.svg | SolidCraft contributors | two-tone modelling icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/small/section.svg | SolidCraft contributors | small-slot icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_animate.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_design.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |

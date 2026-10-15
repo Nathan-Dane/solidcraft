@@ -1,30 +1,69 @@
 # UI icon inventory
 
-Where the icon redesign stands (PR #853), generated from the command registry, the current Rust
-icon masters (`assets/icons/ui/source/icons.rs`) and the collected artwork in
-`assets/icons/ui/design/`. The per-icon data is in `assets/icons/ui/design/inventory.csv`.
+Where the icon redesign stands (PR #853), generated from the command registry, the icon ids the app
+used before the redesign, and the artwork in `assets/icons/ui/design/`. The per-icon data is in
+`assets/icons/ui/design/inventory.csv`.
 
-**None of the new artwork is wired into the application yet.** The app still draws every icon
-from the Rust masters; the SVGs are the masters for the build-time pipeline planned in
-[ui-icon-design-proposal.md](ui-icon-design-proposal.md).
+**The application now draws the SVG masters** (see below). Every icon id with no master draws the
+standard placeholder, so "stand-in" and "not drawn" below describe what still needs refining or drawing.
+The step that remains is refining the existing masters and adding the missing ones.
 
 ## Summary
 
-The app has 189 distinct icon ids (bound to the 368 commands or drawn in `icons.rs`).
+The app has 187 distinct icon ids (bound to the 368 commands, or in the pre-redesign icon set).
 
 | Status | Icon ids | Commands using them | Meaning |
 |---|---|---|---|
-| Done | 46 | 63 | Final-style master exists (Technical Accent, flat navigation, v3 application bar) |
-| Stand-in | 68 | 96 | Quick placeholder drawn in the handoff palette; to be redrawn as a master |
-| Not drawn | 75 | 74 | No new artwork at all |
+| Done | 50 | 66 | Final-style master exists (Technical Accent, flat navigation, v3 application bar) |
+| Stand-in | 69 | 97 | Quick placeholder drawn in the handoff palette; to be redrawn as a master |
+| Not drawn | 68 | 70 | No new artwork at all |
 
 135 commands have no icon today and no toolbar place (browser, view and timeline housekeeping); they do not need one yet.
+
+## How the app draws icons
+
+Command, menu, browser and timeline icons are these SVG masters. Nothing else draws them:
+the old Rust icon drawing (`assets/icons/ui/source/icons.rs`) is gone.
+
+- `crates/ui-egui/build.rs` embeds `svg/**`, `palette.toml` and `aliases.toml` at build time (a bad hex,
+  an unknown accent or an alias to a missing master fails the build).
+- `crates/ui-egui/src/icon_svg.rs` parses each master once and rasterises it with tiny-skia at the
+  physical pixel size it is drawn, cached as a texture per (master, theme, accent, size). The
+  `small/` variant is used at 24 px and below where one exists.
+- `icons::paint(painter, rect, name, ..)` is unchanged for callers, but the ink, fill and accent colours
+  they pass are ignored: the palette decides. Only the ink's opacity is kept, so dimmed buttons dim their
+  icon. `icons::paint_on(.., Some(true), ..)` draws for a surface that is always dark (the application bar).
+- A name with no master (and no alias) draws `placeholder`, the standard placeholder (a dotted frame
+  around a plain block). Replacing it is just adding `svg/model/<icon-id>.svg`.
+
+### Changing colours (one place)
+
+Edit `assets/icons/ui/design/palette.toml`:
+
+- `[roles.*]`: each colour role has a `light` and a `dark` hex. The SVGs store the light hex (or
+  `currentColor` for the `line` role), so artwork never changes when a colour does.
+- `[accents.*]`: an accent replaces the roles it lists, normally `active-1/2/3`. Proposed accents: `surface`
+  (orange), `form` (purple), `mesh` (yellow), `sketch` (amber). Add an accent by adding a table.
+
+### Same meaning, different accent
+
+`aliases.toml` makes one icon id reuse another's artwork, optionally in an accent:
+`surface_extrude = { master = "extrude", accent = "surface" }`. The five surface operations that have a
+solid twin (extrude, revolve, sweep, loft, fillet) are done this way, so they stay identical to the solid
+icon and differ only in colour. Add a row for any other pair (for example a mesh or form twin).
+
+### Not replaced yet
+
+The window caption buttons, transport controls, badges, pin, caret, disclosure arrow and the brand mark
+(`glyphs.rs`), the navigation cube and axis tips, snap and dimension markers, and the agent pointer are
+drawn controls and viewport graphics, not command icons, and are unchanged. The colour vision modes do
+not reach the new icons yet.
 
 ## Artwork layout (`assets/icons/ui/design/`)
 
 | Path | What |
 |---|---|
-| `svg/model/` (95) | Two-tone modelling, analysis, sketch and object masters |
+| `svg/model/` (96) | Two-tone modelling, analysis, sketch and object masters |
 | `svg/small/` (1) | Small-slot variants, only where the artwork differs (Section Analysis) |
 | `svg/flat/` (18) | Single-colour application-bar and navigation icons, painted with `currentColor` |
 | `svg/workspace/` (4) | Design, Animate, Render (planned), Drawing (planned) |
@@ -51,7 +90,7 @@ preview PNGs (5 MB) and the 1024 px brand `logo.svg` were not committed.
 - `gap` is the surface colour used for knock-outs between overlapping parts.
 - File names are app icon ids; one master per concept, with `aliases.toml` for variants that share it.
 
-## Done (46 icon ids)
+## Done (50 icon ids)
 
 | App icon id | Commands | Artwork | Example command |
 |---|---|---|---|
@@ -97,6 +136,10 @@ preview PNGs (5 MB) and the 1024 px brand `logo.svg` were not committed.
 | `sketch` | 3 | `svg/model/sketch.svg` | `sketch.create` |
 | `spin` | 0 | `svg/flat/spin.svg` | – |
 | `style` | 0 | `svg/flat/style.svg` | – |
+| `surface_extrude` | 1 | `svg/model/extrude.svg (alias of extrude, surface accent)` | `surface.extrude` |
+| `surface_fillet` | 0 | `svg/model/fillet.svg (alias of fillet, surface accent)` | – |
+| `surface_revolve` | 1 | `svg/model/revolve.svg (alias of revolve, surface accent)` | `surface.revolve` |
+| `surface_sweep` | 1 | `svg/model/sweep.svg (alias of sweep, surface accent)` | `surface.sweep` |
 | `sweep` | 1 | `svg/model/sweep.svg` | `solid.sweep` |
 | `undo` | 1 | `svg/flat/undo.svg` | `edit.undo` |
 | `zebra` | 1 | `svg/model/zebra.svg` | `inspect.zebra` |
@@ -109,7 +152,7 @@ Notes:
 - `save`, `help`, `home`, `folder` and `bug_report` use the rounder redesigns in preference to the handoff versions.
 - Dark mode has `moon`; the matching `sun` is **not drawn**.
 
-## Stand-ins, to redraw as masters (68 icon ids)
+## Stand-ins, to redraw as masters (69 icon ids)
 
 | App icon id | Commands | Artwork | Example command |
 |---|---|---|---|
@@ -177,15 +220,16 @@ Notes:
 | `spline` | 1 | `svg/model/spline.svg` | `sketch.spline.fit_point` |
 | `spline_cv` | 2 | `svg/model/spline.svg (alias of spline)` | `sketch.spline.control_point` |
 | `split` | 2 | `svg/model/split.svg` | `solid.split_face` |
+| `surface_loft` | 1 | `svg/model/loft.svg (alias of loft, surface accent)` | `surface.loft` |
 | `text` | 1 | `svg/model/text.svg` | `sketch.text` |
 | `thread` | 1 | `svg/model/thread.svg` | `solid.thread` |
 | `trim` | 2 | `svg/model/trim.svg` | `sketch.trim` |
 | `unfold` | 1 | `svg/model/unfold.svg` | `sheet.unfold` |
 
-New ids with artwork but no app icon yet: `align`, `bendtable`, `chain`, `chevron`, `dots`, `filter`, `nav_settings`, `pattern`, `plane_angle`, `select`, `sheet`, `surface`, `ws_animate`, `ws_design`, `ws_drawing`, `ws_render`
+New ids with artwork but no app icon yet: `align`, `bendtable`, `chain`, `chevron`, `dots`, `filter`, `nav_settings`, `pattern`, `placeholder`, `plane_angle`, `select`, `sheet`, `surface`, `ws_animate`, `ws_design`, `ws_drawing`, `ws_render`
 (`dots` is the overflow menu, `chain` a link, `select` the pointer, `sheet` a sheet-metal part, `surface` a generic surface, `plane_angle` the angled plane, `ws_*` the workspaces, `chevron` and `nav_settings` navigation).
 
-## Not drawn (75 icon ids)
+## Not drawn (68 icon ids)
 
 | App icon id | Commands | Example command |
 |---|---|---|
@@ -218,7 +262,6 @@ New ids with artwork but no app icon yet: `align`, `bendtable`, `chain`, `chevro
 | `delete` | 4 | `selection.delete` |
 | `drive` | 1 | `joint.drive` |
 | `emboss` | 1 | `solid.emboss` |
-| `error` | 0 | – |
 | `export` | 2 | `file.export` |
 | `finish` | 2 | `sketch.finish` |
 | `fit_section` | 1 | `sketch.fit_curves_to_section` |
@@ -251,18 +294,12 @@ New ids with artwork but no app icon yet: `align`, `bendtable`, `chain`, `chevro
 | `stitch` | 1 | `surface.stitch` |
 | `sun` | 0 | – |
 | `surface_blend` | 0 | – |
-| `surface_extrude` | 1 | `surface.extrude` |
-| `surface_fillet` | 0 | – |
-| `surface_loft` | 1 | `surface.loft` |
 | `surface_offset` | 1 | `surface.offset` |
-| `surface_revolve` | 1 | `surface.revolve` |
-| `surface_sweep` | 1 | `surface.sweep` |
 | `svg` | 1 | `sketch.insert_svg` |
 | `thicken` | 1 | `surface.thicken` |
 | `torus` | 1 | `solid.torus` |
 | `unstitch` | 1 | `surface.unstitch` |
 | `untrim` | 1 | `surface.untrim` |
-| `update` | 0 | – |
 | `warning` | 0 | – |
 
 Groups: sketch constraints (`c_*`, 12), surface operations (`surface_*`, `patch`, `ruled`, `stitch`, `thicken`, `untrim`, ...),

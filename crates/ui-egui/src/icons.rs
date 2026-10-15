@@ -1,9 +1,16 @@
-//! Stable UI rendering boundary for the collected artwork. Compiled only at L5.
-#[path = "../../../assets/icons/ui/source/icons.rs"]
-mod source;
-pub use source::paint;
-#[cfg(test)]
-pub(crate) use source::paint_with;
+//! Stable UI rendering boundary for the icon artwork. Compiled only at L5.
+//!
+//! Command, menu, browser and timeline icons are the SVG masters in `assets/icons/ui/design/svg`,
+//! rendered by [`crate::icon_svg`]: colours come from `palette.toml` (light and dark, and the
+//! accents), never from the caller. An icon with no master yet draws the placeholder.
+//! The glyph, marker, navigation and pointer sources below are not command icons.
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+
+use egui::{Color32, Painter, Rect, TextureHandle, TextureOptions, pos2};
+
+use crate::icon_svg::{self, Look};
+
 #[path = "../../../assets/icons/ui/source/glyphs.rs"]
 pub(crate) mod glyphs;
 #[path = "../../../assets/icons/ui/source/markers.rs"]
@@ -12,3 +19,45 @@ pub(crate) mod markers;
 pub(crate) mod navigation;
 #[path = "../../../assets/icons/ui/source/pointer.rs"]
 pub(crate) mod pointer;
+
+/// Textures already rasterised: one per (master, look, pixel size).
+#[derive(Clone, Default)]
+struct Cache(Arc<Mutex<HashMap<(&'static str, Look, u32), TextureHandle>>>);
+
+/// Draw the icon `name` in `r`. The ink, fill and accent colours the callers pass are no longer
+/// used: the palette decides. Only the ink's opacity is kept, so a dimmed (disabled) button dims
+/// its icon.
+pub fn paint(p: &Painter, r: Rect, name: &str, ink: Color32, _fill: Color32, _accent: Color32) {
+    paint_icon(p, r, name, f32::from(ink.a()) / 255.0);
+}
+
+/// [`paint`] with an explicit opacity (0 to 1).
+pub fn paint_icon(p: &Painter, r: Rect, name: &str, opacity: f32) {
+    paint_on(p, r, name, None, opacity);
+}
+
+/// Draw the icon `name` for a surface that is always dark (the application bar), whatever the
+/// theme: `dark: Some(true)`. `None` follows the theme.
+pub fn paint_on(p: &Painter, r: Rect, name: &str, dark: Option<bool>, opacity: f32) {
+    let ctx = p.ctx();
+    let ppp = ctx.pixels_per_point().max(0.5);
+    let side = r.width().min(r.height());
+    let px = (side * ppp).round().clamp(8.0, 512.0) as u32;
+    let resolved = icon_svg::resolve(name);
+    let look = Look { dark: dark.unwrap_or_else(|| ctx.global_style().visuals.dark_mode), accent: resolved.accent };
+    let cache = ctx.data_mut(|d| d.get_temp_mut_or_insert_with(egui::Id::new("sc_icon_cache"), Cache::default).clone());
+    let Ok(mut map) = cache.0.lock() else { return };
+    let key = (resolved.master, look, px);
+    if let std::collections::hash_map::Entry::Vacant(slot) = map.entry(key) {
+        let Some(doc) = icon_svg::doc_for(resolved.master, px) else { return };
+        let Some(pm) = icon_svg::render(doc, look, px) else { return };
+        let image = egui::ColorImage::from_rgba_premultiplied([px as usize, px as usize], pm.data());
+        slot.insert(ctx.load_texture(format!("icon:{}:{px}", resolved.master), image, TextureOptions::LINEAR));
+    }
+    let Some(tex) = map.get(&key) else { return };
+    // Snap the image to whole physical pixels so it stays crisp.
+    let size = px as f32 / ppp;
+    let min = pos2(((r.center().x - size / 2.0) * ppp).round() / ppp, ((r.center().y - size / 2.0) * ppp).round() / ppp);
+    let tint = Color32::from_white_alpha((opacity.clamp(0.0, 1.0) * 255.0).round() as u8);
+    p.image(tex.id(), Rect::from_min_size(min, egui::vec2(size, size)), Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
+}

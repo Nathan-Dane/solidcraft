@@ -25,6 +25,7 @@ for f in files:
             for a in ('transform', 'style', 'class'):
                 if c.get(a): err(f, '%s attribute on <%s>' % (a, tag))
             if c.get('id'): ids.append(c.get('id'))
+            if tag == 'path' and not re.fullmatch(r'[MLCQAZ0-9 .\-]+', c.get('d', '')): err(f, 'path data may use only absolute M L C Q A Z')
             m = mask or tag in ('mask', 'clipPath')
             for k in ('fill', 'stroke'):
                 v = c.get(k)
@@ -47,7 +48,13 @@ for f in files:
     if '/small/' in f and os.path.basename(f)[:-4] not in names: err(f, 'small variant without a master')
 al = tomllib.load(open(d + '/aliases.toml', 'rb')).get('alias', {})
 for a, t in al.items():
+    if isinstance(t, dict):
+        if t.get('accent') not in pal.get('accents', {}): err(d + '/aliases.toml', '%s: unknown accent %s' % (a, t.get('accent')))
+        t = t.get('master')
     if t not in names: err(d + '/aliases.toml', '%s -> %s: no such master' % (a, t))
     if a in names: err(d + '/aliases.toml', '%s is both an alias and a master' % a)
+for fam_acc, roles_ in pal.get('accents', {}).items():
+    for r in roles_:
+        if r not in pal['roles']: err(d + '/palette.toml', 'accent %s overrides unknown role %s' % (fam_acc, r))
 print('\n'.join(bad) if bad else 'icons: %d masters, palette, naming and element rules ok' % len(files))
 sys.exit(1 if bad else 0)

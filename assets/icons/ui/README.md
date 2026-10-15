@@ -1,14 +1,11 @@
 # UI artwork
 
-Edit the Rust drawing masters in `source/`; the UI crate compiles them through
-`crates/ui-egui/src/icons.rs`. Use the 24 × 24 grid and semantic ink/fill/accent
-colours. Icon IDs and their geometry live together in `source/icons.rs`;
-unknown IDs retain the existing fallback. Add new artwork there without
-maintaining a separate ID registry.
+Command icons are the SVG masters in `design/svg/`, drawn by `crates/ui-egui/src/icon_svg.rs`; colours
+(light, dark and accents) live in `design/palette.toml`. The Rust sources in `source/` are the drawn
+glyphs, markers, navigation graphics and pointer, which are not command icons.
 
 | Source | Artwork | Consumers |
 | --- | --- | --- |
-| `icons.rs` | Toolbar, browser, menu and constraint icons | `icons::paint` |
 | `glyphs.rs` | Brand mark, captions, transport, badges, pin, caret, disclosure, radial centre and removal cross | toolbar, titlebar, timeline, browser, menus |
 | `navigation.rs` | Signed axes, cube faces/labels and arrows | viewport/navigation cube |
 | `markers.rs` | Constraint mappings/letters, snap markers and dimension arrowheads | sketch, assembly and dimensions |
@@ -21,10 +18,10 @@ future native work and linked inputs under `source/work/`, with attribution.
 Original artwork is MIT OR Apache-2.0; caption geometry retains VectorCraft
 attribution in the root `ATTRIBUTION.md`.
 
-## Design masters (redesign in progress)
+## Design masters (the icon set)
 
 `design/svg/` holds the SVG masters for the icon redesign (PR #853); `design/palette.toml` gives every
-colour role a light and a dark value. They are not compiled into the application yet; see
+colour role a light and a dark value. They are the application's icons; see
 [docs/ui-icon-inventory.md](../../../docs/ui-icon-inventory.md) for the layout, the rules and what is
 done, a stand-in or missing. Check changes with `python3 assets/icons/ui/design/tools/lint_icons.py`
 and look at them with `tools/preview.py`. Every file there has a row in `ATTRIBUTION.md`.
