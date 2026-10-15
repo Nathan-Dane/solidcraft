@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Align</title>
+  <path d="M21.33 19.83L33.33 25.83L21.33 31.83L9.33 25.83Z" fill="#e2e8ef"/>
+  <path d="M9.33 25.83L21.33 31.83L21.33 45.17L9.33 39.17Z" fill="#b8c3cf"/>
+  <path d="M33.33 25.83L21.33 31.83L21.33 45.17L33.33 39.17Z" fill="#8e9faf"/>
+  <path d="M45.33 19.83L57.33 25.83L45.33 31.83L33.33 25.83Z" fill="#b9ddf8"/>
+  <path d="M33.33 25.83L45.33 31.83L45.33 45.17L33.33 39.17Z" fill="#328bd3"/>
+  <path d="M57.33 25.83L45.33 31.83L45.33 45.17L57.33 39.17Z" fill="#236ead"/>
+  <path d="M21.33 19.83L33.33 25.83L33.33 39.17L21.33 45.17L9.33 39.17L9.33 25.83ZM9.33 25.83L21.33 31.83L33.33 25.83M21.33 31.83L21.33 45.17M45.33 19.83L57.33 25.83L57.33 39.17L45.33 45.17L33.33 39.17L33.33 25.83ZM33.33 25.83L45.33 31.83L57.33 25.83M45.33 31.83L45.33 45.17" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M5.33 19.83L58.67 19.83" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

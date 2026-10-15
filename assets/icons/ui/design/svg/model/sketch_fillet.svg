@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Sketch fillet</title>
+  <path d="M11.05 55.12L11.05 31.12M32.38 9.79L53.71 9.79" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M11.05 31.12A21.33 21.33 0 0 1 32.38 9.79" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

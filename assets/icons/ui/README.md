@@ -23,7 +23,8 @@ attribution in the root `ATTRIBUTION.md`.
 
 ## Design masters (redesign in progress)
 
-`design/` holds the SVG masters, placeholder stand-ins, generators and `inventory.csv` for the
-icon redesign (PR #853). They are not compiled into the application yet; see
-[docs/ui-icon-inventory.md](../../../docs/ui-icon-inventory.md) for what is done, what is a
-stand-in and what is still missing. Every file there has a row in `ATTRIBUTION.md`.
+`design/svg/` holds the SVG masters for the icon redesign (PR #853); `design/palette.toml` gives every
+colour role a light and a dark value. They are not compiled into the application yet; see
+[docs/ui-icon-inventory.md](../../../docs/ui-icon-inventory.md) for the layout, the rules and what is
+done, a stand-in or missing. Check changes with `python3 assets/icons/ui/design/tools/lint_icons.py`
+and look at them with `tools/preview.py`. Every file there has a row in `ATTRIBUTION.md`.

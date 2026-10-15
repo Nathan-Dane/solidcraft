@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Draft</title>
+  <path d="M32 9.29L42.67 14.62L32 19.95L21.33 14.62Z" fill="#e2e8ef"/>
+  <path d="M21.33 14.62L32 19.95L32 54.62L10.67 43.95Z" fill="#b8c3cf"/>
+  <path d="M42.67 14.62L32 19.95L32 54.62L53.33 43.95Z" fill="#328bd3"/>
+  <path d="M32 9.29L42.67 14.62L53.33 43.95L32 54.62L10.67 43.95L21.33 14.62ZM21.33 14.62L32 19.95L42.67 14.62M32 19.95L32 54.62" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

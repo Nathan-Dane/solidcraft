@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Sphere</title>
+  <path d="M17.33 25.33A17.33 12 0 0 1 41.33 12A21.33 21.33 0 0 0 17.33 25.33Z" fill="#b9ddf8"/>
+  <path d="M8 32A24 24 0 1 0 56 32A24 24 0 1 0 8 32Z" fill="#328bd3"/>
+  <path d="M8 32A24 24 0 1 0 56 32A24 24 0 1 0 8 32ZM8 32A24 8 0 0 0 56 32" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

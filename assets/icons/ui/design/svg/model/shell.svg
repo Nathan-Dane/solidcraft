@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Shell</title>
+  <path d="M32 9.38L53.33 20.05L32 30.71L10.67 20.05Z" fill="#e2e8ef"/>
+  <path d="M10.67 20.05L32 30.71L32 54.71L10.67 44.05Z" fill="#b8c3cf"/>
+  <path d="M53.33 20.05L32 30.71L32 54.71L53.33 44.05Z" fill="#8e9faf"/>
+  <path d="M32 14.71L44 20.58L32 26.45L20 20.58Z" fill="#328bd3"/>
+  <path d="M32 9.38L53.33 20.05L53.33 44.05L32 54.71L10.67 44.05L10.67 20.05ZM10.67 20.05L32 30.71L53.33 20.05M32 30.71L32 54.71M32 14.71L44 20.58L32 26.45L20 20.58Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Refold</title>
+  <path d="M12.75 46.71L44.75 46.71L44.75 18.71L51.42 18.71L51.42 53.38L12.75 53.38Z" fill="#328bd3"/>
+  <path d="M12.75 46.71L44.75 46.71L44.75 18.71L51.42 18.71L51.42 53.38L12.75 53.38Z" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18.08 36.05C18.08 25.38 24.75 17.38 36.75 16.05M30.35 11.51L36.75 16.05L32.48 22.45" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

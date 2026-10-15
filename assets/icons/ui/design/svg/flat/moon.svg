@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Moon</title>
+  <defs>
+    <mask id="thin-crescent" maskUnits="userSpaceOnUse" x="-32" y="-32" width="128" height="128">
+      <path d="M-29.37 -34.63L98.63 -34.63L98.63 93.37L-29.37 93.37Z" fill="white"/>
+      <circle cx="41.63" cy="22.37" r="25" fill="black"/>
+    </mask>
+  </defs>
+  <circle cx="34.63" cy="29.37" r="24" fill="currentColor" mask="url(#thin-crescent)"/>
+</svg>

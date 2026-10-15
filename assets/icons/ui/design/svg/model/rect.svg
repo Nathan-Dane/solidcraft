@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Rect</title>
+  <path d="M10.67 16L53.33 16L53.33 48L10.67 48Z" fill="#b9ddf8"/>
+  <path d="M10.67 16L53.33 16L53.33 48L10.67 48Z" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7.6 16A3.07 3.07 0 1 0 13.73 16A3.07 3.07 0 1 0 7.6 16ZM50.27 48A3.07 3.07 0 1 0 56.4 48A3.07 3.07 0 1 0 50.27 48Z" fill="#236ead"/>
+</svg>

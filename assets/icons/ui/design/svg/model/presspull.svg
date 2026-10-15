@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Presspull</title>
+  <path d="M32.01 25.16L55.92 37.12L32.01 49.07L8.11 37.12Z" fill="#e2e8ef"/>
+  <path d="M8.11 37.12L32.01 49.07L32.01 59.69L8.11 47.74Z" fill="#b8c3cf"/>
+  <path d="M55.92 37.12L32.01 49.07L32.01 59.69L55.92 47.74Z" fill="#8e9faf"/>
+  <path d="M32.01 25.16L55.92 37.12L55.92 47.74L32.01 59.69L8.11 47.74L8.11 37.12ZM8.11 37.12L32.01 49.07L55.92 37.12M32.01 49.07L32.01 59.69" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32.01 5.24L32.01 22.51M26.17 11.09L32.01 5.24L37.86 11.09M26.17 16.66L32.01 22.51L37.86 16.66" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

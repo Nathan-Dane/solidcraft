@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Offset face</title>
+  <path d="M32 20L56 32L32 44L8 32Z" fill="#e2e8ef"/>
+  <path d="M8 32L32 44L32 54.67L8 42.67Z" fill="#b8c3cf"/>
+  <path d="M56 32L32 44L32 54.67L56 42.67Z" fill="#8e9faf"/>
+  <path d="M8 21.33L32 9.33L56 21.33L32 33.33Z" fill="#b9ddf8"/>
+  <path d="M32 20L56 32L56 42.67L32 54.67L8 42.67L8 32ZM8 32L32 44L56 32M32 44L32 54.67M8 21.33L32 9.33L56 21.33L32 33.33Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Rib</title>
+  <path d="M10.67 49.37L10.67 14.7L20 14.7L20 40.04L53.33 40.04L53.33 49.37Z" fill="#b8c3cf"/>
+  <path d="M20 40.04L38.67 21.37L38.67 40.04Z" fill="#328bd3"/>
+  <path d="M10.67 49.37L10.67 14.7L20 14.7L20 40.04L53.33 40.04L53.33 49.37ZM20 40.04L38.67 21.37L38.67 40.04" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,49 @@
+# Icon colour roles. Artwork in svg/ uses the light hex values below (or `currentColor` for the
+# `line` role); the generator maps each hex to its role and the app resolves the role to the
+# value for the active theme. Every role has a light and a dark hex.
+# Dark theme: outlines become light, faces darken (lightest face stays lightest), blues invert in
+# lightness so the active ramp keeps its order against the dark background.
+
+[roles.ink]        # outlines and details drawn over a face
+light = "#34465b"
+dark  = "#dbe4ee"
+[roles.line]       # line art that sits directly on the UI background (SVG: currentColor)
+light = "#34465b"
+dark  = "#dbe4ee"
+[roles.passive-1]  # passive geometry, lightest face
+light = "#e2e8ef"
+dark  = "#566377"
+[roles.passive-2]
+light = "#b8c3cf"
+dark  = "#455266"
+[roles.passive-3]  # darkest passive face
+light = "#8e9faf"
+dark  = "#354152"
+[roles.gap]        # knock-out gaps that separate overlapping parts: the surface behind the icon
+light = "#ffffff"
+dark  = "#1e2530"
+[roles.guide]      # construction and guide dots
+light = "#6f879c"
+dark  = "#8a9db0"
+[roles.active-1]   # changed or result geometry, palest face
+light = "#b9ddf8"
+dark  = "#244a70"
+[roles.active-2]
+light = "#328bd3"
+dark  = "#3f93de"
+[roles.active-3]   # strongest blue: strokes and accents
+light = "#236ead"
+dark  = "#86c8f8"
+
+[strokes]          # on the 64 grid
+geometry = 2.55
+action = 4.25
+navigation = 5.6
+parameters = 4.2
+
+[families]         # accent overrides for the active ramp (not adopted yet; see the proposal)
+solid   = "blue"
+surface = "orange"
+form    = "purple"
+mesh    = "yellow"
+sketch_context = "#B4530A"

@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>As built</title>
+  <path d="M6.96 26.02L18 32.46L18 44.42L6.96 37.98Z" fill="#b8c3cf"/>
+  <path d="M18 32.46L29.04 26.02L29.04 37.98L18 44.42Z" fill="#8e9faf"/>
+  <path d="M6.96 26.02L18 19.58L29.04 26.02L18 32.46Z" fill="#e2e8ef"/>
+  <path d="M6.96 26.02L18 19.58L29.04 26.02L29.04 37.98L18 44.42L6.96 37.98Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 32.46L6.96 26.02" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 32.46L29.04 26.02" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 32.46L18 44.42" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M34.96 26.02L46 32.46L46 44.42L34.96 37.98Z" fill="#b8c3cf"/>
+  <path d="M46 32.46L57.04 26.02L57.04 37.98L46 44.42Z" fill="#8e9faf"/>
+  <path d="M34.96 26.02L46 19.58L57.04 26.02L46 32.46Z" fill="#e2e8ef"/>
+  <path d="M34.96 26.02L46 19.58L57.04 26.02L57.04 37.98L46 44.42L34.96 37.98Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M46 32.46L34.96 26.02" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M46 32.46L57.04 26.02" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M46 32.46L46 44.42" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 25L40 25L40 39L24 39Z" fill="#328bd3" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="3" fill="#ffffff"/>
+</svg>

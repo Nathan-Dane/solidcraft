@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Fastener</title>
+  <path d="M16.2 12.37L31.99 4.48L47.79 12.37L47.79 23.23L31.99 31.13L16.2 23.23Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M16.2 12.37L31.99 4.48L47.79 12.37L31.99 20.27Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.09 28.17L25.09 52.84L31.99 59.75L38.9 52.84L38.9 28.17" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.09 37.05L38.9 42.97" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.09 45.93L38.9 51.85" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M27.06 12.37L36.93 12.37M31.99 8.43L31.99 17.31" fill="none" stroke="#236ead" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

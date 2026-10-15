@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Plastic assign</title>
+  <path d="M32 20.33L56 32.33L32 44.33L8 32.33Z" fill="#e2e8ef"/>
+  <path d="M8 32.33L32 44.33L32 53.67L8 41.67Z" fill="#b8c3cf"/>
+  <path d="M56 32.33L32 44.33L32 53.67L56 41.67Z" fill="#8e9faf"/>
+  <path d="M24 13.67A8 3.2 0 1 0 40 13.67A8 3.2 0 1 0 24 13.67Z" fill="#b9ddf8"/>
+  <path d="M24 13.67L24 27A8 3.2 0 0 0 40 27L40 13.67A8 3.2 0 0 1 24 13.67Z" fill="#328bd3"/>
+  <path d="M32 20.33L56 32.33L56 41.67L32 53.67L8 41.67L8 32.33ZM8 32.33L32 44.33L56 32.33M32 44.33L32 53.67M24 13.67A8 3.2 0 1 0 40 13.67A8 3.2 0 1 0 24 13.67ZM24 13.67L24 27M40 13.67L40 27" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

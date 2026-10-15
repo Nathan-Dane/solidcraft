@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Curvature map</title>
+  <path d="M9.5 35.62Q23.5 9.62 50.5 15.62L54.5 35.62Q32.5 30.62 18.5 49.62Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M30.5 16.62Q42.5 12.62 50.5 15.62L53.5 27.62Q42.5 24.62 34.5 31.62Z" fill="#328bd3"/>
+  <path d="M26.5 29.62Q35.5 22.62 39.5 25.62Q37.5 34.62 28.5 39.62L18.5 49.62L15.5 40.62Z" fill="#b9ddf8"/>
+  <path d="M9.5 35.62Q23.5 9.62 50.5 15.62L54.5 35.62Q32.5 30.62 18.5 49.62Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

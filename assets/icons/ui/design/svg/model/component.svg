@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Component</title>
+  <path d="M27 15.5L40 23L40 38.5L27 31Z" fill="#b8c3cf"/>
+  <path d="M40 23L53 15.5L53 31L40 38.5Z" fill="#8e9faf"/>
+  <path d="M27 15.5L40 8L53 15.5L40 23Z" fill="#e2e8ef"/>
+  <path d="M27 15.5L40 8L53 15.5L53 31L40 38.5L27 31Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M40 23L27 15.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M40 23L53 15.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M40 23L40 38.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M11 33.5L24 41L24 56.5L11 49Z" fill="#b8c3cf"/>
+  <path d="M24 41L37 33.5L37 49L24 56.5Z" fill="#8e9faf"/>
+  <path d="M11 33.5L24 26L37 33.5L24 41Z" fill="#e2e8ef"/>
+  <path d="M11 33.5L24 26L37 33.5L37 49L24 56.5L11 49Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 41L11 33.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 41L37 33.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 41L24 56.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

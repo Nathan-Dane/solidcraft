@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Ws animate</title>
+  <path d="M16.13 32.12L24.79 37.12L24.79 47.12L16.13 52.12L7.47 47.12L7.47 37.12Z" fill="#e2e8ef" stroke="#8e9faf" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="4 3.5"/>
+  <path d="M33.87 34.62L45.13 41.12L45.13 54.12L33.87 47.62Z" fill="#b8c3cf"/>
+  <path d="M45.13 41.12L56.39 34.62L56.39 47.62L45.13 54.12Z" fill="#8e9faf"/>
+  <path d="M33.87 34.62L45.13 28.12L56.39 34.62L45.13 41.12Z" fill="#e2e8ef"/>
+  <path d="M45.13 28.12L56.39 34.62L56.39 47.62L45.13 54.12L33.87 47.62L33.87 34.62Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M33.87 34.62L45.13 41.12L56.39 34.62M45.13 41.12L45.13 54.12" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.13 29.12Q29.13 5.12 47.13 15.12" fill="none" stroke="#328bd3" stroke-width="4.5" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M55.13 19.62L44.13 21.12L50.13 9.62Z" fill="#236ead" stroke="#236ead" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

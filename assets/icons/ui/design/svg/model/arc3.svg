@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Arc3</title>
+  <path d="M10.67 42.12A21.33 21.33 0 0 1 53.33 42.12" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7.6 42.12A3.07 3.07 0 1 0 13.73 42.12A3.07 3.07 0 1 0 7.6 42.12ZM50.27 42.12A3.07 3.07 0 1 0 56.4 42.12A3.07 3.07 0 1 0 50.27 42.12ZM28.93 42.12A3.07 3.07 0 1 0 35.07 42.12A3.07 3.07 0 1 0 28.93 42.12Z" fill="#236ead"/>
+</svg>

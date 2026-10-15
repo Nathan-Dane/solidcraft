@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Snap</title>
+  <path d="M10.67 51.95L10.67 11.95L21.33 11.95L21.33 51.95Z" fill="#b8c3cf"/>
+  <path d="M21.33 17.29L40 17.29L32 27.95L21.33 27.95Z" fill="#328bd3"/>
+  <path d="M10.67 51.95L10.67 11.95L21.33 11.95L21.33 51.95ZM21.33 17.29L40 17.29L32 27.95L21.33 27.95M8 51.95L56 51.95" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Bug report</title>
+  <defs>
+    <mask id="bug-v2-split" maskUnits="userSpaceOnUse" x="-32" y="-32" width="128" height="128">
+      <path d="M-32 -32L96 -32L96 96L-32 96Z" fill="white"/>
+      <path d="M32 26L32 53" stroke="black" stroke-width="2.8" stroke-linejoin="round" stroke-linecap="round"/>
+    </mask>
+  </defs>
+  <path d="M27 18L22 9M37 18L42 9" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M24 24A8 7 0 0 1 40 24Z" fill="currentColor"/>
+  <path d="M45.5 39A13.5 15 0 1 1 18.5 39A13.5 15 0 1 1 45.5 39Z" fill="currentColor" mask="url(#bug-v2-split)"/>
+  <path d="M19 30L10 25M18.5 39L9 39M20 47L11.5 53M45 30L54 25M45.5 39L55 39M44 47L52.5 53" fill="none" stroke="currentColor" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

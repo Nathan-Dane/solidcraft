@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Dimension</title>
+  <path d="M10.67 32L22.67 24L22.67 40ZM53.33 32L41.33 24L41.33 40Z" fill="currentColor" fill-rule="evenodd"/>
+  <path d="M10.67 13.33L10.67 50.67M53.33 13.33L53.33 50.67" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M21.33 32L42.67 32" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Flat</title>
+  <path d="M21.33 8L42.67 8L42.67 21.33L56 21.33L56 42.67L42.67 42.67L42.67 56L21.33 56L21.33 42.67L8 42.67L8 21.33L21.33 21.33Z" fill="#b9ddf8"/>
+  <path d="M21.33 21.33L42.67 21.33L42.67 42.67L21.33 42.67Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M21.33 8L42.67 8L42.67 21.33L56 21.33L56 42.67L42.67 42.67L42.67 56L21.33 56L21.33 42.67L8 42.67L8 21.33L21.33 21.33Z" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

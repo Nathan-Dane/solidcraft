@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Flange</title>
+  <path d="M32 28.05L56 40.05L32 52.05L8 40.05Z" fill="#e2e8ef"/>
+  <path d="M8 40.05L32 52.05L32 56.05L8 44.05Z" fill="#b8c3cf"/>
+  <path d="M56 40.05L32 52.05L32 56.05L56 44.05Z" fill="#8e9faf"/>
+  <path d="M8 40.05L32 28.05L32 8.05L8 20.05Z" fill="#328bd3"/>
+  <path d="M32 28.05L56 40.05L56 44.05L32 56.05L8 44.05L8 40.05ZM8 40.05L32 52.05L56 40.05M32 52.05L32 56.05M8 40.05L32 28.05L32 8.05L8 20.05Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

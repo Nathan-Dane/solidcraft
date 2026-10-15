@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Sheet rules</title>
+  <path d="M14.75 8L38.75 8L49.42 18.67L49.42 56L14.75 56Z" fill="#e2e8ef"/>
+  <path d="M21.42 45.33L34.75 45.33L42.75 33.33L47.02 36L36.88 50.67L21.42 50.67Z" fill="#328bd3"/>
+  <path d="M14.75 8L38.75 8L49.42 18.67L49.42 56L14.75 56ZM38.75 8L38.75 18.67L49.42 18.67" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Surface</title>
+  <path d="M8 32.04C18.67 16.04 29.33 37.37 56 16.04L56 26.7C29.33 48.04 18.67 26.7 8 42.7Z" fill="#b9ddf8"/>
+  <path d="M8 42.7C18.67 26.7 29.33 48.04 56 26.7L56 32.04C29.33 53.37 18.67 32.04 8 48.04Z" fill="#328bd3"/>
+  <path d="M8 32.04C18.67 16.04 29.33 37.37 56 16.04L56 32.04C29.33 53.37 18.67 32.04 8 48.04Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Thread</title>
+  <path d="M21.33 13.33A10.67 4 0 1 0 42.67 13.33A10.67 4 0 1 0 21.33 13.33Z" fill="#e2e8ef"/>
+  <path d="M21.33 13.33L21.33 50.67A10.67 4 0 0 0 42.67 50.67L42.67 13.33A10.67 4 0 0 1 21.33 13.33Z" fill="#b8c3cf"/>
+  <path d="M21.33 13.33A10.67 4 0 1 0 42.67 13.33A10.67 4 0 1 0 21.33 13.33ZM21.33 13.33L21.33 50.67A10.67 4 0 0 0 42.67 50.67L42.67 13.33" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M21.33 24L42.67 18.67M21.33 33.33L42.67 28M21.33 42.67L42.67 37.33" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

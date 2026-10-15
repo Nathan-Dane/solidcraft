@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Spline</title>
+  <path d="M8 48C18.67 10.67 32 64 56 16" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M4.93 48A3.07 3.07 0 1 0 11.07 48A3.07 3.07 0 1 0 4.93 48ZM28.93 32A3.07 3.07 0 1 0 35.07 32A3.07 3.07 0 1 0 28.93 32ZM52.93 16A3.07 3.07 0 1 0 59.07 16A3.07 3.07 0 1 0 52.93 16Z" fill="#236ead"/>
+</svg>

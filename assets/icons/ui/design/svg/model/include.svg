@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Include</title>
+  <path d="M32 19.96L49.33 28.63L32 37.3L14.67 28.63Z" fill="#e2e8ef"/>
+  <path d="M14.67 28.63L32 37.3L32 55.96L14.67 47.3Z" fill="#b8c3cf"/>
+  <path d="M49.33 28.63L32 37.3L32 55.96L49.33 47.3Z" fill="#8e9faf"/>
+  <path d="M32 19.96L49.33 28.63L49.33 47.3L32 55.96L14.67 47.3L14.67 28.63ZM14.67 28.63L32 37.3L49.33 28.63M32 37.3L32 55.96" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 8.76L32 17.83" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

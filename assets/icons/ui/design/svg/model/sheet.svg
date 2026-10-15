@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Sheet</title>
+  <path d="M6.67 43.33L12 38L30.67 38L42.67 14L57.33 14L45.33 16.67L32 43.33Z" fill="#b9ddf8"/>
+  <path d="M6.67 43.33L32 43.33L45.33 16.67L57.33 16.67L57.33 23.33L49.33 23.33L36 50L6.67 50Z" fill="#328bd3"/>
+  <path d="M6.67 43.33L32 43.33L45.33 16.67L57.33 16.67L57.33 23.33L49.33 23.33L36 50L6.67 50ZM6.67 43.33L12 38L30.67 38L42.67 14L57.33 14" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

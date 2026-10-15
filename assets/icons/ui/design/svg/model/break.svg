@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Break</title>
+  <path d="M8 32L25.33 32M38.67 32L56 32" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22.27 32A3.07 3.07 0 1 0 28.4 32A3.07 3.07 0 1 0 22.27 32ZM35.6 32A3.07 3.07 0 1 0 41.73 32A3.07 3.07 0 1 0 35.6 32Z" fill="#236ead"/>
+</svg>

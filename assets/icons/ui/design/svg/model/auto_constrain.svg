@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Auto constrain</title>
+  <path d="M45.33 39.33L48 46L54.67 48.67L48 51.33L45.33 58L42.67 51.33L36 48.67L42.67 46Z" fill="#b9ddf8"/>
+  <path d="M28 4.67L33.87 18.8L48 24.67L33.87 30.53L28 44.67L22.13 30.53L8 24.67L22.13 18.8Z" fill="#328bd3"/>
+  <path d="M45.33 39.33L48 46L54.67 48.67L48 51.33L45.33 58L42.67 51.33L36 48.67L42.67 46Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

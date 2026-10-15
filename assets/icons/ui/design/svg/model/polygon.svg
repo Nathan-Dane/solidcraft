@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Polygon</title>
+  <path d="M32 8L53.33 20L53.33 44L32 56L10.67 44L10.67 20Z" fill="#b9ddf8"/>
+  <path d="M32 8L53.33 20L53.33 44L32 56L10.67 44L10.67 20Z" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28.93 32A3.07 3.07 0 1 0 35.07 32A3.07 3.07 0 1 0 28.93 32Z" fill="#236ead"/>
+</svg>
