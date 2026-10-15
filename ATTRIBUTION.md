@@ -333,6 +333,7 @@ Editable drawing code, native projects and shipped exports are collected under `
 | assets/icons/ui/design/tools/icon_status.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/lint_icons.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/preview.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/review_state.py | SolidCraft contributors | icon review state helper (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/review.json | SolidCraft contributors | icon review state (accepted icons and notes), original SolidCraft data | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/author/gen.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/author/i1.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |

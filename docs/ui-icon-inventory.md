@@ -22,6 +22,8 @@ Final, a tab filter, a search box, light/dark, and 16/24/48/64 px (the `small/` 
 - A final icon is not touched again: `lint_icons.py` fails when a final icon's master differs from the stored hash, and
   `tools/author/gen.py` skips it. Un-accept it on the page to work on it.
 
+Redrawing an icon clears its notes: `tools/author/gen.py <name>` does it by itself, and `icon_status.py --resolve <id>…` does it after a hand edit (aliases of the redrawn masters are cleared too). The open page picks the change up within a few seconds.
+
 The loop: the owner accepts some icons and writes notes on others; the agent runs `--notes`, redraws those icons using the notes (the page
 refreshes to show them), and this repeats until every icon is final. Notes on an alias card (for example `surface_trim`) apply to its master drawn in
 that accent.

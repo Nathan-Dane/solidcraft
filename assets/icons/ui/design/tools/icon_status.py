@@ -4,6 +4,7 @@
   python3 assets/icons/ui/design/tools/icon_status.py --serve        # review page on http://127.0.0.1:8770, saves design/review.json
   python3 assets/icons/ui/design/tools/icon_status.py                # writes target/icon-status.html (static: choices stay in the browser)
   python3 assets/icons/ui/design/tools/icon_status.py --notes        # icons that have notes and are not final (the work list)
+  python3 assets/icons/ui/design/tools/icon_status.py --resolve ID.. # clear the notes on icons just redrawn (gen.py does it by itself)
   python3 assets/icons/ui/design/tools/icon_status.py --csv          # also rewrites design/inventory.csv
   python3 assets/icons/ui/design/tools/icon_status.py --summary      # counts only
 
@@ -29,17 +30,10 @@ REVIEW = D + '/review.json'
 args = sys.argv[1:]
 out_path = args[args.index('--out') + 1] if '--out' in args else os.path.join(ROOT, 'target', 'icon-status.html')
 
-def master_hash(master):
-    h = hashlib.sha256()
-    for f in sorted(glob.glob(D + '/svg/*/' + master + '.svg')):
-        h.update(os.path.relpath(f, D).encode()); h.update(open(f, 'rb').read())
-    return h.hexdigest()
-def load_review():
-    try: r = json.load(open(REVIEW))
-    except (OSError, ValueError): r = {}
-    fin = r.get('final', {})
-    if isinstance(fin, list): fin = {i: '' for i in fin}
-    return {'final': dict(fin), 'notes': {k: v for k, v in r.get('notes', {}).items() if v.strip()}}
+sys.path.insert(0, HERE)
+import review_state
+load_review = review_state.load
+master_hash = review_state.master_hash
 
 def scan():
     """Everything derived from the repo: rows, summary."""
@@ -92,6 +86,12 @@ def scan():
     summary = '%d icon ids: %d done, %d stand-in, %d placeholder (%d commands: %d / %d / %d).' % (
         sum(cnt.values()), cnt['done'], cnt['stand-in'], cnt['placeholder'], sum(cmd_cnt.values()), cmd_cnt['done'], cmd_cnt['stand-in'], cmd_cnt['placeholder'])
     return rows, masters, pal, summary
+
+if '--resolve' in args:
+    ids = [a for a in args[args.index('--resolve') + 1:] if not a.startswith('--')]
+    cleared = review_state.resolve(ids)
+    print('cleared notes: ' + (' '.join(cleared) or 'none'))
+    sys.exit(0)
 
 rows, masters, pal, summary = scan()
 roles = pal['roles']; accents = pal.get('accents', {})
@@ -248,21 +248,22 @@ document.querySelectorAll('.sz').forEach(b=>b.onclick=()=>{const s=+b.dataset.s;
 document.getElementById('dk').onclick=function(){document.body.classList.toggle('dark');this.classList.toggle('on')};
 document.getElementById('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body()],{type:'application/json'}));a.download='review.json';a.click()};
 q.oninput=run;run();
+if(S.serving)setInterval(async()=>{if(document.activeElement&&document.activeElement.tagName=='TEXTAREA')return;
+ try{const r=await (await fetch('/api/review')).json();const a=JSON.stringify([[...fin].sort(),notes]),b=JSON.stringify([r.final,r.notes]);
+  if(a!=b){fin.clear();r.final.forEach(i=>fin.add(i));Object.keys(notes).forEach(k=>delete notes[k]);Object.assign(notes,r.notes);cards.forEach(c=>{c.querySelector('textarea').value=notes[c.dataset.id]||''});run()}}catch(e){}},3000);
 </script>'''
 
 if '--serve' in args:
     import http.server
     port = int(args[args.index('--serve') + 1]) if len(args) > args.index('--serve') + 1 and args[args.index('--serve') + 1].isdigit() else 8770
-    alias_raw = tomllib.load(open(D + '/aliases.toml', 'rb')).get('alias', {})
-    def master_of(i):
-        v = alias_raw.get(i)
-        return (v['master'] if isinstance(v, dict) else v) if v else i
+    _r = load_review(); review_state.save(_r['final'], _r['notes'])      # fills in missing hashes
     class H(http.server.BaseHTTPRequestHandler):
         def log_message(self, *a): pass
         def _send(self, code, body, ctype):
             b = body.encode(); self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(b))); self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(b)
         def do_GET(self):
             if self.path.split('?')[0] in ('/', '/index.html'): self._send(200, build_page(True), 'text/html; charset=utf-8')
+            elif self.path.split('?')[0] == '/api/review': self._send(200, json.dumps({'final': sorted(load_review()['final']), 'notes': load_review()['notes']}), 'application/json')
             else: self._send(404, 'not found', 'text/plain')
         def do_POST(self):
             if self.path != '/api/review': return self._send(404, 'not found', 'text/plain')
@@ -271,9 +272,7 @@ if '--serve' in args:
                 if n > 4_000_000: raise ValueError('too large')
                 inc = json.loads(self.rfile.read(n))
                 old = load_review()['final']
-                fin = {i: (old.get(i) or master_hash(master_of(i))) for i in inc.get('final', []) if re.fullmatch(r'[a-z][a-z0-9_]*', i)}
-                notes = {k: v for k, v in inc.get('notes', {}).items() if re.fullmatch(r'[a-z][a-z0-9_]*', k) and isinstance(v, str) and v.strip()}
-                with open(REVIEW, 'w') as f: json.dump({'version': 1, 'final': dict(sorted(fin.items())), 'notes': dict(sorted(notes.items()))}, f, indent=1, sort_keys=False); f.write('\n')
+                review_state.save({i: old.get(i, '') for i in inc.get('final', [])}, inc.get('notes', {}))
                 self._send(200, '{"ok":true}', 'application/json')
             except Exception as e:
                 self._send(400, json.dumps({'ok': False, 'error': str(e)}), 'application/json')
