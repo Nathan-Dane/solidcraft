@@ -53,6 +53,10 @@ for a, t in al.items():
         t = t.get('master')
     if t not in names: err(d + '/aliases.toml', '%s -> %s: no such master' % (a, t))
     if a in names: err(d + '/aliases.toml', '%s is both an alias and a master' % a)
+import os
+if os.path.exists(d + '/status.toml'):
+    for sid in tomllib.load(open(d + '/status.toml', 'rb')).get('stand_in', []):
+        if sid not in names: err(d + '/status.toml', 'stand_in %s has no master' % sid)
 for fam_acc, roles_ in pal.get('accents', {}).items():
     for r in roles_:
         if r not in pal['roles']: err(d + '/palette.toml', 'accent %s overrides unknown role %s' % (fam_acc, r))

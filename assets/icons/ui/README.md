@@ -23,5 +23,5 @@ attribution in the root `ATTRIBUTION.md`.
 `design/svg/` holds the SVG masters for the icon redesign (PR #853); `design/palette.toml` gives every
 colour role a light and a dark value. They are the application's icons; see
 [docs/ui-icon-inventory.md](../../../docs/ui-icon-inventory.md) for the layout, the rules and what is
-done, a stand-in or missing. Check changes with `python3 assets/icons/ui/design/tools/lint_icons.py`
+done, a stand-in or missing. See where every icon stands with `python3 assets/icons/ui/design/tools/icon_status.py` (one HTML page). Check changes with `python3 assets/icons/ui/design/tools/lint_icons.py`
 and look at them with `tools/preview.py`. Every file there has a row in `ATTRIBUTION.md`.
