@@ -42,6 +42,13 @@ def compute():
 @icon
 def delete():
     ic=Icon('delete','Delete')
+    ic.stroke(rrect(24,6,40,16,3),INK,OW,fill=P3)
+    body='M14 22L50 22L46.5 57L17.5 57Z'; ic.fill(body,P1); ic.stroke(body,INK,OW)
+    lid=rrect(8,14,56,24,4); ic.stroke(lid,INK,OW,fill=P3)
+    ic.stroke('M25 33L26 49M39 33L38 49',A3,AW)
+    return ic
+def delete():
+    ic=Icon('delete','Delete')
     ic.stroke('M26 15L26 9L38 9L38 15',INK,OW)
     body='M14 20L50 20L47 56L17 56Z'; ic.fill(body,P1); ic.stroke(body,INK,OW)
     ic.stroke('M10 15L54 15',INK,AW)
@@ -79,6 +86,13 @@ def open_():
     return ic
 @icon
 def export():
+    ic=Icon('export','Export'); I=Iso(0.9886,32,41)
+    I.box(ic,0,0,0,20,20,20,G)
+    sh='M32 16L32 33'; head=poly([(32,4),(23,16),(41,16)])
+    ic.stroke(sh,GAP,NW+6); ic.stroke(head,GAP,6,fill=GAP)
+    ic.stroke(sh,A3,NW); ic.stroke(head,A3,2,fill=A3)
+    return ic
+def export():
     ic=Icon('export','Export')
     for d,c in (('M14.88 31.06L32 41.05L32 59.59L14.88 49.6Z',P2),('M32 41.05L49.12 31.06L49.12 49.6L32 59.59Z',P3),('M14.88 31.06L32 21.07L49.12 31.06L32 41.05Z',P1)): ic.fill(d,c)
     ic.stroke('M14.88 31.06L32 21.07L49.12 31.06L49.12 49.6L32 59.59L14.88 49.6Z',INK,OW)
@@ -106,11 +120,22 @@ def decal():
 def emboss():
     ic=Icon('emboss','Emboss'); I=Iso().fit([(0,0,0),(46,46,0),(0,0,16),(46,46,16),(0,46,0),(46,0,0)],58,52)
     I.box(ic,0,0,0,46,46,8,G)
+    E=[(10,8),(36,8),(36,14),(16,14),(16,20),(28,20),(28,26),(16,26),(16,32),(36,32),(36,38),(10,38)]
+    I.extrude(ic,[E],8,14,B)
+    return ic
+def emboss():
+    ic=Icon('emboss','Emboss'); I=Iso().fit([(0,0,0),(46,46,0),(0,0,16),(46,46,16),(0,46,0),(46,0,0)],58,52)
+    I.box(ic,0,0,0,46,46,8,G)
     I.box(ic,10,8,8,16,38,14,B)
     for y in (8,20,32):
         I.box(ic,16,y,8,34 if y!=20 else 28,y+6,14,B)
     return ic
 @icon
+def lip():
+    ic=Icon('lip','Lip'); I=Iso().fit([(0,0,0),(44,44,0),(0,0,24),(44,44,24),(0,44,0),(44,0,0)],58,56)
+    I.box(ic,0,0,0,44,44,18,G)
+    I.extrude(ic,[[(4,4),(40,4),(40,40),(4,40)],[(9,9),(35,9),(35,35),(9,35)]],18,23,B)
+    return ic
 def lip():
     ic=Icon('lip','Lip'); I=Iso().fit([(0,0,0),(44,44,0),(0,0,24),(44,44,24),(0,44,0),(44,0,0)],58,56)
     I.box(ic,0,0,0,44,44,18,G,OW,detail=False)
@@ -129,6 +154,9 @@ def rest():
     I.box(ic,0,0,0,46,46,8,G)
     I.box(ic,7,6,8,13,40,14,B); I.box(ic,31,6,8,37,40,14,B)
     return ic
+def arrowhead_path(x,y,dx,dy,L=9,W=8):
+    bx,by=x-dx*L,y-dy*L; px,py=-dy,dx
+    return poly([(x,y),(bx+px*W/2,by+py*W/2),(bx-px*W/2,by-py*W/2)])
 def triad(ic,I,x,y,z,L=22):
     o=I.p(x,y,z)
     for (dx,dy,dz) in ((L,0,0),(0,L,0),(0,0,L)):
@@ -138,9 +166,24 @@ def triad(ic,I,x,y,z,L=22):
     ic.dot(o[0],o[1],4,INK)
 @icon
 def joint_origin():
-    ic=Icon('joint_origin','Joint origin'); I=Iso().fit([(-26,-26,-16),(26,-26,-16),(26,26,-16),(-26,26,-16),(0,0,32),(34,0,0),(0,34,0)],56,56)
-    I.box(ic,-26,-26,-16,26,26,0,G)
-    triad(ic,I,0,0,0,30); return ic
+    ic=Icon('joint_origin','Joint origin')
+    ox,oy=31,34
+    axes=((0,-30),(24,-6),(-11,25))          # up, slightly backward and level, mostly forward
+    def tip(dx,dy,L=11):
+        n=math.hypot(dx,dy); return (ox+dx,oy+dy),(dx/n,dy/n)
+    for dx,dy in axes:
+        (x,y),(ux,uy)=tip(dx,dy)
+        sx,sy=x-ux*7,y-uy*7
+        halo=GAP
+        ic.stroke(poly([(ox,oy),(sx,sy)],False),halo,AW+5.5)
+        ic.stroke(arrowhead_path(x,y,ux,uy,11,12),halo,5.5,fill=halo)
+    for dx,dy in axes:
+        (x,y),(ux,uy)=tip(dx,dy)
+        sx,sy=x-ux*7,y-uy*7
+        ic.stroke(poly([(ox,oy),(sx,sy)],False),A3,AW)
+        ic.fill(arrowhead_path(x,y,ux,uy,11,12),A3)
+    ic.dot(ox,oy,9,GAP); ic.dot(ox,oy,6.3,INK)
+    return ic.recenter()
 @icon
 def drive():
     ic=Icon('drive','Drive')
@@ -162,6 +205,17 @@ def convert_sheet():
     return ic
 @icon
 def project_surface():
+    ic=Icon('project_surface','Project to surface'); I=Iso().fit([(0,0,0),(40,0,0),(40,40,0),(0,40,0),(0,0,12)],58,52)
+    surf_patch(ic,I,n=2,fillc=P1,line=P2,lw=OW*0.8,out=INK,ow=OW)
+    size=40
+    def Z(x,y): return 7*math.sin(x*math.pi/size*1.3)*math.cos(y*math.pi/size*0.9)+4.2
+    pts=[]
+    for i in range(25):
+        u=i/24; x=7+26*u; y=20+8*math.sin(u*2*math.pi)                  # a sketch curve lying inside the surface
+        pts.append(I.p(x,y,Z(x,y)))
+    ic.stroke(poly(pts,False),A3,AW)
+    return ic.recenter()
+def project_surface():
     ic=Icon('project_surface','Project to surface'); I=Iso().fit([(0,0,0),(40,0,0),(40,40,0),(0,40,0),(0,0,12)],58,40); I.oy+=8
     outline=surf_patch(ic,I,n=2,fillc=P1,line=P2,lw=OW*0.8,out=INK,ow=OW)
     ic.stroke('M18 30C26 24 34 36 46 30',A3,AW)
@@ -179,6 +233,15 @@ def iso_curve():
     ic.stroke(poly(ps,False),A3,AW)
     return ic
 @icon
+def intersection_curve():
+    ic=Icon('intersection_curve','Intersection curve'); I=Iso().fit([(0,0,0),(44,0,0),(44,44,0),(0,44,0),(0,22,34)],58,52)
+    face(ic,I,[(0,0,0),(44,0,0),(44,44,0),(0,44,0)],P1)
+    def y(x): return 22+4.2*math.sin(2*math.pi*x/44)
+    xs=[44*i/22 for i in range(23)]
+    lo=[I.p(x,y(x),0) for x in xs]; hi=[I.p(x,y(x),32) for x in xs]
+    sheet=poly(hi+lo[::-1]); ic.fill(sheet,P2); ic.stroke(sheet,INK,OW)       # a slightly wavy vertical sheet
+    ic.stroke(poly(lo,False),GAP,AW+2.4); ic.stroke(poly(lo,False),A3,AW)     # where it meets the floor, with a thin punch-out
+    return ic.recenter()
 def intersection_curve():
     ic=Icon('intersection_curve','Intersection curve'); I=Iso().fit([(0,0,0),(44,0,0),(44,44,0),(0,44,0),(0,22,30)],58,52)
     face(ic,I,[(0,0,0),(44,0,0),(44,44,0),(0,44,0)],P1)
@@ -249,6 +312,13 @@ def rigid_group():
     ic.dot(32,40,4.5,A3); ic.stroke('M32 41L32 49',A3,AW)
     return ic
 @icon
+def revert():
+    ic=Icon('revert','Revert position'); I=Iso().fit([(0,0,0),(20,20,0),(20,20,20),(0,0,20),(0,20,0),(20,0,0)],26,26)
+    I.box(ic,0,0,0,20,20,20,G)
+    for sx,sy in ((1,1),(-1,1),(1,-1),(-1,-1)):
+        x,y=32+sx*24,32+sy*24
+        ic.stroke(poly([(x-sx*12,y),(x,y),(x,y-sy*12)],False),P3,3.4,dash='0.1 5.6')
+    return ic
 def revert():
     ic=Icon('revert','Revert position'); I=Iso(0.9,40,42)
     I.box(ic,-13,-13,-13,13,13,13,G)

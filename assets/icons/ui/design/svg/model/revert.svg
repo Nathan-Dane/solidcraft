@@ -1,11 +1,13 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Revert position</title>
-  <path d="M19.74 30.3L40 42L40 65.4L19.74 53.7Z" fill="#b8c3cf"/>
-  <path d="M60.26 30.3L40 42L40 65.4L60.26 53.7Z" fill="#8e9faf"/>
-  <path d="M40 18.6L60.26 30.3L40 42L19.74 30.3Z" fill="#e2e8ef"/>
-  <path d="M40 18.6L60.26 30.3L60.26 53.7L40 65.4L19.74 53.7L19.74 30.3Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M19.74 30.3L40 42L60.26 30.3" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M40 42L40 65.4" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M53.05 19A22 22 0 0 0 13.33 37.52" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M15.17 42.6L7.4 35.85L16.79 32.43Z" fill="#236ead"/>
+  <path d="M20.74 25.5L32 32L32 45L20.74 38.5Z" fill="#b8c3cf"/>
+  <path d="M43.26 25.5L32 32L32 45L43.26 38.5Z" fill="#8e9faf"/>
+  <path d="M32 19L43.26 25.5L32 32L20.74 25.5Z" fill="#e2e8ef"/>
+  <path d="M32 19L43.26 25.5L43.26 38.5L32 45L20.74 38.5L20.74 25.5Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20.74 25.5L32 32L43.26 25.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 32L32 45" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M44 56L56 56L56 44" fill="none" stroke="#8e9faf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="0.1 5.6"/>
+  <path d="M20 56L8 56L8 44" fill="none" stroke="#8e9faf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="0.1 5.6"/>
+  <path d="M44 8L56 8L56 20" fill="none" stroke="#8e9faf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="0.1 5.6"/>
+  <path d="M20 8L8 8L8 20" fill="none" stroke="#8e9faf" stroke-width="3.4" stroke-linejoin="round" stroke-linecap="round" stroke-dasharray="0.1 5.6"/>
 </svg>

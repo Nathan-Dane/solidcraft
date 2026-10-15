@@ -3,19 +3,8 @@
 #   alias = { master = "m", accent = "surface" }  same artwork in another accent (palette.toml)
 # Icons that mean the same operation in another workspace belong here, so they stay identical.
 [alias]
-circle2 = "circle"
-circle3 = "circle"
-circle_tt = "circle"
-circle_ttt = "circle"
-rect3 = "rect"
-rect_center = "rect"
-rect_rounded = "rect"
-arc_center = "arc3"
-arc_tangent = "arc3"
-spline_cv = "spline"
 sketch_rect_pattern = "pattern_rect"
 sketch_circ_pattern = "pattern_circ"
-plastic_rule = "plastic_assign"
 surface_extrude = { master = "extrude", accent = "surface" }
 surface_revolve = { master = "revolve", accent = "surface" }
 surface_sweep = { master = "sweep", accent = "surface" }

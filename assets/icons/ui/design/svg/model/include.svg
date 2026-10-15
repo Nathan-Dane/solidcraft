@@ -6,6 +6,9 @@
   <path d="M32 12L52.78 24L52.78 48L32 60L11.22 48L11.22 24Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
   <path d="M11.22 24L32 36L52.78 24" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
   <path d="M32 36L32 60" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M11.22 24L32 36L52.78 24" fill="none" stroke="#ffffff" stroke-width="6.65" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="11.22" cy="24" r="4.27" fill="#ffffff"/>
+  <circle cx="52.78" cy="24" r="4.27" fill="#ffffff"/>
   <path d="M11.22 24L32 36L52.78 24" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
   <circle cx="11.22" cy="24" r="3.07" fill="#236ead"/>
   <circle cx="52.78" cy="24" r="3.07" fill="#236ead"/>

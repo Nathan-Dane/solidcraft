@@ -27,12 +27,47 @@ def chain():
 @icon
 def snap():
     ic=Icon('snap','Snap')
-    u='M16 10L16 34A16 16 0 0 0 48 34L48 10'
+    th=math.radians(-135)                       # the poles point to the bottom left
+    def R(x,y):
+        x,y=x-32,y-35; return (32+x*math.cos(th)-y*math.sin(th), 32+x*math.sin(th)+y*math.cos(th))
+    def pt_(x,y): X,Y=R(x,y); return '%s %s'%(f(X),f(Y))
+    u='M%sL%sA10 10 0 0 0 %sL%s'%(pt_(22,22),pt_(22,36),pt_(42,36),pt_(42,22))
+    ic.stroke(u,INK,16.4); ic.stroke(u,A2,11.3)
+    def rounded(c,r):
+        n=len(c); out=''
+        for i in range(n):
+            p0,p1,p2=c[i-1],c[i],c[(i+1)%n]
+            a=(p1[0]-p0[0],p1[1]-p0[1]); b=(p2[0]-p1[0],p2[1]-p1[1]); la=math.hypot(*a); lb=math.hypot(*b)
+            s_=(p1[0]-a[0]/la*r,p1[1]-a[1]/la*r); e_=(p1[0]+b[0]/lb*r,p1[1]+b[1]/lb*r)
+            out+=('M' if i==0 else 'L')+f(s_[0])+' '+f(s_[1])+'Q'+f(p1[0])+' '+f(p1[1])+' '+f(e_[0])+' '+f(e_[1])
+        return out+'Z'
+    for x in (22,42):                           # poles as wide as the bent line, short, slightly rounded
+        hw=8.2-OW/2
+        ic.stroke(rounded([R(x-hw,13.5),R(x+hw,13.5),R(x+hw,23),R(x-hw,23)],2.4),INK,OW,fill=P1)
+    return ic.recenter()
+def snap():
+    ic=Icon('snap','Snap')
+    th=math.radians(-135)                       # the poles point to the bottom left
+    def R(x,y):
+        x,y=x-32,y-35; return (32+x*math.cos(th)-y*math.sin(th), 32+x*math.sin(th)+y*math.cos(th))
+    def pt_(x,y): X,Y=R(x,y); return '%s %s'%(f(X),f(Y))
+    u='M%sL%sA10 10 0 0 0 %sL%s'%(pt_(22,16),pt_(22,36),pt_(42,36),pt_(42,16))
+    ic.stroke(u,INK,16.4); ic.stroke(u,A2,11.3)
+    for x in (22,42):
+        t='M%sL%s'%(pt_(x,16),pt_(x,25))
+        ic.stroke(t,INK,16.4); ic.stroke(t,P1,11.3)
+    return ic.recenter()
+def snap():
+    ic=Icon('snap','Snap')
+    th=math.radians(-135)                       # the poles point to the bottom left
+    def R(x,y):
+        x,y=x-32,y-30; return (32+x*math.cos(th)-y*math.sin(th), 32+x*math.sin(th)+y*math.cos(th))
+    def pt_(x,y): X,Y=R(x,y); return '%s %s'%(f(X),f(Y))
+    u='M%sL%sA16 16 0 0 0 %sL%s'%(pt_(16,10),pt_(16,34),pt_(48,34),pt_(48,10))
     ic.stroke(u,INK,14.6); ic.stroke(u,A2,9.5)
     for x in (16,48):
-        ic.stroke(poly([(x,10),(x,18)],False),INK,14.6); ic.stroke(poly([(x,10),(x,18)],False),P1,9.5)
-    ic.stroke('M16 10L16 18M48 10L48 18',INK,14.6) if False else None
-    pt(ic,32,57,A3,3.5)
+        t='M%sL%s'%(pt_(x,10),pt_(x,18))
+        ic.stroke(t,INK,14.6); ic.stroke(t,P1,9.5)
     return ic
 @icon
 def select():
@@ -60,6 +95,7 @@ def include():
     I=Iso(1,32,32+4); s=24
     I.box(ic,0,0,0,s,s,s,(P1,P2,P3))
     a=I.p(s,s,s); b=I.p(s,0,s); c=I.p(0,s,s)
+    ic.stroke(poly([c,a,b],False),GAP,AW+2.4); ic.dot(c[0],c[1],3.07+1.2,GAP); ic.dot(b[0],b[1],3.07+1.2,GAP)   # very thin punch-out
     ic.stroke(poly([c,a,b],False),A3,AW); pt(ic,*c); pt(ic,*b)
     return ic
 @icon
@@ -92,7 +128,7 @@ def dxf():
 @icon
 def auto_constrain():
     ic=Icon('auto_constrain','Auto constrain')
-    ic.fill(star4(26,28,20,0.1),A3); ic.stroke(star4(47,47,11,0.1),INK,OW,fill=P1)
+    ic.stroke(star4(26,28,19,0.1),A3,3.2,fill=A1); ic.stroke(star4(47,47,11,0.1),A3,2.8,fill=A1)
     return ic
 @icon
 def align():
@@ -139,84 +175,4 @@ def pattern_circ():
     pat_dots(ic,[(32+R*math.cos(math.radians(a)),32+R*math.sin(math.radians(a))) for a in range(0,360,12)])
     for i in range(6):
         a=math.radians(-90+60*i); pat_sq(ic,32+R*math.cos(a),32+R*math.sin(a),i==0,rot=60*i)
-    return ic
-@icon
-def c_coincident():
-    ic=Icon('c_coincident','Coincident')
-    ic.stroke('M7 46L32 32M32 32L57 18',P3,AW) if False else None
-    ic.stroke('M8 48L30 33',A3,AW); ic.stroke('M34 31L56 16',A3,AW)
-    ic.dot(32,32,5.5,A3); ic.ring(32,32,11,INK,OW); return ic
-@icon
-def c_collinear():
-    ic=Icon('c_collinear','Collinear')
-    ic.stroke('M6 38L24 26M40 38L58 26',GUIDE,OW) if False else None
-    ic.stroke('M6 44L26 32',A3,AW); ic.stroke('M38 32L58 20',A3,AW) if False else None
-    ic.stroke('M6 45L25 33.8',A3,AW); ic.stroke('M39 25.6L58 14.4',A3,AW) if False else None
-    ic.stroke('M6 46L26 34M38 27L58 15',A3,AW) if False else None
-    ic.stroke('M6 46L26 34.2',A3,AW); ic.stroke('M38 26.7L58 14.9',A3,AW)
-    ic.stroke('M26 34.2L38 26.7',GUIDE,OW)
-    pt(ic,6,46); pt(ic,58,14.9); return ic
-@icon
-def c_concentric():
-    ic=Icon('c_concentric','Concentric')
-    ic.stroke(ell(32,32,23),A3,AW); ic.stroke(ell(32,32,11),P3,AW); ic.dot(32,32,3.07,A3); return ic
-@icon
-def c_equal():
-    ic=Icon('c_equal','Equal')
-    ic.stroke('M12 23L52 23M12 41L52 41',A3,NW); return ic
-@icon
-def c_fix():
-    ic=Icon('c_fix','Fixed')
-    ic.stroke('M32 8L32 38',A3,AW); ic.dot(32,10,4.5,A3)
-    ic.stroke('M12 38L52 38',INK,AW)
-    ic.stroke('M16 54L24 46M28 54L36 46M40 54L48 46',INK,OW); return ic
-@icon
-def c_hv():
-    ic=Icon('c_hv','Horizontal / vertical')
-    ic.stroke('M6 20L34 20',A3,AW); ic.stroke('M50 30L50 58',A3,AW)
-    pt(ic,6,20); pt(ic,34,20); pt(ic,50,30); pt(ic,50,58)
-    ic.stroke('M38 24L50 24',GUIDE,OW) if False else None
-    return ic
-@icon
-def c_midpoint():
-    ic=Icon('c_midpoint','Midpoint')
-    ic.stroke('M8 48L56 16',P3,AW); ic.dot(8,48,3.07,P3); ic.dot(56,16,3.07,P3)
-    ic.dot(32,32,6,A3); ic.ring(32,32,11,INK,OW)
-    return ic
-@icon
-def c_parallel():
-    ic=Icon('c_parallel','Parallel')
-    ic.stroke('M8 40L40 8M24 56L56 24',A3,AW); return ic
-@icon
-def c_perpendicular():
-    ic=Icon('c_perpendicular','Perpendicular')
-    ic.stroke('M12 8L12 52L56 52',A3,AW); ic.stroke('M12 38L26 38L26 52',INK,OW); return ic
-@icon
-def c_polygon():
-    ic=Icon('c_polygon','Regular polygon')
-    ps=poly_reg(5,32,34,24,-90); ic.stroke(poly(ps),P3,AW)
-    for i in range(5):
-        a,b=ps[i],ps[(i+1)%5]; mx,my=(a[0]+b[0])/2,(a[1]+b[1])/2; dx,dy=b[0]-a[0],b[1]-a[1]; n=math.hypot(dx,dy); nx,ny=-dy/n,dx/n
-        ic.stroke(poly([(mx+nx*5,my+ny*5),(mx-nx*5,my-ny*5)],False),A3,AW)
-    return ic
-@icon
-def c_smooth():
-    ic=Icon('c_smooth','Curvature')
-    ic.stroke('M6 50C28 50 34 14 58 14',A3,AW)
-    ic.stroke(ell(32,32,5),INK,OW)
-    return ic
-@icon
-def c_symmetry():
-    ic=Icon('c_symmetry','Symmetry')
-    ic.stroke('M32 6L32 14M32 22L32 30M32 38L32 46M32 54L32 58',GUIDE,AW) if False else None
-    ic.stroke('M32 6L32 16M32 24L32 40M32 48L32 58',GUIDE,OW) if False else None
-    ic.stroke('M32 6L32 14M32 22L32 28M32 36L32 42M32 50L32 58',GUIDE,AW)
-    ic.dot(11,32,6,A3); ic.dot(53,32,6,A3)
-    ic.stroke('M19 32L25 32M39 32L45 32',A3,OW) if False else None
-    ic.fill(arrowhead(26,32,1,0,7,8),INK) if False else None
-    return ic
-@icon
-def c_tangent():
-    ic=Icon('c_tangent','Tangent')
-    ic.stroke(ell(32,38,18),A3,AW); ic.stroke('M6 20L58 20',A3,AW); pt(ic,32,20,INK,3.5) if False else None
     return ic

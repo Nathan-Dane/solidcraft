@@ -16,6 +16,16 @@ def pattern_small():
     return ic
 @icon
 def interference_small():
+    ic=small('interference','Interference'); I=Iso().fit([(0,-12,0),(36,28,0),(0,-12,20),(36,28,20)],58,56)
+    I.box(ic,0,0,0,20,20,20,G,SW,detail=False); I.box(ic,14,-12,0,36,8,20,G,SW,detail=False)
+    sq=I.poly((14,0,20),(20,0,20),(20,8,20),(14,8,20)); ic.fill(sq,A2); ic.stroke(sq,INK,SW)
+    return ic
+def interference_small():
+    ic=small('interference','Interference'); I=Iso().fit([(0,-12,0),(36,28,0),(0,-12,20),(36,28,20)],58,56)
+    I.box(ic,0,0,0,20,20,20,G,SW,detail=False); I.box(ic,14,-12,0,36,8,20,G,SW,detail=False)
+    I.box(ic,14,0,0,20,8,20,B,SW,detail=False)
+    return ic
+def interference_small():
     ic=small('interference','Interference')
     I2=Iso(1,43,26); I2.box(ic,-10,-10,-10,10,10,10,G,SW,detail=True)
     I1=Iso(1,21,40); I1.box(ic,-10,-10,-10,10,10,10,G,SW,detail=True)
@@ -41,6 +51,16 @@ def iso_analysis_small():
     ic=small('iso_analysis','Isoparametric analysis'); I=Iso().fit([(0,0,0),(40,0,0),(40,40,0),(0,40,0),(0,0,12),(40,40,12)],58,52)
     surf_patch(ic,I,n=1,fillc=P1,line=A3,lw=SW,out=INK,ow=SW); return ic
 @icon
+def component_small():
+    ic=small('component','Component'); I=Iso().fit([(0,-16,0),(16,16,0),(0,-16,32),(16,16,32),(0,16,0),(16,-16,0)],58,58); c=16
+    I.box(ic,0,-c,0,c,0,c,B,SW,detail=False); I.box(ic,0,-c,c,c,0,2*c,G,SW,detail=False)
+    I.box(ic,0,0,0,c,c,c,G,SW,detail=True)
+    return ic
+def component_small():
+    ic=small('component','Component'); I=Iso().fit([(0,0,0),(32,32,0),(0,0,32),(32,32,32),(0,32,0),(32,0,0)],58,58); c=16
+    I.box(ic,0,0,0,c,c,c,B,SW,detail=False); I.box(ic,0,0,c,c,c,2*c,G,SW,detail=True)
+    I.box(ic,c,0,c,2*c,c,2*c,G,SW,detail=True); I.box(ic,0,c,c,c,2*c,2*c,G,SW,detail=True)
+    return ic
 def component_small():
     ic=small('component','Component')
     I2=Iso(1,43,26); I2.box(ic,-10,-10,-10,10,10,10,G,SW,detail=True)

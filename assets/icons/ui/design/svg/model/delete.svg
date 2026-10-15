@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Delete</title>
-  <path d="M26 15L26 9L38 9L38 15" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M14 20L50 20L47 56L17 56Z" fill="#e2e8ef"/>
-  <path d="M14 20L50 20L47 56L17 56Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M10 15L54 15" fill="none" stroke="#34465b" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M26 28L27 48M32 28L32 48M38 28L37 48" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M27 6L37 6A3 3 0 0 1 40 9L40 13A3 3 0 0 1 37 16L27 16A3 3 0 0 1 24 13L24 9A3 3 0 0 1 27 6Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 22L50 22L46.5 57L17.5 57Z" fill="#e2e8ef"/>
+  <path d="M14 22L50 22L46.5 57L17.5 57Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 14L52 14A4 4 0 0 1 56 18L56 20A4 4 0 0 1 52 24L12 24A4 4 0 0 1 8 20L8 18A4 4 0 0 1 12 14Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25 33L26 49M39 33L38 49" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -13,44 +13,11 @@ def arrow(ic,x0,y0,x1,y1,c=A3,w=AW,L=9,W=9):
 def poly_reg(n,cx,cy,r,rot=-90): return [(cx+r*math.cos(math.radians(rot+360*i/n)),cy+r*math.sin(math.radians(rot+360*i/n))) for i in range(n)]
 
 @icon
-def line():
-    ic=Icon('line','Line'); ic.stroke(poly([(15,49),(49,15)],False),A3,AW); pt(ic,15,49); pt(ic,49,15); return ic
-@icon
 def point():
     ic=Icon('point','Point')
     for d in ((0,-1),(0,1),(-1,0),(1,0)):
         ic.stroke(poly([(32+d[0]*10,32+d[1]*10),(32+d[0]*22,32+d[1]*22)],False),A3,AW)
     pt(ic,32,32,A3,6); return ic
-@icon
-def circle():
-    ic=Icon('circle','Circle'); ic.fill(ell(32,32,22),A1); ic.stroke(ell(32,32,22),A3,AW); pt(ic,32,32); return ic
-@icon
-def ellipse():
-    ic=Icon('ellipse','Ellipse'); ic.fill(ell(32,32,26,17),A1); ic.stroke(ell(32,32,26,17),A3,AW); pt(ic,32,32); return ic
-@icon
-def rect():
-    ic=Icon('rect','Rectangle'); d=poly([(10,16),(54,16),(54,48),(10,48)])
-    ic.fill(d,A1); ic.stroke(d,A3,AW); pt(ic,10,16); pt(ic,54,48); return ic
-@icon
-def polygon():
-    ic=Icon('polygon','Polygon'); ps=poly_reg(6,32,32,24,-90)
-    d=poly(ps); ic.fill(d,A1); ic.stroke(d,A3,AW); pt(ic,32,32); return ic
-@icon
-def slot():
-    ic=Icon('slot','Slot'); d=rrect(7,21,57,43,11)
-    ic.fill(d,A1); ic.stroke(d,A3,AW); pt(ic,18,32); pt(ic,46,32)
-    ic.stroke(poly([(18,32),(46,32)],False),A3,1.8) if False else None
-    return ic
-@icon
-def arc3():
-    ic=Icon('arc3','Three-point arc'); ic.stroke('M8 46A24 24 0 0 1 56 46',A3,AW)
-    pt(ic,8,46); pt(ic,56,46); pt(ic,32,22); return ic
-@icon
-def spline():
-    ic=Icon('spline','Spline')
-    ic.stroke('M9 44C17 14 27 14 32 30C37 46 47 46 55 20',A3,AW)
-    for x,y in ((9,44),(32,30),(55,20)): pt(ic,x,y)
-    return ic
 @icon
 def text():
     ic=Icon('text','Text')
@@ -65,6 +32,12 @@ def construction():
     pt(ic,12,52,GUIDE); pt(ic,52,12,GUIDE)
     return ic
 @icon
+def dimension():
+    ic=Icon('dimension','Dimension')
+    ic.stroke('M10 12L10 52M54 12L54 52',INK,AW)                          # extension lines, as heavy as the other sketch strokes
+    ic.stroke('M19 32L45 32',A3,AW)
+    ic.fill(arrowhead(13,32,-1,0,11,12),A3); ic.fill(arrowhead(51,32,1,0,11,12),A3)
+    return ic
 def dimension():
     ic=Icon('dimension','Dimension')
     ic.stroke('M10 14L10 50M54 14L54 50',INK,OW)
@@ -102,13 +75,6 @@ def trim():
     ic.stroke('M28 32L36 32',P3,AW)
     return ic
 @icon
-def extend():
-    ic=Icon('extend','Extend')
-    ic.stroke('M52 10L52 54',P3,AW)
-    ic.stroke('M8 32L32 32',A3,AW); ic.stroke('M38 32L41 32',A3,AW); ic.stroke('M45 32L46 32',A3,AW)
-    ic.fill(arrowhead(50,32,1,0,9,10),A3) if False else None
-    return ic
-@icon
 def break_():
     ic=Icon('break','Break')
     ic.stroke('M7 32L23 32M41 32L57 32',A3,AW); pt(ic,23,32); pt(ic,41,32)
@@ -134,7 +100,7 @@ def mirror():
 def sketch_mirror():
     ic=Icon('sketch_mirror','Sketch mirror')
     ic.stroke('M32 6L32 12M32 20L32 26M32 34L32 40M32 48L32 54',GUIDE,AW)
-    ic.stroke(poly([(8,50),(28,50),(28,16)]),P3,AW); ic.stroke(poly([(56,50),(36,50),(36,16)]),A3,AW)
+    ic.stroke(poly([(7,50),(25,50),(25,16)]),P3,AW); ic.stroke(poly([(57,50),(39,50),(39,16)]),A3,AW)
     return ic
 @icon
 def sketch_fillet():
@@ -148,48 +114,61 @@ def sketch_chamfer():
     ic.stroke('M12 32L12 12L32 12',GUIDE,OW)
     ic.stroke('M12 54L12 32L32 12L54 12',A3,AW)
     pt(ic,12,54); pt(ic,54,12); return ic
-@icon
-def blend():
-    ic=Icon('blend','Blend curve')
-    ic.stroke('M6 48L18 48M46 16L58 16',P3,AW)
-    ic.stroke('M18 48C36 48 28 16 46 16',A3,AW); pt(ic,18,48); pt(ic,46,16); return ic
-@icon
-def conic():
-    ic=Icon('conic','Conic')
-    ic.stroke(ell(32,34,24,17),GUIDE,OW)
-    ic.stroke(arcpts(32,34,24,17,195,345),A3,AW)
-    pt(ic,32-24*math.cos(math.radians(15)),34-17*math.sin(math.radians(15))); pt(ic,32+24*math.cos(math.radians(15)),34-17*math.sin(math.radians(15)))
-    return ic
-@icon
-def centerline():
-    ic=Icon('centerline','Centerline')
-    ic.stroke('M5 32L24 32M40 32L59 32',A3,AW); ic.dot(32,32,3.6,A3)
-    ic.stroke('M13 18L51 18M13 46L51 46',GUIDE,OW) if False else None
-    return ic
-@icon
-def line_mid():
-    ic=Icon('line_mid','Midpoint line')
-    ic.stroke('M12 50L52 14',A3,AW); pt(ic,12,50); pt(ic,52,14)
-    ic.dot(32,32,6.5,A3); ic.ring(32,32,6.5,INK,OW) if False else None
-    ic.ring(32,32,11,INK,OW)
-    return ic
 def arc_pts(cx,cy,r,deg): a=math.radians(deg); return cx+r*math.cos(a),cy+r*math.sin(a)
-@icon
-def arc_slot():
-    ic=Icon('arc_slot','Arc slot'); cx,cy,R,hw=32,46,21,7; a0,a1=205,335
-    o0=arc_pts(cx,cy,R+hw,a0); o1=arc_pts(cx,cy,R+hw,a1); i1=arc_pts(cx,cy,R-hw,a1); i0=arc_pts(cx,cy,R-hw,a0)
-    d='M%s %s%s%s%s%s'%(f(o0[0]),f(o0[1]),arcto(R+hw,R+hw,o1[0],o1[1],0,1),arcto(hw,hw,i1[0],i1[1],0,1),arcto(R-hw,R-hw,i0[0],i0[1],0,0),arcto(hw,hw,o0[0],o0[1],0,1))+'Z'
-    ic.fill(d,A1); ic.stroke(d,A3,AW)
-    c0=arc_pts(cx,cy,R,a0); c1=arc_pts(cx,cy,R,a1); pt(ic,*c0); pt(ic,*c1); return ic
 @icon
 def spun():
     ic=Icon('spun','Spun profile')
-    d='M12 10L28 10C40 22 24 38 36 54L12 54Z'
-    ic.fill(d,A1); ic.stroke(d,A3,AW)
-    ic.stroke('M6 5L6 59',INK,OW)
-    ic.stroke('M46 16A22 22 0 0 1 46 48',GUIDE,OW); ic.fill(arrowhead(46,48,-1,0.2,8,8),GUIDE)
+    ic.stroke('M32 4L32 60',INK,OW,dash='4 5')                                 # the axis, dashed like the others
+    ic.stroke('M37 8L51 8C60 18 47 30 57 44L37 44Z',A3,AW,fill=A1)               # the profile that is spun, large
+    cx,cy,rx,ry=32,50,22,8
+    P=lambda t:(cx+rx*math.cos(math.radians(t)),cy+ry*math.sin(math.radians(t)))
+    t_tip=142; tip=P(t_tip); L,W=11,12
+    t_b=t_tip
+    while math.hypot(P(t_b)[0]-tip[0],P(t_b)[1]-tip[1])<L: t_b-=0.5
+    base=P(t_b)                                                                # the arc ends exactly in the middle of the head's base
+    dx,dy=tip[0]-base[0],tip[1]-base[1]; n=math.hypot(dx,dy); dx,dy=dx/n,dy/n  # the head points from the end of the shaft to its tip, along the arc
+    arc=arcpts(cx,cy,rx,ry,0,t_b)
+    head=poly([tip,(base[0]-dy*W/2,base[1]+dx*W/2),(base[0]+dy*W/2,base[1]-dx*W/2)])
+    ic.stroke(arc,GAP,AW+3.6); ic.stroke(head,GAP,3.6,fill=GAP)               # punch-out around the arrow
+    ic.stroke(arc,A3,AW); ic.fill(head,A3)
+    return ic
+def spun():
+    ic=Icon('spun','Spun profile')
+    ic.stroke('M32 4L32 60',INK,OW,dash='4 5')                                 # the axis, dashed like the others
+    ic.stroke('M37 8L51 8C60 18 47 30 57 44L37 44Z',A3,AW,fill=A1)               # the profile that is spun, large
+    cx,cy,rx,ry=32,51,22,7
+    P=lambda t:(cx+rx*math.cos(math.radians(t)),cy+ry*math.sin(math.radians(t)))
+    t_tip=172; tip=P(t_tip)
+    dx,dy=-rx*math.sin(math.radians(t_tip)),ry*math.cos(math.radians(t_tip)); n=math.hypot(dx,dy); dx,dy=dx/n,dy/n   # heading at the tip
+    L,W=11,12; base=(tip[0]-dx*L,tip[1]-dy*L)
+    # the shaft stops at the middle of the head's base, so the head sits on the end of the arc
+    t_b=t_tip
+    while math.hypot(P(t_b)[0]-tip[0],P(t_b)[1]-tip[1])<L-1.5: t_b-=1
+    arc=arcpts(cx,cy,rx,ry,0,t_b)
+    head=poly([tip,(base[0]-dy*W/2,base[1]+dx*W/2),(base[0]+dy*W/2,base[1]-dx*W/2)])
+    ic.stroke(arc,GAP,AW+3.6); ic.stroke(head,GAP,3.6,fill=GAP)               # punch-out around the arrow
+    ic.stroke(arc,A3,AW); ic.fill(head,A3)
+    return ic
+def spun():
+    ic=Icon('spun','Spun profile')
+    ic.stroke('M32 4L32 60',INK,OW,dash='4 5')                                 # the axis, dashed like the others
+    ic.stroke('M37 8L51 8C60 18 47 30 57 44L37 44Z',A3,AW,fill=A1)               # the profile that is spun, large
+    cx,cy,rx,ry=32,51,22,7
+    t0,t1=-10,165
+    p=lambda t:(cx+rx*math.cos(math.radians(t)),cy+ry*math.sin(math.radians(t)))
+    e=p(t1); dx,dy=-rx*math.sin(math.radians(t1)),ry*math.cos(math.radians(t1)); n=math.hypot(dx,dy); dx,dy=dx/n,dy/n   # heading at the end: left and a little up
+    arc=arcpts(cx,cy,rx,ry,t0,t1); head=poly([(e[0]+dx*3,e[1]+dy*3),(e[0]-dx*8+dy*6,e[1]-dy*8-dx*6),(e[0]-dx*8-dy*6,e[1]-dy*8+dx*6)])
+    ic.stroke(arc,GAP,AW+3.6); ic.stroke(head,GAP,3.6,fill=GAP)               # punch-out around the arrow
+    ic.stroke(arc,A3,AW); ic.fill(head,A3)
     return ic
 @icon
+def constrainer():
+    ic=Icon('constrainer','Constrainer'); d=poly([(10,16),(54,16),(54,48),(10,48)])
+    ic.stroke(d,A3,AW,fill=A1)
+    ic.stroke('M23 27L41 27M23 37L41 37',A3,AW)                      # the constraint it applies, drawn as the equal glyph
+    for x,y in ((10,16),(54,48)):
+        ic.dot(x,y,5.8,GAP); ic.dot(x,y,3.4,A3)
+    return ic
 def constrainer():
     ic=Icon('constrainer','Constrainer')
     d=poly([(14,16),(50,16),(50,48),(14,48)]); ic.stroke(d,A3,AW)

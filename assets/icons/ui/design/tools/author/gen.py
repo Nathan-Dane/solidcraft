@@ -1,7 +1,7 @@
 import sys, os, json, importlib
 HERE=os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0,HERE)
 names=sys.argv[1:]
-mods=['i1','i2','i3','i4','i5','i6','i7','i8']
+mods=['i1','i2','i3','i4','i5','i6','i7','i8','i9','i10','i11']
 allic={}
 for m in mods:
     try: mod=importlib.import_module(m)

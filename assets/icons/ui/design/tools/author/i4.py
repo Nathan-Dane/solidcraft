@@ -22,6 +22,39 @@ def hole():
     ic.stroke(ell(X,Y,rx,ry),INK,OW); return ic
 @icon
 def shell():
+    ic=Icon('shell','Shell'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,36),(40,40,36),(0,40,0),(40,0,0)],58,58)
+    I.box(ic,0,0,0,40,40,36,G)
+    t=9; z=36; dpt=60
+    hole=[I.p(t,t,z),I.p(40-t,t,z),I.p(40-t,40-t,z),I.p(t,40-t,z)]
+    wall_a=[I.p(t,t,z),I.p(40-t,t,z),I.p(40-t,t,z-dpt),I.p(t,t,z-dpt)]          # back wall facing left
+    wall_b=[I.p(t,t,z),I.p(t,40-t,z),I.p(t,40-t,z-dpt),I.p(t,t,z-dpt)]          # back wall facing right
+    for poly_pts,col in ((wall_a,A2),(wall_b,A3)):
+        part=clip_poly(poly_pts,hole)
+        if len(part)>2: ic.fill(poly(part),col)
+    ic.stroke(poly(hole),INK,OW)
+    # the corner between the two back walls
+    a=I.p(t,t,z); b=I.p(t,t,z-dpt); lo=max(a[1],min(b[1],I.p(40-t,40-t,z)[1]))
+    ic.stroke(poly([a,(a[0],lo)],False),INK,OW)
+    return ic
+def shell():
+    ic=Icon('shell','Shell'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,36),(40,40,36),(0,40,0),(40,0,0)],58,58)
+    I.box(ic,0,0,0,40,40,36,G)
+    t=9; z=36; dpt=16
+    hole=[I.p(t,t,z),I.p(40-t,t,z),I.p(40-t,40-t,z),I.p(t,40-t,z)]
+    wall_a=[I.p(t,t,z),I.p(40-t,t,z),I.p(40-t,t,z-dpt),I.p(t,t,z-dpt)]          # back wall facing left
+    wall_b=[I.p(t,t,z),I.p(t,40-t,z),I.p(t,40-t,z-dpt),I.p(t,t,z-dpt)]          # back wall facing right
+    floor=[I.p(t,t,z-dpt),I.p(40-t,t,z-dpt),I.p(40-t,40-t,z-dpt),I.p(t,40-t,z-dpt)]
+    for poly_pts,col in ((wall_a,A2),(wall_b,A3),(floor,A1)):
+        part=clip_poly(poly_pts,hole)
+        if len(part)>2: ic.fill(poly(part),col)
+    ic.stroke(poly(hole),INK,OW)
+    for poly_pts in (wall_a,wall_b):
+        part=clip_poly(poly_pts,hole)
+    # edges between the walls and the floor
+    fl=clip_poly(floor,hole)
+    if len(fl)>2: ic.stroke(poly(fl,False),INK,OW)
+    return ic
+def shell():
     ic=Icon('shell','Shell'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,34),(40,40,34),(0,40,0),(40,0,0)],58,56)
     I.box(ic,0,0,0,40,40,34,G,OW,detail=False)
     t=7; z=34
@@ -48,7 +81,7 @@ def presspull():
     I.box(ic,10,10,10,34,34,22,B)
     X,Y=I.p(22,22,22)
     ic.stroke(poly([(X,Y-18),(X,Y-3)],False),A3,AW); ic.fill(arrowhead(X,Y-26,0,-1,9,10),A3)
-    return ic
+    return ic.recenter()
 @icon
 def loft():
     ic=Icon('loft','Loft')
@@ -59,16 +92,26 @@ def loft():
     ic.stroke('M6 46L22 14M42 14L58 46L32 58L6 46',INK,OW)
     ic.fill(ell(32,14,10,5),A1); ic.stroke(ell(32,14,10,5),INK,OW)
     return ic
+def split_halves(ic,flat):
+    s_=24; g=18; m=3
+    pts=[(-m,-g/2-m,-m),(s_+m,s_+g/2+m,s_+m)]
+    I=Iso().fit([(-m,-g/2-m,-m),(s_+m,-g/2-m,-m),(s_+m,s_+g/2+m,-m),(-m,s_+g/2+m,s_+m),(s_+m,s_+g/2+m,s_+m)],58,58)
+    half=s_/2; zc=s_/2
+    def slab(y0,y1):
+        if flat: 
+            d=I.poly((0,y0,zc),(s_,y0,zc),(s_,y1,zc),(0,y1,zc)); ic.fill(d,P1); ic.stroke(d,INK,OW)
+        else: I.box(ic,0,y0,0,s_,y1,s_,G)
+    slab(-g/2,half-g/2)                                            # back right half
+    pl=I.poly((-m,half,-m),(s_+m,half,-m),(s_+m,half,s_+m),(-m,half,s_+m))
+    ic.fill(pl,A1); ic.stroke(pl,A3,AW*0.75)                       # the cutting plane, between the halves
+    slab(half+g/2,s_+g/2)                                          # front left half
+
 @icon
-def offset_face():
-    ic=Icon('offset_face','Offset face'); I=Iso().fit([(0,0,0),(30,30,0),(30,30,24),(0,0,24),(0,30,0),(30,0,0),(48,30,0)],58,56)
-    I.box(ic,0,0,0,30,30,24,G,OW,detail=False)
-    face(ic,I,[(30,0,24),(30,30,24),(30,30,0),(30,0,0)],P3,True) if False else None
-    I.box(ic,30,5,3,36,25,21,B,OW,detail=True)
-    face(ic,I,[(0,0,24),(30,0,24),(30,30,24),(0,30,24)],P1)
-    ic.stroke(poly([I.p(0,30,24),I.p(30,30,24),I.p(30,30,0)],False),INK,OW)
-    return ic
+def split_body():
+    ic=Icon('split_body','Split body'); split_halves(ic,False); return ic.recenter()
 @icon
+def split_face():
+    ic=Icon('split_face','Split face'); split_halves(ic,True); return ic.recenter()
 def split():
     ic=Icon('split','Split'); I=Iso().fit([(0,0,0),(34,34,0),(34,34,36),(0,0,36),(0,34,0),(34,0,0),(-6,-6,18),(40,40,18)],58,58)
     I.box(ic,0,0,0,34,34,14,G)
@@ -84,6 +127,19 @@ def intersect():
     return ic
 @icon
 def draft():
+    ic=Icon('draft','Draft'); t=6;H=36
+    I=Iso().fit([(0,0,0),(40,40,0),(0,0,H),(40,40,H),(0,40,0),(40,0,0)],58,56)
+    ic.fill(I.poly((0,40,0),(40,40,0),(40-t,40-t,H),(t,40-t,H)),A2)
+    ic.fill(I.poly((40,0,0),(40,40,0),(40-t,40-t,H),(40-t,t,H)),A3)
+    ic.fill(I.poly((t,t,H),(40-t,t,H),(40-t,40-t,H),(t,40-t,H)),P1)
+    ic.stroke(I.poly((0,40,0),(40,40,0),(40,0,0),(40-t,t,H),(t,t,H),(t,40-t,H)),INK,OW)
+    ic.stroke(poly([I.p(t,40-t,H),I.p(40-t,40-t,H),I.p(40-t,t,H)],False),INK,OW)
+    ic.stroke(poly([I.p(40-t,40-t,H),I.p(40,40,0)],False),INK,OW)
+    # the original top face, before the sides were drafted
+    orig=I.poly((0,0,H),(40,0,H),(40,40,H),(0,40,H))
+    ic.stroke(orig,GAP,2.6,dash='0.1 4.6'); ic.stroke(orig,P3,1.5,dash='0.1 4.6')
+    return ic
+def draft():
     ic=Icon('draft','Draft'); I=Iso().fit([(0,0,0),(40,40,0),(34,34,36),(6,6,36),(0,40,0),(40,0,0)],58,56)
     t=6;H=36
     ic.fill(I.poly((0,40,0),(40,40,0),(40-t,40-t,H),(t,40-t,H)),P2)
@@ -94,6 +150,21 @@ def draft():
     ic.stroke(poly([I.p(40-t,40-t,H),I.p(40,40,0)],False),INK,OW)
     return ic
 @icon
+def thread():
+    ic=Icon('thread','Thread')
+    X,Y,rx,h=32,12,14,42
+    ry=rx/R3
+    cylinder(ic,X,Y,rx,h,G,OW,top=True)
+    e,pitch=ry,11.5
+    def front(k):
+        pts=[]
+        for i in range(25):
+            t=math.pi*i/24                       # the front half of one turn, as in the coil
+            pts.append((X+(rx+2.4)*math.cos(t), 22+pitch*(k+t/(2*math.pi))+e*math.sin(t)))
+        return poly(pts,False)
+    for k in range(3): ic.stroke(front(k),INK,3.2+2*1.6)
+    for k in range(3): ic.stroke(front(k),A2,3.2)
+    return ic
 def thread():
     ic=Icon('thread','Thread')
     X,Y,rx,h=32,12,14,40
@@ -159,14 +230,6 @@ def flange():
     I.box(ic,0,0,0,46,36,4,G)
     I.box(ic,0,0,4,46,4,26,B)
     return ic
-@icon
-def sheet():
-    ic=Icon('sheet','Sheet metal'); I=Iso().fit([(0,0,0),(46,0,0),(46,36,0),(0,36,0),(0,0,26),(46,0,26)],58,56)
-    I.box(ic,0,0,0,46,36,4,G,OW,detail=False)
-    I.box(ic,0,0,4,46,4,26,G,OW,detail=False)
-    ic.stroke(poly([I.p(0,36,4),I.p(46,36,4),I.p(46,4,4)],False),INK,OW)
-    ic.stroke(poly([I.p(46,4,26),I.p(46,4,4)],False),INK,OW) if False else None
-    return ic
 def profile(ic,path,w=6.3,fill=A2,out=2.55):
     ic.stroke(path,INK,w+2*out); ic.stroke(path,fill,w)
 @icon
@@ -221,7 +284,37 @@ def sheet_rules():
     ic.stroke('M10 12L54 12',INK,OW)
     for x in (14,22,30,38,46): ic.stroke(poly([(x,12),(x,17 if x%16!=14 else 20)],False),A3,AW*0.7)
     return ic
+def plastic_base(ic,I):
+    """bottom and two back walls, one thickness; every flat face is a single polygon, so lines only appear where the surface changes angle"""
+    t=5; h=32; S=40
+    def face(pts,col):
+        d=I.poly(*pts); ic.fill(d,col); ic.stroke(d,INK,OW)
+    face([(t,t,t),(S,t,t),(S,S,t),(t,S,t)],P1)                         # floor
+    face([(t,t,t),(S,t,t),(S,t,h),(t,t,h)],P2)                         # inside of the back right wall
+    face([(t,t,t),(t,S,t),(t,S,h),(t,t,h)],P3)                         # inside of the back left wall
+    face([(0,0,h),(S,0,h),(S,t,h),(t,t,h),(t,S,h),(0,S,h)],P1)         # top of both walls
+    face([(S,0,0),(S,S,0),(S,S,t),(S,t,t),(S,t,h),(S,0,h)],P3)         # right outside, one face
+    face([(0,S,0),(S,S,0),(S,S,t),(t,S,t),(t,S,h),(0,S,h)],P2)         # left outside, one face
+
 @icon
+def plastic_assign():
+    ic=Icon('plastic_assign','Plastic assign'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,32),(40,40,32),(0,40,0),(40,0,0)],58,58)
+    plastic_base(ic,I)
+    cyl3(ic,I,24,24,7,5,20,B)                                 # a boss stands in front: the rule is assigned to it
+    return ic.recenter()
+
+@icon
+def plastic_rule():
+    ic=Icon('plastic_rule','Plastic rule'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,32),(40,40,32),(0,40,0),(40,0,0)],58,58)
+    plastic_base(ic,I)
+    # a ruler lies in front
+    ang=math.radians(-28); c,sn=math.cos(ang),math.sin(ang); cx,cy,L,W=34,44,30,10
+    def R(x,y): return (cx+x*c-y*sn,cy+x*sn+y*c)
+    body=poly([R(-L/2,-W/2),R(L/2,-W/2),R(L/2,W/2),R(-L/2,W/2)])
+    ic.stroke(body,A3,3.2,fill=A1)
+    for i,x in enumerate(range(-10,11,5)):
+        a=R(x,-W/2+1.2); b=R(x,-W/2+(4.6 if i%2==0 else 3.2)); ic.stroke(poly([a,b],False),A3,2.0)
+    return ic
 def plastic_assign():
     ic=Icon('plastic_assign','Plastic assign'); I=Iso().fit([(0,0,0),(40,40,0),(0,0,30),(40,40,30),(0,40,0),(40,0,0)],58,56)
     I.box(ic,0,0,0,40,40,30,G,OW,detail=False)
@@ -247,6 +340,25 @@ def appearance():
     ic.fill(d,A2); ic.stroke(d,A3,AW); ic.stroke('M21 42A11 11 0 0 0 28 52',A1,AW)
     return ic
 @icon
+def pipe():
+    ic=Icon('pipe','Pipe'); h=7.2; r=18; ex=3.4
+    # flat cut at the top end (x = 52) is replaced by the opening; the bottom end is slightly convex
+    d=('M%s 52L%s 32A%s %s 0 0 1 32 %sL52 %sL52 %sL32 %sA%s %s 0 0 0 %s 32L%s 52Q%s 55.6 %s 52Z'%
+       (f(14-h),f(14-h),f(r+h),f(r+h),f(14-h),f(14-h),f(14+h),f(14+h),f(r-h),f(r-h),f(14+h),f(14+h),f(14),f(14-h)))
+    ic.fill(d,A2)
+    ic.stroke('M%s 50L%s 32A%s %s 0 0 1 32 %sL49 %s'%(f(14-h+2.8),f(14-h+2.8),f(r+h-2.8),f(r+h-2.8),f(14-h+2.8),f(14-h+2.8)),A1,2.4)
+    ic.stroke(d,INK,OW)
+    ic.fill(ell(52,14,ex,h),A1); ic.stroke(ell(52,14,ex,h),INK,OW)       # the open end, rim lit
+    ic.fill(ell(52.4,14,ex*0.55,h-2.6),A3)                                # the inside of the tube
+    return ic
+def pipe():
+    ic=Icon('pipe','Pipe'); h=7.2; r=18
+    d=('M%s 52L%s 32A%s %s 0 0 1 32 %sL52 %sL52 %sL32 %sA%s %s 0 0 0 %s 32L%s 52Z'%
+       (f(14-h),f(14-h),f(r+h),f(r+h),f(14-h),f(14-h),f(14+h),f(14+h),f(r-h),f(r-h),f(14+h),f(14+h)))
+    ic.fill(d,A2)
+    ic.stroke('M%s 50L%s 32A%s %s 0 0 1 32 %sL50 %s'%(f(14-h+2.8),f(14-h+2.8),f(r+h-2.8),f(r+h-2.8),f(14-h+2.8),f(14-h+2.8)),A1,2.4)
+    ic.stroke(d,INK,OW)
+    return ic
 def pipe():
     ic=Icon('pipe','Pipe')
     d='M14 52L14 32A18 18 0 0 1 32 14L52 14'
