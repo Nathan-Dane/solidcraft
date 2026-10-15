@@ -1,4 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Coil</title>
-  <path d="M16 10.67L48 10.67L16 21.33L48 21.33L16 32L48 32L16 42.67L48 42.67L16 53.33L48 53.33" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 14C20 26 44 20 54 1" fill="none" stroke="#34465b" stroke-width="9.35" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 25C20 37 44 31 54 12" fill="none" stroke="#34465b" stroke-width="9.35" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 36C20 48 44 42 54 23" fill="none" stroke="#34465b" stroke-width="9.35" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 47C20 59 44 53 54 34" fill="none" stroke="#34465b" stroke-width="9.35" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 14C20 26 44 20 54 1" fill="none" stroke="#328bd3" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 25C20 37 44 31 54 12" fill="none" stroke="#328bd3" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 36C20 48 44 42 54 23" fill="none" stroke="#328bd3" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 47C20 59 44 53 54 34" fill="none" stroke="#328bd3" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

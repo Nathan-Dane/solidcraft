@@ -21,7 +21,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .at("SKETCH", "INSERT")
         .icon("svg")
         .params(concat!("path | text: SVG; at?: [x,y] offset, scale?, tolerance?: mm within which ends join (default 0.0001); plane?: (when no sketch is active, a new sketch on it; default XY)", created_doc!())),
-    CommandSpec::new("sketch.export_dxf", "Save As DXF", export_dxf)
+    CommandSpec::new("sketch.export_dxf", "Save As DXF", export_dxf).icon("dxf")
         .noundo()
         .params("sketch?: id|name (default active); path?: file to write (else the DXF text is returned)"),
 ];

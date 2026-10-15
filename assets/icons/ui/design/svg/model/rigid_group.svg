@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Rigid group</title>
+  <path d="M21 29L21 21A11 11 0 0 1 43 21L43 29" fill="none" stroke="#34465b" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 28L46 28A5 5 0 0 1 51 33L51 52A5 5 0 0 1 46 57L18 57A5 5 0 0 1 13 52L13 33A5 5 0 0 1 18 28Z" fill="#e2e8ef"/>
+  <path d="M18 28L46 28A5 5 0 0 1 51 33L51 52A5 5 0 0 1 46 57L18 57A5 5 0 0 1 13 52L13 33A5 5 0 0 1 18 28Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="40" r="4.5" fill="#236ead"/>
+  <path d="M32 41L32 49" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

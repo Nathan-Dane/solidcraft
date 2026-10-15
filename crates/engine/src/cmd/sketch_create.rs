@@ -106,7 +106,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         text_style_doc!(),
         created_doc!()
     )),
-    CommandSpec::new("sketch.edit_text", "Edit Text", edit_text)
+    CommandSpec::new("sketch.edit_text", "Edit Text", edit_text).icon("edit")
         .enabled(in_sketch)
         .live(edit_text_live)
         .params(concat!(

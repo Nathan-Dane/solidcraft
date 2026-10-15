@@ -50,7 +50,7 @@ pub static COMMANDS: &[CommandSpec] = &[
             "distance2?: positive length expression (Two Sides: an independent distance the other way, as for `solid.extrude`). Each side is its own offset association, listed in `sides`; flip?: bool reverses the primary side; `param`/`param2` name the driving dimensions",
             created_doc!()
         )),
-    CommandSpec::new("sketch.offset.break", "Break Offset Association", break_offset)
+    CommandSpec::new("sketch.offset.break", "Break Offset Association", break_offset).icon("break")
         .enabled(in_sketch)
         .params("curve: derived offset curve id (retains geometry and makes its points editable)"),
     CommandSpec::new("sketch.trim", "Trim", trim)

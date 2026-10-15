@@ -1,6 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Hem</title>
-  <path d="M6.37 21.95L41.04 21.95L41.04 28.62L6.37 28.62Z" fill="#b8c3cf"/>
-  <path d="M41.04 21.95L47.7 21.95A10 10 0 0 1 47.7 41.95L27.7 41.95L27.7 35.29L47.7 35.29A3.33 3.33 0 0 0 47.7 28.62L41.04 28.62Z" fill="#328bd3"/>
-  <path d="M6.37 21.95L47.7 21.95A10 10 0 0 1 47.7 41.95L27.7 41.95L27.7 35.29L47.7 35.29A3.33 3.33 0 0 0 47.7 28.62L6.37 28.62Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 44L36 44A9 9 0 0 0 36 26L12 26" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 44L36 44A9 9 0 0 0 36 26L12 26" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -68,9 +68,9 @@ not reach the new icons yet.
 
 | Path | What |
 |---|---|
-| `svg/model/` (96) | Two-tone modelling, analysis, sketch and object masters |
-| `svg/small/` (1) | Small-slot variants, only where the artwork differs (Section Analysis) |
-| `svg/flat/` (18) | Single-colour application-bar and navigation icons, painted with `currentColor` |
+| `svg/model/` (179) | Two-tone modelling, analysis, sketch and object masters |
+| `svg/small/` (8) | Small-slot variants, only where the artwork differs (Section Analysis, Pattern, Interference, Joint, As-built, Isoparametric, Component, Curvature comb) |
+| `svg/flat/` (19) | Single-colour application-bar and navigation icons, painted with `currentColor` |
 | `svg/workspace/` (4) | Design, Animate, Render (planned), Drawing (planned) |
 | `palette.toml` | Colour roles, each with a light and a dark hex, plus stroke weights |
 | `aliases.toml` | App icon ids that reuse another master |
@@ -114,7 +114,7 @@ preview PNGs (5 MB) and the 1024 px brand `logo.svg` were not committed.
 ## Still open before implementation
 
 - Format decision (Rust drawing code, SVG assets, or SVG authored then generated) and workspace-colour decision, per the proposal.
-- Simplified `small/` variants for icons that blur at 16 px in `tools/preview.py`: `pattern`, `interference`, `iso_analysis`, `joint`, `as_built`, `combine`, `component`, `fastener`, `accessibility`, `environment_map`, `curvature_comb`.
+- Check any further icons that blur at 16 px in `tools/preview.py` (`combine`, `fastener`, `accessibility`, `environment_map` are the candidates left) and add a `small/` variant where it helps.
 - Check every master in the running app at 16, 20 and 26 px in both themes; the dark values in `palette.toml` are a first proposal.
 - Replace `gap` knock-outs (`as_built`, `center_of_mass`, `revolve`, `sweep`, `style`) with generated geometry so they stay correct on hover and selected backgrounds.
-- Redraw the stand-ins; draw the not-drawn ids; port to the chosen pipeline and update `ATTRIBUTION.md`/`cargo xtask assets`.
+- Every command now has an icon id and a master (or an alias); `design/status.toml` is empty. Surface-tab icons are aliases in the `surface` accent (`surface_patch`, `surface_stitch`, …), and `error`/`warning` are aliases of `status_error`/`status_warning` in the `surface`/`mesh` accents.

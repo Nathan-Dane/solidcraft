@@ -1,4 +1,4 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Select</title>
-  <path d="M13.33 9.38L50.67 30.71L34.67 36.05L26.67 54.71Z" fill="currentColor" fill-rule="evenodd"/>
+  <path d="M18 7L18 50L28.5 40.5L35.5 56L43 52.5L36 37.5L50 37.5Z" fill="#34465b" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

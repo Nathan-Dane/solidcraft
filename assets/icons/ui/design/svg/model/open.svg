@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Open</title>
+  <path d="M6 18L24 18L29 24L52 24L52 50L6 50Z" fill="#b8c3cf"/>
+  <path d="M6 18L24 18L29 24L52 24L52 50L6 50Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6 50L14 30L60 30L52 50Z" fill="#e2e8ef"/>
+  <path d="M6 50L14 30L60 30L52 50Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Dots</title>
-  <path d="M9.07 32A4.27 4.27 0 1 0 17.6 32A4.27 4.27 0 1 0 9.07 32ZM27.73 32A4.27 4.27 0 1 0 36.27 32A4.27 4.27 0 1 0 27.73 32ZM46.4 32A4.27 4.27 0 1 0 54.93 32A4.27 4.27 0 1 0 46.4 32Z" fill="currentColor" fill-rule="evenodd"/>
+  <title>More</title>
+  <circle cx="13" cy="32" r="5" fill="#34465b"/>
+  <circle cx="32" cy="32" r="5" fill="#34465b"/>
+  <circle cx="51" cy="32" r="5" fill="#34465b"/>
 </svg>

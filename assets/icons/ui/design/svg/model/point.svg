@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Point</title>
-  <path d="M32 31.67L54.67 43L32 54.33L9.33 43Z" fill="#e2e8ef"/>
-  <path d="M9.33 43L32 54.33L32 63.67L9.33 52.33Z" fill="#b8c3cf"/>
-  <path d="M54.67 43L32 54.33L32 63.67L54.67 52.33Z" fill="#8e9faf"/>
-  <path d="M32 31.67L54.67 43L54.67 52.33L32 63.67L9.33 52.33L9.33 43ZM9.33 43L32 54.33L54.67 43M32 54.33L32 63.67M32 13L32 35.67" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M26.13 9A5.87 5.87 0 1 0 37.87 9A5.87 5.87 0 1 0 26.13 9Z" fill="#236ead"/>
+  <path d="M32 22L32 10" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 42L32 54" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22 32L10 32" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M42 32L54 32" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="6" fill="#236ead"/>
 </svg>

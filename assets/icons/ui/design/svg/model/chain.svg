@@ -1,4 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Chain</title>
-  <path d="M26.67 37.33A10.67 10.67 0 0 0 42.67 37.33L50.67 29.33A10.67 10.67 0 0 0 34.67 13.33L32 16M37.33 26.67A10.67 10.67 0 0 0 21.33 26.67L13.33 34.67A10.67 10.67 0 0 0 29.33 50.67L32 48" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M9.15 20.46L27.54 38.85A8 8 0 0 0 38.85 27.54L20.46 9.15A8 8 0 0 0 9.15 20.46Z" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.15 36.46L43.54 54.85A8 8 0 0 0 54.85 43.54L36.46 25.15A8 8 0 0 0 25.15 36.46Z" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M27.54 38.85A8 8 0 0 0 27.54 27.54" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

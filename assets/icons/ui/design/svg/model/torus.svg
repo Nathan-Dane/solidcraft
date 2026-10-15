@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Torus</title>
+  <path d="M6 32A26 17 0 1 0 58 32A26 17 0 1 0 6 32Z" fill="#328bd3"/>
+  <path d="M32 15A26 17 0 0 0 6 32A26 17 0 0 0 32 49A26 17 0 0 0 58 32A26 17 0 0 0 32 15Z" fill="#328bd3"/>
+  <path d="M7.5 27A26 17 0 0 1 56.5 27A24 14.5 0 0 0 7.5 27Z" fill="#b9ddf8"/>
+  <path d="M6 32A26 17 0 1 0 58 32A26 17 0 1 0 6 32Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M21 30A11 5.5 0 1 0 43 30A11 5.5 0 1 0 21 30Z" fill="#ffffff"/>
+  <path d="M21 30A11 5.5 0 1 0 43 30A11 5.5 0 1 0 21 30Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

@@ -36,7 +36,7 @@ pub static COMMANDS: &[CommandSpec] = &[
     CommandSpec::new("plastic.assign_rule", "Assign Plastic Rule", assign_rule).at("PLASTIC", "SETUP").icon("plastic_assign").params(
         "bodies: [names]; rule: name (empty: no rule) — plastic features on these bodies take its draft and clearance as defaults",
     ),
-    CommandSpec::new("plastic.rules", "List Plastic Rules", list_rules).noundo().params("→ rules with their expressions and values, the active rule and the rules assigned to bodies"),
+    CommandSpec::new("plastic.rules", "List Plastic Rules", list_rules).icon("plastic_rule").noundo().params("→ rules with their expressions and values, the active rule and the rules assigned to bodies"),
 ];
 
 fn rule_json(s: &Session, r: &PlasticRule) -> Value {

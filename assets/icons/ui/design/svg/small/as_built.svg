@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>As-built joint</title>
+  <path d="M0.41 25L16 34L16 52L0.41 43Z" fill="#b8c3cf"/>
+  <path d="M31.59 25L16 34L16 52L31.59 43Z" fill="#8e9faf"/>
+  <path d="M16 16L31.59 25L16 34L0.41 25Z" fill="#e2e8ef"/>
+  <path d="M16 16L31.59 25L31.59 43L16 52L0.41 43L0.41 25Z" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32.41 25L48 34L48 52L32.41 43Z" fill="#b8c3cf"/>
+  <path d="M63.59 25L48 34L48 52L63.59 43Z" fill="#8e9faf"/>
+  <path d="M48 16L63.59 25L48 34L32.41 25Z" fill="#e2e8ef"/>
+  <path d="M48 16L63.59 25L63.59 43L48 52L32.41 43L32.41 25Z" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22 34L42 34" fill="none" stroke="#34465b" stroke-width="11.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22 34L42 34" fill="none" stroke="#328bd3" stroke-width="5.6" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

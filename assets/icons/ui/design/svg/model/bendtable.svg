@@ -1,6 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Bendtable</title>
-  <path d="M8 10.67L56 10.67L56 53.33L8 53.33Z" fill="#e2e8ef"/>
-  <path d="M8 10.67L56 10.67L56 53.33L8 53.33ZM8 24L56 24M8 38.67L56 38.67M24 10.67L24 53.33" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M33.33 46.67L42.67 46.67L50.67 38.67" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Bend table</title>
+  <path d="M11 10L53 10A3 3 0 0 1 56 13L56 51A3 3 0 0 1 53 54L11 54A3 3 0 0 1 8 51L8 13A3 3 0 0 1 11 10Z" fill="#e2e8ef"/>
+  <path d="M9.3 11.3L54.7 11.3L54.7 22.3L9.3 22.3Z" fill="#328bd3"/>
+  <path d="M11 10L53 10A3 3 0 0 1 56 13L56 51A3 3 0 0 1 53 54L11 54A3 3 0 0 1 8 51L8 13A3 3 0 0 1 11 10Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 23L56 23M8 38L56 38M25 23L25 54M40 23L40 54" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M43 50L48 50L53 42" fill="none" stroke="#236ead" stroke-width="3.61" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

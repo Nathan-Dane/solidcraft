@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Reverse normal</title>
+  <path d="M32 14L73.57 38L32 62L-9.57 38Z" fill="#e2e8ef"/>
+  <path d="M32 14L73.57 38L32 62L-9.57 38Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 40L32 14" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 6L37 15L27 15Z" fill="#236ead"/>
+  <path d="M32 44L32 54" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 60L27 51L37 51Z" fill="#8e9faf"/>
+</svg>

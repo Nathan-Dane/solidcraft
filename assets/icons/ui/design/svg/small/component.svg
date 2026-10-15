@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Component</title>
+  <path d="M25.68 16L43 26L43 46L25.68 36Z" fill="#b8c3cf"/>
+  <path d="M60.32 16L43 26L43 46L60.32 36Z" fill="#8e9faf"/>
+  <path d="M43 6L60.32 16L43 26L25.68 16Z" fill="#e2e8ef"/>
+  <path d="M43 6L60.32 16L60.32 36L43 46L25.68 36L25.68 16Z" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M25.68 16L43 26L60.32 16" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M43 26L43 46" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M3.68 30L21 40L21 60L3.68 50Z" fill="#b8c3cf"/>
+  <path d="M38.32 30L21 40L21 60L38.32 50Z" fill="#8e9faf"/>
+  <path d="M21 20L38.32 30L21 40L3.68 30Z" fill="#e2e8ef"/>
+  <path d="M21 20L38.32 30L38.32 50L21 60L3.68 50L3.68 30Z" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M3.68 30L21 40L38.32 30" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M21 40L21 60" fill="none" stroke="#34465b" stroke-width="3.2" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

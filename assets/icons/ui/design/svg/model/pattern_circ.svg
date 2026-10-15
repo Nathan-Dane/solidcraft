@@ -1,5 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Pattern circ</title>
-  <path d="M13.33 32A18.67 18.67 0 1 0 50.67 32A18.67 18.67 0 1 0 13.33 32Z" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M26.67 10.67A5.33 5.33 0 1 0 37.33 10.67A5.33 5.33 0 1 0 26.67 10.67ZM48 32A5.33 5.33 0 1 0 58.67 32A5.33 5.33 0 1 0 48 32ZM26.67 53.33A5.33 5.33 0 1 0 37.33 53.33A5.33 5.33 0 1 0 26.67 53.33ZM5.33 32A5.33 5.33 0 1 0 16 32A5.33 5.33 0 1 0 5.33 32Z" fill="#236ead"/>
+  <title>Circular pattern</title>
+  <path d="M11 32A21 21 0 1 0 53 32A21 21 0 1 0 11 32Z" fill="none" stroke="#6f879c" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="11" r="6.5" fill="#e2e8ef" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="51.97" cy="25.51" r="6.5" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="44.34" cy="48.99" r="6.5" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="19.66" cy="48.99" r="6.5" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="12.03" cy="25.51" r="6.5" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

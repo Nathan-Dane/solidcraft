@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Intersection curve</title>
+  <path d="M32 22.49L61 39.23L32 55.97L3 39.23Z" fill="#e2e8ef"/>
+  <path d="M32 22.49L61 39.23L32 55.97L3 39.23Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M17.5 30.86L46.5 47.6L46.5 24.77L17.5 8.03Z" fill="#b8c3cf"/>
+  <path d="M17.5 30.86L46.5 47.6L46.5 24.77L17.5 8.03Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M17.5 30.86L46.5 47.6" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

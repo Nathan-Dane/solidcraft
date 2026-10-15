@@ -1,5 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Pattern rect</title>
-  <path d="M8 8L26.67 8L26.67 26.67L8 26.67Z" fill="#b9ddf8"/>
-  <path d="M8 8L26.67 8L26.67 26.67L8 26.67ZM37.33 8L56 8L56 26.67L37.33 26.67ZM8 37.33L26.67 37.33L26.67 56L8 56ZM37.33 37.33L56 37.33L56 56L37.33 56Z" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Rectangular pattern</title>
+  <path d="M8 8L26 8L26 26L8 26Z" fill="#e2e8ef" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M38 8L56 8L56 26L38 26Z" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 38L26 38L26 56L8 56Z" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M38 38L56 38L56 56L38 56Z" fill="#b9ddf8" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

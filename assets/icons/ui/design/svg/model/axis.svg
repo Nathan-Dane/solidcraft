@@ -1,9 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Axis</title>
-  <path d="M32 33.68L53.13 44.24L32 54.81L10.88 44.24Z" fill="#e2e8ef"/>
-  <path d="M10.88 44.24L32 54.81L32 63.5L10.88 52.94Z" fill="#b8c3cf"/>
-  <path d="M53.13 44.24L32 54.81L32 63.5L53.13 52.94Z" fill="#8e9faf"/>
-  <path d="M32 33.68L53.13 44.24L53.13 52.94L32 63.5L10.88 52.94L10.88 44.24ZM10.88 44.24L32 54.81L53.13 44.24M32 54.81L32 63.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 5.1L32 49.83" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M28.52 7.58A3.48 3.48 0 1 0 35.48 7.58A3.48 3.48 0 1 0 28.52 7.58Z" fill="#236ead"/>
+  <path d="M12 52L12 12" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 52L52 52" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M12 8L16.5 17L7.5 17Z" fill="#236ead"/>
+  <path d="M56 52L47 56.5L47 47.5Z" fill="#236ead"/>
+  <circle cx="12" cy="52" r="4" fill="#34465b"/>
 </svg>

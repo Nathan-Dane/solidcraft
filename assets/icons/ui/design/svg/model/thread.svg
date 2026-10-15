@@ -1,7 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Thread</title>
-  <path d="M21.33 13.33A10.67 4 0 1 0 42.67 13.33A10.67 4 0 1 0 21.33 13.33Z" fill="#e2e8ef"/>
-  <path d="M21.33 13.33L21.33 50.67A10.67 4 0 0 0 42.67 50.67L42.67 13.33A10.67 4 0 0 1 21.33 13.33Z" fill="#b8c3cf"/>
-  <path d="M21.33 13.33A10.67 4 0 1 0 42.67 13.33A10.67 4 0 1 0 21.33 13.33ZM21.33 13.33L21.33 50.67A10.67 4 0 0 0 42.67 50.67L42.67 13.33" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M21.33 24L42.67 18.67M21.33 33.33L42.67 28M21.33 42.67L42.67 37.33" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 12L18 52A14 8.08 0 0 0 46 52L46 12Z" fill="#b8c3cf"/>
+  <path d="M36.9 12L36.9 59.57A14 8.08 0 0 0 46 52L46 12Z" fill="#8e9faf"/>
+  <path d="M18 12L18 52A14 8.08 0 0 0 46 52L46 12Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 12A14 8.08 0 1 0 46 12A14 8.08 0 1 0 18 12Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 33Q32 41.17 46 15" fill="none" stroke="#236ead" stroke-width="3.61" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 43Q32 51.17 46 25" fill="none" stroke="#236ead" stroke-width="3.61" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 53Q32 61.17 46 35" fill="none" stroke="#236ead" stroke-width="3.61" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18 63Q32 71.17 46 45" fill="none" stroke="#236ead" stroke-width="3.61" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

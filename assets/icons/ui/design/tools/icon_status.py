@@ -36,7 +36,7 @@ for f in sorted(glob.glob(D + '/svg/*/*.svg')):
 uses = collections.defaultdict(list)   # id -> ["command id" | "ui"]
 for f in glob.glob(ROOT + '/crates/engine/src/**/*.rs', recursive=True):
     t = open(f).read()
-    ms = list(re.finditer(r'CommandSpec::new\(\s*"([^"]+)"\s*,\s*"([^"]*)"', t))
+    ms = list(re.finditer(r'(?:CommandSpec::new|planned!)\(\s*"([^"]+)"\s*,\s*"([^"]*)"', t))
     for i, m in enumerate(ms):
         end = ms[i + 1].start() if i + 1 < len(ms) else len(t)
         chunk = '\n'.join(t[m.end():end].split('\n')[:14])

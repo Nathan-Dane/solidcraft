@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Refold</title>
-  <path d="M12.75 46.71L44.75 46.71L44.75 18.71L51.42 18.71L51.42 53.38L12.75 53.38Z" fill="#328bd3"/>
-  <path d="M12.75 46.71L44.75 46.71L44.75 18.71L51.42 18.71L51.42 53.38L12.75 53.38Z" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M18.08 36.05C18.08 25.38 24.75 17.38 36.75 16.05M30.35 11.51L36.75 16.05L32.48 22.45" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10 52L54 52" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6 36L28 36" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6 36L28 36" fill="none" stroke="#b8c3cf" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28 36L42 12" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28 36L42 12" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 26C54 32 54 40 50 46" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M50 50L48.79 40.9L57.15 44.24Z" fill="#236ead"/>
 </svg>

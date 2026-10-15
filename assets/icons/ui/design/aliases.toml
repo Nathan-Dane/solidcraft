@@ -21,3 +21,19 @@ surface_revolve = { master = "revolve", accent = "surface" }
 surface_sweep = { master = "sweep", accent = "surface" }
 surface_loft = { master = "loft", accent = "surface" }
 surface_fillet = { master = "fillet", accent = "surface" }
+surface_patch = { master = "patch", accent = "surface" }
+surface_stitch = { master = "stitch", accent = "surface" }
+surface_unstitch = { master = "unstitch", accent = "surface" }
+surface_thicken = { master = "thicken", accent = "surface" }
+surface_extend = { master = "extend", accent = "surface" }
+surface_trim = { master = "trim", accent = "surface" }
+surface_untrim = { master = "untrim", accent = "surface" }
+surface_offset = { master = "offset_surface", accent = "surface" }
+surface_ruled = { master = "ruled", accent = "surface" }
+surface_boundary = { master = "boundary", accent = "surface" }
+surface_blend = { master = "blend_surface", accent = "surface" }
+surface_reverse_normal = { master = "reverse_normal", accent = "surface" }
+continuity = { master = "edge_continuity", accent = "surface" }
+error = { master = "status_error", accent = "surface" }
+warning = { master = "status_warning", accent = "mesh" }
+ground = "c_fix"
