@@ -113,8 +113,10 @@ def pattern():
         I.box(ic,x-cx,y-cx,-s/2,x-cx+s,y-cx+s,s/2,cols,OW)
     return ic
 
-def pat_sq(ic,x,y,first,s=11):
-    d=poly([(x-s/2,y-s/2),(x+s/2,y-s/2),(x+s/2,y+s/2),(x-s/2,y+s/2)])
+def pat_sq(ic,x,y,first,s=11,rot=0):
+    """square centred on (x, y), turned by rot degrees"""
+    c,sn=math.cos(math.radians(rot)),math.sin(math.radians(rot)); h=s/2
+    d=poly([(x+c*px-sn*py,y+sn*px+c*py) for px,py in ((-h,-h),(h,-h),(h,h),(-h,h))])
     if first: ic.stroke(d,P3,3.0,fill=P1)
     else: ic.stroke(d,A3,3.0,fill=A1)
 def pat_dots(ic,pts,r=1.7):
@@ -136,7 +138,7 @@ def pattern_circ():
     R=22
     pat_dots(ic,[(32+R*math.cos(math.radians(a)),32+R*math.sin(math.radians(a))) for a in range(0,360,12)])
     for i in range(6):
-        a=math.radians(-90+60*i); pat_sq(ic,32+R*math.cos(a),32+R*math.sin(a),i==0)
+        a=math.radians(-90+60*i); pat_sq(ic,32+R*math.cos(a),32+R*math.sin(a),i==0,rot=60*i)
     return ic
 @icon
 def c_coincident():

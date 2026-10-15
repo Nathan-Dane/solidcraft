@@ -22,6 +22,8 @@ Final, a tab filter, a search box, light/dark, and 16/24/48/64 px (the `small/` 
 - A final icon is not touched again: `lint_icons.py` fails when a final icon's master differs from the stored hash, and
   `tools/author/gen.py` skips it. Un-accept it on the page to work on it.
 
+**Export** (served page) sends every note to the agent: it saves, appends a line to `target/review-requests.log` (an agent session watching that file picks it up, redraws the icons and clears their notes), and the page reloads by itself when the artwork changes, back in the same view (filters, tab, size, theme, scroll). On the static page Export downloads `review.json`. Saves from the page are merged into `review.json` (only what you changed since the page last synced), so a stale page cannot bring back a cleared note.
+
 Redrawing an icon clears its notes: `tools/author/gen.py <name>` does it by itself, and `icon_status.py --resolve <id>…` does it after a hand edit (aliases of the redrawn masters are cleared too). The open page picks the change up within a few seconds.
 
 The loop: the owner accepts some icons and writes notes on others; the agent runs `--notes`, redraws those icons using the notes (the page

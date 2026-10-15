@@ -44,7 +44,7 @@ def perforate():
 def pattern_path():
     ic=Icon('pattern_path','Path pattern')
     P=((9,48),(22,14),(42,58),(55,16))
-    pat_dots(ic,[bez(*P,i/36) for i in range(37)])
+    pat_dots(ic,[bez(*P,i/18) for i in range(19)])
     for i,t in enumerate((0.03,0.35,0.65,0.97)):
         x,y=bez(*P,t); pat_sq(ic,x,y,i==0)
     return ic

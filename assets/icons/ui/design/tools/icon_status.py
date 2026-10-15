@@ -27,6 +27,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 D = os.path.dirname(HERE)                       # .../assets/icons/ui/design
 ROOT = os.path.abspath(os.path.join(D, '..', '..', '..', '..'))
 REVIEW = D + '/review.json'
+REQUESTS = os.path.join(ROOT, 'target', 'review-requests.log')
 args = sys.argv[1:]
 out_path = args[args.index('--out') + 1] if '--out' in args else os.path.join(ROOT, 'target', 'icon-status.html')
 
@@ -34,6 +35,12 @@ sys.path.insert(0, HERE)
 import review_state
 load_review = review_state.load
 master_hash = review_state.master_hash
+
+def art_rev():
+    h = hashlib.sha256()
+    for f in sorted(glob.glob(D + '/svg/*/*.svg')) + [D + '/palette.toml', D + '/aliases.toml']:
+        st = os.stat(f); h.update(('%s %d %d;' % (os.path.basename(f), st.st_mtime_ns, st.st_size)).encode())
+    return h.hexdigest()[:16]
 
 def scan():
     """Everything derived from the repo: rows, summary."""
@@ -172,7 +179,7 @@ def build_page(serving):
             html.escape(r['id']), html.escape(g[2]), html.escape(r['id'] + ' ' + r['example'] + ' ' + r['accent'] + ' ' + g[3].lower()), html.escape(tip),
             ' hs' if sm else '', inner, html.escape(r['id']), ('<span class="src"> ' + html.escape(src) + '</span>') if src else '', extra, html.escape(r['example'] or ', '.join(r['ui']) or '')))
     tabchips = ''.join('<button class="chip" data-tab="%s">%s</button>' % (html.escape(t), html.escape(t.title())) for t in tabs_seen)
-    state = json.dumps({'final': sorted(rv['final']), 'notes': rv['notes'], 'serving': serving})
+    state = json.dumps({'final': sorted(rv['final']), 'notes': rv['notes'], 'serving': serving, 'rev': art_rev()})
     return TEMPLATE.replace('@@SUMMARY@@', html.escape(summary)).replace('@@CARDS@@', ''.join(cards)).replace('@@TABS@@', tabchips).replace('@@STATE@@', state)
 
 TEMPLATE = r'''<!doctype html><meta charset=utf-8><title>SolidCraft icon review</title>
@@ -213,17 +220,19 @@ body.small:not(.dark) .art.hs .sl{display:inline}body.small.dark .art.hs .sd{dis
 <span class=grp><button data-f=all class=on>All</button><button data-f=open>Open</button><button data-f=notes>Notes</button><button data-f=final>Final</button></span>
 <span class=grp><button id=tab-all class="chip on">Everything</button>@@TABS@@</span>
 <span class=grp><button id=dk>Dark</button><small>size</small><button class=sz data-s=16>16</button><button class=sz data-s=24>24</button><button class="sz on" data-s=48>48</button><button class=sz data-s=64>64</button></span>
-<input id=q placeholder="filter id, command, panel"><button id=exp title="Download review.json">Export</button>
+<input id=q placeholder="filter id, command, panel"><button id=exp title="Send every note to Claude to be redrawn (static page: download review.json)">Export</button>
 <span class=sum>@@SUMMARY@@</span></header>
 <main>@@CARDS@@</main>
 <script>
 const S=@@STATE@@;let f='all',tab='';const q=document.getElementById('q'),msg=document.getElementById('msg');
-const fin=new Set(S.final),notes=S.notes||{};
+const fin=new Set(S.final),notes=S.notes||{};let base={final:[...S.final].sort(),notes:{...notes}};
 if(!S.serving){try{const l=JSON.parse(localStorage.getItem('icon-review')||'null');if(l){fin.clear();l.final.forEach(i=>fin.add(i));Object.assign(notes,l.notes)}}catch(e){}}
-function body(){return JSON.stringify({final:[...fin].sort(),notes:Object.fromEntries(Object.entries(notes).filter(e=>e[1].trim()))})}
+function state(){return {final:[...fin].sort(),notes:Object.fromEntries(Object.entries(notes).filter(e=>e[1].trim()))}}
+function body(){return JSON.stringify(state())}
+function post(snap){return JSON.stringify({base,final:snap.final,notes:snap.notes})}
 let t;function save(){clearTimeout(t);t=setTimeout(async()=>{try{localStorage.setItem('icon-review',body())}catch(e){}
  if(!S.serving){msg.textContent='not saved to disk (run with --serve, or Export)';return}
- try{const r=await fetch('/api/review',{method:'POST',body:body()});msg.textContent=r.ok?'':'save failed'}catch(e){msg.textContent='save failed: server not running'}},250)}
+ const snap=state();try{const r=await fetch('/api/review',{method:'POST',body:post(snap)});if(r.ok){base=JSON.parse(JSON.stringify(snap));msg.textContent=''}else msg.textContent='save failed: reload the page'}catch(e){msg.textContent='save failed: server not running'}},250)}
 const cards=[...document.querySelectorAll('.card')],marks=[...document.querySelectorAll('.gm')];
 function paint(c){const id=c.dataset.id;c.classList.toggle('final',fin.has(id));c.classList.toggle('hasnote',!!(notes[id]||'').trim()&&!fin.has(id))}
 function run(){let n=0,nf=0,nn=0;const vis=new Set();
@@ -246,11 +255,25 @@ document.querySelectorAll('[data-f]').forEach(b=>b.onclick=()=>{f=b.dataset.f;do
 document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{tab=b.dataset.tab||'';document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('on',x==b));run()});
 document.querySelectorAll('.sz').forEach(b=>b.onclick=()=>{const s=+b.dataset.s;document.documentElement.style.setProperty('--sz',s+'px');document.body.classList.toggle('small',s<=24);document.querySelectorAll('.sz').forEach(x=>x.classList.toggle('on',x==b))});
 document.getElementById('dk').onclick=function(){document.body.classList.toggle('dark');this.classList.toggle('on')};
-document.getElementById('exp').onclick=()=>{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body()],{type:'application/json'}));a.download='review.json';a.click()};
-q.oninput=run;run();
+const VK='icon-view';
+function saveView(){try{localStorage.setItem(VK,JSON.stringify({f,tab,q:q.value,s:document.documentElement.style.getPropertyValue('--sz'),dark:document.body.classList.contains('dark'),y:scrollY}))}catch(e){}}
+function restoreView(){try{const v=JSON.parse(localStorage.getItem(VK)||'null');if(!v)return;
+ if(v.dark)document.getElementById('dk').click();
+ if(v.s){const b=document.querySelector('.sz[data-s="'+parseInt(v.s)+'"]');if(b)b.click()}
+ const fb=document.querySelector('[data-f="'+v.f+'"]');if(fb)fb.click();
+ const tb=v.tab?document.querySelector('.chip[data-tab="'+v.tab+'"]'):document.getElementById('tab-all');if(tb)tb.click();
+ q.value=v.q||'';run();requestAnimationFrame(()=>scrollTo(0,v.y||0))}catch(e){}}
+document.getElementById('exp').onclick=async()=>{
+ if(!S.serving){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([body()],{type:'application/json'}));a.download='review.json';a.click();return}
+ try{const snap=state();const r=await (await fetch('/api/export',{method:'POST',body:post(snap)})).json();if(r.ok)base=JSON.parse(JSON.stringify(snap));
+  msg.style.color='#2e8b57';msg.textContent=r.sent?('Sent '+r.sent+' note'+(r.sent>1?'s':'')+' to Claude, redrawing…'):'No notes to send';
+  setTimeout(()=>{msg.textContent='';msg.style.color=''},8000)}catch(e){msg.style.color='';msg.textContent='export failed: server not running'}};
+['click','input'].forEach(ev=>document.addEventListener(ev,()=>setTimeout(saveView,50)));addEventListener('scroll',()=>{clearTimeout(window._sv);window._sv=setTimeout(saveView,200)});
+q.oninput=run;run();restoreView();
 if(S.serving)setInterval(async()=>{if(document.activeElement&&document.activeElement.tagName=='TEXTAREA')return;
- try{const r=await (await fetch('/api/review')).json();const a=JSON.stringify([[...fin].sort(),notes]),b=JSON.stringify([r.final,r.notes]);
-  if(a!=b){fin.clear();r.final.forEach(i=>fin.add(i));Object.keys(notes).forEach(k=>delete notes[k]);Object.assign(notes,r.notes);cards.forEach(c=>{c.querySelector('textarea').value=notes[c.dataset.id]||''});run()}}catch(e){}},3000);
+ try{const r=await (await fetch('/api/review')).json();if(r.rev&&r.rev!=S.rev){saveView();location.reload();return}
+  const a=JSON.stringify([[...fin].sort(),notes]),b=JSON.stringify([r.final,r.notes]);
+  if(a!=b){fin.clear();r.final.forEach(i=>fin.add(i));Object.keys(notes).forEach(k=>delete notes[k]);Object.assign(notes,r.notes);base={final:[...r.final].sort(),notes:{...r.notes}};cards.forEach(c=>{c.querySelector('textarea').value=notes[c.dataset.id]||''});run()}}catch(e){}},3000);
 </script>'''
 
 if '--serve' in args:
@@ -263,17 +286,34 @@ if '--serve' in args:
             b = body.encode(); self.send_response(code); self.send_header('Content-Type', ctype); self.send_header('Content-Length', str(len(b))); self.send_header('Cache-Control', 'no-store'); self.end_headers(); self.wfile.write(b)
         def do_GET(self):
             if self.path.split('?')[0] in ('/', '/index.html'): self._send(200, build_page(True), 'text/html; charset=utf-8')
-            elif self.path.split('?')[0] == '/api/review': self._send(200, json.dumps({'final': sorted(load_review()['final']), 'notes': load_review()['notes']}), 'application/json')
+            elif self.path.split('?')[0] == '/api/review': self._send(200, json.dumps({'final': sorted(load_review()['final']), 'notes': load_review()['notes'], 'rev': art_rev()}), 'application/json')
             else: self._send(404, 'not found', 'text/plain')
         def do_POST(self):
-            if self.path != '/api/review': return self._send(404, 'not found', 'text/plain')
+            if self.path not in ('/api/review', '/api/export'): return self._send(404, 'not found', 'text/plain')
             try:
                 n = int(self.headers.get('Content-Length', '0'))
                 if n > 4_000_000: raise ValueError('too large')
                 inc = json.loads(self.rfile.read(n))
-                old = load_review()['final']
-                review_state.save({i: old.get(i, '') for i in inc.get('final', [])}, inc.get('notes', {}))
-                self._send(200, '{"ok":true}', 'application/json')
+                base = inc.get('base')
+                if not isinstance(base, dict): raise ValueError('stale page: reload it')
+                cur = load_review(); old = cur['final']
+                # three-way merge: apply what this page changed since the state it last saw (`base`) onto the file as it is now
+                bf = set(base.get('final', [])); cf = set(inc.get('final', []))
+                final = (set(old) | (cf - bf)) - (bf - cf)
+                notes = dict(cur['notes']); bn = base.get('notes', {}); cn = inc.get('notes', {})
+                for k in set(bn) | set(cn):
+                    if bn.get(k, '') != cn.get(k, ''):
+                        if cn.get(k, '').strip(): notes[k] = cn[k]
+                        else: notes.pop(k, None)
+                review_state.save({i: old.get(i, '') for i in final}, notes)
+                res = {'ok': True}
+                if self.path == '/api/export':
+                    r = load_review(); todo = sorted(i for i in r['notes'] if i not in r['final'])
+                    res['sent'] = len(todo)
+                    if todo:
+                        os.makedirs(os.path.dirname(REQUESTS), exist_ok=True)
+                        with open(REQUESTS, 'a') as f: f.write('ICON REVIEW EXPORT: %d icon(s) with notes: %s. Apply them (icon_status.py --notes), redraw, clear the notes, lint, commit and push.\n' % (len(todo), ' '.join(todo)))
+                self._send(200, json.dumps(res), 'application/json')
             except Exception as e:
                 self._send(400, json.dumps({'ok': False, 'error': str(e)}), 'application/json')
     srv = http.server.ThreadingHTTPServer(('127.0.0.1', port), H)

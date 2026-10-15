@@ -16,8 +16,13 @@ def cylinder_():
 @icon
 def sphere():
     ic=Icon('sphere','Sphere')
-    ic.fill(ell(32,32,26),A2)
-    ic.fill('M32 6A26 26 0 0 0 7.5 40A26 26 0 0 0 20 52.5A30 30 0 0 1 32 6Z',A1)
+    ic.fill(ell(32,32,26),A1)
+    p0=arc_pt=(32+26*math.cos(math.radians(-35)),32+26*math.sin(math.radians(-35)))
+    p1=(32+26*math.cos(math.radians(125)),32+26*math.sin(math.radians(125)))
+    ic.fill('M%s %sA26 26 0 0 1 %s %sA34 34 0 0 0 %s %sZ'%(f(p0[0]),f(p0[1]),f(p1[0]),f(p1[1]),f(p0[0]),f(p0[1])),A2)
+    q0=(32+26*math.cos(math.radians(10)),32+26*math.sin(math.radians(10)))
+    q1=(32+26*math.cos(math.radians(100)),32+26*math.sin(math.radians(100)))
+    ic.fill('M%s %sA26 26 0 0 1 %s %sA30 30 0 0 0 %s %sZ'%(f(q0[0]),f(q0[1]),f(q1[0]),f(q1[1]),f(q0[0]),f(q0[1])),A3)
     ic.stroke(ell(32,32,26),INK,OW)
     ic.stroke(arcpts(32,32,26,8,8,172),INK,OW)
     return ic
