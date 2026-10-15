@@ -2,6 +2,7 @@ from lib import *
 from i2 import pt, arrowhead, arrow, poly_reg, dashes
 from i4 import G,B,face,cyl3,bez,surf_patch
 from i5 import arc_arrow, triad
+from i3 import pat_sq, pat_dots
 ICONS={}
 def icon(fn): ICONS[fn.__name__]=fn; return fn
 def smooth(t): return t*t*(3-2*t)
@@ -42,11 +43,10 @@ def perforate():
 @icon
 def pattern_path():
     ic=Icon('pattern_path','Path pattern')
-    P=((6,50),(20,20),(44,60),(58,16))
-    ic.stroke('M6 50C20 20 44 60 58 16',GUIDE,OW)
-    for i,t in enumerate((0.08,0.36,0.64,0.92)):
-        x,y=bez(*P,t); I=Iso(1.2,x,y+2); cols=G if i==0 else B
-        I.box(ic,-4.5,-4.5,-4.5,4.5,4.5,4.5,cols,OW*0.9)
+    P=((9,48),(22,14),(42,58),(55,16))
+    pat_dots(ic,[bez(*P,i/36) for i in range(37)])
+    for i,t in enumerate((0.03,0.35,0.65,0.97)):
+        x,y=bez(*P,t); pat_sq(ic,x,y,i==0)
     return ic
 @icon
 def offset_surface():

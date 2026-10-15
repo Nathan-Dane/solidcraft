@@ -1,5 +1,1 @@
-{
- "version": 1,
- "final": {},
- "notes": {}
-}
+{"final":["boundary_fill","box","chamfer","combine","compute","cylinder","extrude","fillet","hole","material","move","params","surface_extrude","surface_fillet"],"notes":{"coil":"It is off-center, and the right side is much higher than it should be. There is also no back side. Try again from scratch for a well-structured representative coil.","loft":"Remove the front-most line. Make the light/dark sides fade towards the top, as it becomes rounder.","mirror":"Make the dotted line in the middle thinner.","pattern_circ":"This concerns pattern_circ, pattern_path, and pattern_rect. They should all have some dotted line which they follow, and should all be made of the same squares, with one grey, and rest blue. They should look extremely related, with a different shape.","revolve":"The arrow above should be behind the dotted line."}}

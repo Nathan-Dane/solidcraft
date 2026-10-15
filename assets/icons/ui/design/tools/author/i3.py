@@ -112,24 +112,32 @@ def pattern():
         cols=(P1,P2,P3) if (x,y)==(0,0) else (A1,A2,A3)
         I.box(ic,x-cx,y-cx,-s/2,x-cx+s,y-cx+s,s/2,cols,OW)
     return ic
+
+def pat_sq(ic,x,y,first,s=11):
+    d=poly([(x-s/2,y-s/2),(x+s/2,y-s/2),(x+s/2,y+s/2),(x-s/2,y+s/2)])
+    if first: ic.stroke(d,P3,3.0,fill=P1)
+    else: ic.stroke(d,A3,3.0,fill=A1)
+def pat_dots(ic,pts,r=1.7):
+    for x,y in pts: ic.dot(x,y,r,GUIDE)
+def line_dots(a,b,n):
+    return [(a[0]+(b[0]-a[0])*i/n,a[1]+(b[1]-a[1])*i/n) for i in range(n+1)]
 @icon
 def pattern_rect():
     ic=Icon('pattern_rect','Rectangular pattern')
-    for i,(x,y) in enumerate(((8,8),(38,8),(8,38),(38,38))):
-        d=poly([(x,y),(x+18,y),(x+18,y+18),(x,y+18)])
-        if i==0: ic.stroke(d,P3,AW,fill=P1)
-        else: ic.stroke(d,A3,AW,fill=A1)
+    xs=(10,32,54); ys=(18,46)
+    for y in ys: pat_dots(ic,line_dots((xs[0],y),(xs[-1],y),11))
+    for x in xs: pat_dots(ic,line_dots((x,ys[0]),(x,ys[-1]),5))
+    for j,y in enumerate(ys):
+        for i,x in enumerate(xs): pat_sq(ic,x,y,i==0 and j==0)
     return ic
 @icon
 def pattern_circ():
     ic=Icon('pattern_circ','Circular pattern')
-    ic.stroke(ell(32,32,21),GUIDE,OW)
-    for i in range(5):
-        a=math.radians(-90+72*i); x,y=32+21*math.cos(a),32+21*math.sin(a)
-        if i==0: ic.ring(x,y,6.5,P3,AW,P1)
-        else: ic.ring(x,y,6.5,A3,AW,A1)
+    R=22
+    pat_dots(ic,[(32+R*math.cos(math.radians(a)),32+R*math.sin(math.radians(a))) for a in range(0,360,12)])
+    for i in range(6):
+        a=math.radians(-90+60*i); pat_sq(ic,32+R*math.cos(a),32+R*math.sin(a),i==0)
     return ic
-# ---- constraint glyphs ----
 @icon
 def c_coincident():
     ic=Icon('c_coincident','Coincident')

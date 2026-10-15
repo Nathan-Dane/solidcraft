@@ -52,15 +52,11 @@ def presspull():
 @icon
 def loft():
     ic=Icon('loft','Loft')
-    # bottom rhombus, top ellipse
-    bl,br,bb,bt=(6,46),(58,46),(32,58),(32,34)
-    side_l='M6 46L22 14A10 5 0 0 0 42 14L58 46L32 58Z'
-    ic.fill('M6 46L21.5 16.5L32 19L42.5 16.5L58 46L32 58Z',A2)
-    ic.fill('M32 58L32 19L42.5 16.5L58 46Z',A3)
-    ic.fill(poly([bl,bt,br,bb]),A1) if False else None
-    ic.stroke('M6 46L22 14M42 14L58 46L32 58Z',INK,OW)
-    ic.stroke('M6 46L32 58L58 46',INK,OW)
-    ic.stroke('M32 58L32 20',INK,OW) if False else None
+    body='M6 46L21.5 16.5L32 19L42.5 16.5L58 46L32 58Z'
+    ic.fill(body,A2)
+    ic.fill('M6 46L21.5 16.5L24 18Q25 40 32 58Z',A1)
+    ic.fill('M58 46L42.5 16.5L40 18Q39 40 32 58Z',A3)
+    ic.stroke('M6 46L22 14M42 14L58 46L32 58L6 46',INK,OW)
     ic.fill(ell(32,14,10,5),A1); ic.stroke(ell(32,14,10,5),INK,OW)
     return ic
 @icon
@@ -110,9 +106,31 @@ def thread():
 @icon
 def coil():
     ic=Icon('coil','Coil')
-    paths=['M10 %sC20 %s 44 %s 54 %s'%(f(y+10),f(y+22),f(y+16),f(y-3)) for y in (4,15,26,37)]
-    for d in paths: ic.stroke(d,INK,AW+2*OW)
-    for d in paths: ic.stroke(d,A2,AW)
+    R,e,turns,pitch=17.5,5.2,4,10.5
+    def pt_at(t):
+        return (32+R*math.cos(t), 0+pitch*t/(2*math.pi)+e*math.sin(t))
+    # wire runs from t=0.5pi-ish; sample finely and split into back (sin<0) and front (sin>=0) runs
+    t0=math.pi; t1=t0+turns*2*math.pi
+    n=turns*48
+    P=[(t0+(t1-t0)*i/n) for i in range(n+1)]
+    ys=[pt_at(t)[1] for t in P]; ymin,ymax=min(ys),max(ys); dy=32-(ymin+ymax)/2
+    def run(sel):
+        runs=[];cur=[]
+        for t in P:
+            x,y=pt_at(t); ok=(math.sin(t)>=-1e-9)==sel
+            if ok: cur.append((x,y+dy))
+            else:
+                if cur: runs.append(cur); cur=[]
+        if cur: runs.append(cur)
+        return runs
+    for r in run(False):
+        if len(r)>1: ic.stroke(poly(r,False),INK,AW*0.8+2*OW*0.8)
+    for r in run(False):
+        if len(r)>1: ic.stroke(poly(r,False),A3,AW*0.8)
+    for r in run(True):
+        if len(r)>1: ic.stroke(poly(r,False),INK,AW*0.8+2*OW*0.8)
+    for r in run(True):
+        if len(r)>1: ic.stroke(poly(r,False),A2,AW*0.8)
     return ic
 def bez(p0,p1,p2,p3,t):
     u=1-t; return tuple(u**3*a+3*u*u*t*b+3*u*t*t*c+t**3*d for a,b,c,d in zip(p0,p1,p2,p3))
@@ -134,7 +152,7 @@ def surf_patch(ic,I,n=3,amp=7,size=40,fillc=A1,line=A3,lw=OW,out=A3,ow=AW*0.75):
         ic.stroke(poly(line_pts('y',v),False),line,lw); ic.stroke(poly(line_pts('x',v),False),line,lw)
     ic.stroke(poly(outline),out,ow)
     return outline
-def thin_sheet(ic,I,x0,y0,z0,x1,y1,z1,cols): I.box(ic,x0,y0,z0,x1,y1,z1,cols,OW,detail=True)
+
 @icon
 def flange():
     ic=Icon('flange','Flange'); I=Iso().fit([(0,0,0),(46,0,0),(46,36,0),(0,36,0),(0,0,26),(46,0,26)],58,56)

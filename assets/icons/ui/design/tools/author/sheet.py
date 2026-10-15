@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """view.py out.html size id1 id2 ... | @stand_in | @done  -- big sheet, light+dark side by side"""
 import sys, os, tomllib
-D=os.environ.get('DD',os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+D=os.environ.get('DD',os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 out, size = sys.argv[1], int(sys.argv[2]); ids = sys.argv[3:]
 pal = tomllib.load(open(D+'/palette.toml','rb')); roles=pal['roles']
 st = tomllib.load(open(D+'/status.toml','rb'))['stand_in']

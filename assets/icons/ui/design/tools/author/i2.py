@@ -128,7 +128,7 @@ def tri_pair(ic,fill_l,fill_r,sl,sr,w):
 @icon
 def mirror():
     ic=Icon('mirror','Mirror')
-    ic.stroke('M32 6L32 12M32 20L32 26M32 34L32 40M32 48L32 54',GUIDE,AW); tri_pair(ic,P2,A2,INK,INK,OW)
+    ic.stroke('M32 6L32 12M32 20L32 26M32 34L32 40M32 48L32 54',GUIDE,2.0); tri_pair(ic,P2,A2,INK,INK,OW)
     return ic
 @icon
 def sketch_mirror():
