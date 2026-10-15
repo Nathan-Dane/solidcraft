@@ -13,7 +13,7 @@ UI passes to `icons::paint` and `glyph_icon`, plus every master and alias. Each 
   done         a master exists and is not listed in status.toml
   stand-in     a master exists but status.toml marks it as a placeholder drawing to be redrawn
   placeholder  no master (and no alias): the app draws the standard placeholder
-The page shows each in the light and dark palette with its accent, at 48 and 20 px.
+The page shows each once, at 48 px in the light palette (with its accent) on white.
 """
 import sys, os, re, glob, html, json, collections, tomllib
 
@@ -101,14 +101,14 @@ cards = []
 for r in rows:
     if r['id'] == 'placeholder': continue
     svg = open(masters[r['master']][1] if r['master'] in masters else masters['placeholder'][1]).read()
-    th = {t: themed(svg, t, r['accent']) for t in ('light', 'dark')}
+    art = themed(svg, 'light', r['accent'])
     use = ('%d command%s' % (r['commands'], '' if r['commands'] == 1 else 's')) if r['commands'] else ''
     if r['ui']: use += (', ' if use else '') + 'UI: ' + ', '.join(r['ui'])
     if r['unused']: use = 'no app use yet'
     src = ('= ' + r['master']) if r['master'] != r['id'] and r['status'] != 'placeholder' else ''
     cards.append('<div class="card %s" data-s="%s" data-k="%s">%s<div class="meta"><b>%s</b><span class="badge %s">%s</span><br>%s%s<br><small>%s</small></div></div>' % (
         r['status'], r['status'], html.escape(r['id'] + ' ' + r['example'] + ' ' + r['accent']),
-        '<div class="pair">' + ''.join('<div class="%s">%s<span>%s</span></div>' % (t, sized(th[t], 48), sized(th[t], 20)) for t in ('light', 'dark')) + '</div>',
+        '<div class="art">%s</div>' % sized(art, 48),
         html.escape(r['id']), r['status'].replace('-', ''), r['status'],
         html.escape(src), (' <i class="acc">' + r['accent'] + ' accent</i>') if r['accent'] else '', html.escape(use + ((' · e.g. ' + r['example']) if r['example'] else ''))))
 page = '''<!doctype html><meta charset=utf-8><title>SolidCraft icon status</title>
@@ -121,14 +121,13 @@ button.on{background:#236ead;color:#fff;border-color:#236ead}
 main{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;padding:14px 16px}
 .card{background:#fff;border:1px solid #d5dbe3;border-radius:8px;overflow:hidden}
 .card.placeholder{border-color:#e0a0a0}.card.stand-in{border-color:#e0c070}
-.pair{display:grid;grid-template-columns:1fr 1fr}.pair>div{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 4px}
-.light{background:#fff}.dark{background:#1e2530}
+.art{display:flex;justify-content:center;padding:14px 0 6px;background:#fff}
 .meta{padding:6px 10px 8px;line-height:1.5}.meta small{color:#6b7a8a}
 .badge{margin-left:6px;padding:0 6px;border-radius:9px;font-size:11px;color:#fff}
 .badge.done{background:#2e8b57}.badge.standin{background:#c58a00}.badge.placeholder{background:#c0392b}
 .acc{color:#a0500a}
 </style>
-<header><h1>SolidCraft icon status</h1><div class=sum>%s Each card: light, then dark, at 48 and 20 px.</div>
+<header><h1>SolidCraft icon status</h1><div class=sum>%s One icon per id, 48 px, light palette on white.</div>
 <button data-f=all class=on>All</button><button data-f=done>Done</button><button data-f=stand-in>Stand-in</button><button data-f=placeholder>Placeholder</button>
 <input id=q placeholder="filter by id or command"></header><main>%s</main>
 <script>let f='all';const q=document.getElementById('q');

@@ -11,7 +11,7 @@ python3 assets/icons/ui/design/tools/icon_status.py --csv     # also refreshes d
 ```
 
 One self-contained page, standard-library Python, no build and no running app. Each icon id is a
-card showing the artwork in the light and dark palette (with its accent) at 48 and 20 px, a status
+card showing the artwork once, at 48 px in the light palette (with its accent) on white, a status
 badge and where it is used, with filters for Done, Stand-in and Placeholder and a search box.
 
 | Status | Meaning |
