@@ -60,5 +60,17 @@ if os.path.exists(d + '/status.toml'):
 for fam_acc, roles_ in pal.get('accents', {}).items():
     for r in roles_:
         if r not in pal['roles']: err(d + '/palette.toml', 'accent %s overrides unknown role %s' % (fam_acc, r))
+# an icon accepted as final on the review page must not change (un-accept it there to work on it again)
+import json, hashlib
+rp = d + '/review.json'
+if os.path.exists(rp):
+    fin = json.load(open(rp)).get('final', {})
+    for iid, want in (fin.items() if isinstance(fin, dict) else []):
+        v = al.get(iid, iid); m = v.get('master') if isinstance(v, dict) else v
+        if not want: continue
+        h = hashlib.sha256()
+        for f in sorted(glob.glob(d + '/svg/*/' + m + '.svg')):
+            h.update(os.path.relpath(f, d).encode()); h.update(open(f, 'rb').read())
+        if h.hexdigest() != want: err(rp, 'final icon %s changed (master %s): un-accept it on the review page before editing it' % (iid, m))
 print('\n'.join(bad) if bad else 'icons: %d masters, palette, naming and element rules ok' % len(files))
 sys.exit(1 if bad else 0)

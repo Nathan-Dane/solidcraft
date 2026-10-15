@@ -2,28 +2,32 @@
 
 How the icon redesign (PR #853) is organised, and how to see where every icon stands.
 
-## Seeing the state of every icon
+## Reviewing the icons: accept, comment, repeat
 
 ```bash
-python3 assets/icons/ui/design/tools/icon_status.py          # writes target/icon-status.html
-python3 assets/icons/ui/design/tools/icon_status.py --summary # counts only
-python3 assets/icons/ui/design/tools/icon_status.py --csv     # also refreshes design/inventory.csv
+python3 assets/icons/ui/design/tools/icon_status.py --serve   # http://127.0.0.1:8770, saves design/review.json
+python3 assets/icons/ui/design/tools/icon_status.py --notes   # the work list: icons with notes that are not final
+python3 assets/icons/ui/design/tools/icon_status.py           # static page in target/icon-status.html (choices stay in the browser)
+python3 assets/icons/ui/design/tools/icon_status.py --summary # counts only; --csv also rewrites design/inventory.csv
 ```
 
-One self-contained page, standard-library Python, no build and no running app. Each icon id is a
-card showing the artwork once, at 48 px in the light palette (with its accent) on white, a status
-badge and where it is used, with filters for Done, Stand-in and Placeholder and a search box.
+The page shows one card per icon id, grouped by where the app uses it: toolbar tab and panel (Solid ▸ Create, Sketch ▸ Constraints, …),
+then icons the app shows elsewhere (browser, timeline, context menus), then commands that only appear in menus and the palette. A group
+starts with a slim vertical marker in the same flow as the cards, so the grouping costs almost no space. Filters: All / Open / Notes /
+Final, a tab filter, a search box, light/dark, and 16/24/48/64 px (the `small/` variant is used at 24 px and below).
 
-| Status | Meaning |
-|---|---|
-| done | a master exists and is not listed in `design/status.toml` |
-| stand-in | a master exists, but it is a quick placeholder drawing listed in `design/status.toml` |
-| placeholder | no master (and no alias): the app draws the standard placeholder |
+- The check mark in a card's corner accepts the icon as final. Click it again to un-accept.
+- The pencil opens a note; the text area unfolds over the page and takes no space when closed. A card with a note is outlined amber.
+- `design/review.json` keeps `final` (id to the hash of its master SVG(s) at the time of accepting) and `notes`.
+- A final icon is not touched again: `lint_icons.py` fails when a final icon's master differs from the stored hash, and
+  `tools/author/gen.py` skips it. Un-accept it on the page to work on it.
 
-The ids come from the command registry (`.icon("id")`), the names the UI passes to `icons::paint`, the
-sketch constraint glyph names, and every master and alias. To change a status, redraw the master and
-remove its id from `status.toml`, or add `svg/model/<id>.svg`; nothing else needs editing.
-`design/inventory.csv` is the same data for spreadsheets and diffs.
+The loop: the owner accepts some icons and writes notes on others; the agent runs `--notes`, redraws those icons using the notes (the page
+refreshes to show them), and this repeats until every icon is final. Notes on an alias card (for example `surface_trim`) apply to its master drawn in
+that accent.
+
+Authoring aids: `tools/author/` holds the Python scripts that drew the masters (`lib.py` helpers, `i1.py`…`i8.py` icon functions, `gen.py` writes
+the SVGs, `sheet.py` makes a large two-theme sheet). The SVGs remain the master; edit them directly if that is quicker.
 
 ## How the app draws icons
 
