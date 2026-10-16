@@ -300,14 +300,14 @@ def stitch():
     ic=Icon('stitch','Stitch'); I=Iso().fit([(0,0,0),(48,0,0),(48,32,0),(0,32,0)],58,50)
     tile(ic,I,0,24,0,32,P1); tile(ic,I,24,48,0,32,P2)
     for y in (4,12,20,28):
-        ic.stroke(poly([I.p(20,y,0),I.p(28,y,0)],False),A3,3.4)
+        ic.stroke(poly([I.p(20,y,0),I.p(28,y,0)],False),A3,AW)
     return ic
 @icon
 def unstitch():
     ic=Icon('unstitch','Unstitch'); I=Iso().fit([(0,0,0),(52,0,0),(52,32,0),(0,32,0)],58,50)
     tile(ic,I,0,22,0,32,P1); tile(ic,I,30,52,0,32,P2)
     for y in (4,12,20,28):
-        ic.stroke(poly([I.p(17,y,0),I.p(21,y,0)],False),A3,3.4); ic.stroke(poly([I.p(31,y,0),I.p(35,y,0)],False),A3,3.4)
+        ic.stroke(poly([I.p(17,y,0),I.p(21,y,0)],False),A3,AW); ic.stroke(poly([I.p(31,y,0),I.p(35,y,0)],False),A3,AW)
     return ic
 @icon
 def untrim():

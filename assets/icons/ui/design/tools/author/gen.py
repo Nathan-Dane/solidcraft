@@ -10,6 +10,9 @@ for m in mods:
 import lib
 REVIEW=os.path.join(os.path.dirname(os.path.dirname(HERE)),'review.json')
 final=set(json.load(open(REVIEW)).get('final',{})) if os.path.exists(REVIEW) else set()
+sys.path.insert(0,os.path.dirname(HERE))
+import review_state
+final|={review_state.master_of(i) for i in list(final)}      # an accepted alias protects its master too
 skipped=[]; written=set()
 for k,fn in allic.items():
     ic=fn()
