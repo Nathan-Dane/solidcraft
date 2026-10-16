@@ -50,6 +50,11 @@ def pattern_path():
     return ic
 @icon
 def offset_surface():
+    ic=Icon('offset_surface','Offset surface'); I=Iso(1,32,36)
+    face(ic,I,[(-14,-14,-8),(14,-14,-8),(14,14,-8),(-14,14,-8)],P1)
+    ic.stroke(I.poly((-14,-14,12),(14,-14,12),(14,14,12),(-14,14,12)),A3,AW*0.8,fill=A1)
+    return ic.recenter()
+def offset_surface():
     ic=Icon('offset_surface','Offset surface'); I=Iso(0.8,32,38)
     face(ic,I,[(-26,-26,-9),(26,-26,-9),(26,26,-9),(-26,26,-9)],P1)
     ic.stroke(I.poly((-26,-26,18),(26,-26,18),(26,26,18),(-26,26,18)),A3,AW*0.8,fill=A1)

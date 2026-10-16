@@ -234,14 +234,16 @@ def profile(ic,path,w=6.3,fill=A2,out=2.55):
     ic.stroke(path,INK,w+2*out); ic.stroke(path,fill,w)
 @icon
 def hem():
-    ic=Icon('hem','Hem'); profile(ic,'M8 44L36 44A9 9 0 0 0 36 26L12 26'); return ic
+    ic=Icon('hem','Hem'); profile(ic,'M8 44L36 44A9 9 0 0 0 36 26L12 26'); return ic.recenter()
+
 @icon
 def fold():
     ic=Icon('fold','Fold')
     profile(ic,'M6 48L30 48',fill=P2); profile(ic,'M30 48L46 20',fill=A2)
     ic.stroke('M38 40A12 12 0 0 0 33 32',A3,AW*0.8) if False else None
     ic.stroke('M18 36A16 16 0 0 1 28 30',A3,AW) if False else None
-    return ic
+    return ic.recenter()
+
 @icon
 def unfold():
     ic=Icon('unfold','Unfold')
@@ -250,7 +252,8 @@ def unfold():
     profile(ic,'M10 52L54 52',fill=A2)
     ic.stroke('M44 16C50 20 52 26 52 34',A3,AW) if False else None
     ic.stroke('M38 22C46 22 52 28 54 38',A3,AW); ic.fill(arrowhead(54,44,0.1,1,8,9),A3)
-    return ic
+    return ic.recenter()
+
 @icon
 def refold():
     ic=Icon('refold','Refold')
@@ -258,7 +261,8 @@ def refold():
     profile(ic,'M6 44L26 44',fill=P2) if False else None
     profile(ic,'M6 36L28 36',fill=P2); profile(ic,'M28 36L42 12',fill=A2)
     ic.stroke('M50 26C54 32 54 40 50 46',A3,AW); ic.fill(arrowhead(50,50,-0.4,1,8,9),A3)
-    return ic
+    return ic.recenter()
+
 @icon
 def flat():
     ic=Icon('flat','Flat pattern'); I=Iso().fit([(0,0,0),(52,0,0),(52,36,0),(0,36,0),(0,0,4)],58,56)

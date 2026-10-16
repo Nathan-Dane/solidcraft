@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Origin</title>
-  <path d="M32 32L32 8" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 32L56 32" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 32L16 48" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 5L36 13L28 13Z" fill="#236ead"/>
-  <path d="M59 32L51 36L51 28Z" fill="#236ead"/>
-  <path d="M12 52L14.83 43.51L20.49 49.17Z" fill="#236ead"/>
-  <circle cx="32" cy="32" r="5" fill="#34465b"/>
+  <path d="M28.5 35.5L28.5 11.5" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28.5 35.5L52.5 35.5" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28.5 35.5L12.5 51.5" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M28.5 8.5L32.5 16.5L24.5 16.5Z" fill="#236ead"/>
+  <path d="M55.5 35.5L47.5 39.5L47.5 31.5Z" fill="#236ead"/>
+  <path d="M8.5 55.5L11.33 47.01L16.99 52.67Z" fill="#236ead"/>
+  <circle cx="28.5" cy="35.5" r="5" fill="#34465b"/>
 </svg>

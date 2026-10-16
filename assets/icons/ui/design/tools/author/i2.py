@@ -60,7 +60,7 @@ def origin():
     ic=Icon('origin','Origin')
     ic.stroke('M32 32L32 8',A3,AW); ic.stroke('M32 32L56 32',A3,AW); ic.stroke('M32 32L16 48',A3,AW)
     ic.fill(arrowhead(32,5,0,-1,8,8),A3); ic.fill(arrowhead(59,32,1,0,8,8),A3); ic.fill(arrowhead(12,52,-1,1,8,8),A3)
-    pt(ic,32,32,INK,5); return ic
+    pt(ic,32,32,INK,5); return ic.recenter()
 
 def dashes(ic,x0,y0,x1,y1,c,w=AW,n=3,fr=0.55):
     """n dashes along a segment"""

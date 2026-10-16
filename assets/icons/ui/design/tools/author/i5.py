@@ -77,7 +77,8 @@ def new():
     ic=Icon('new','New'); doc='M12 6L34 6L46 18L46 58L12 58Z'
     ic.fill(doc,P1); ic.stroke(doc,INK,OW); ic.stroke('M34 6L34 18L46 18',INK,OW)
     ic.dot(46,44,11,A3); ic.stroke('M46 38L46 50M40 44L52 44',P1,AW*0.9)
-    return ic
+    return ic.recenter()
+
 @icon
 def open_():
     ic=Icon('open','Open')
@@ -270,12 +271,23 @@ def ruled():
     return ic
 @icon
 def reverse_normal():
+    ic=Icon('reverse_normal','Reverse normal'); I=Iso(1,32,35)
+    face(ic,I,[(-14,-14,0),(14,-14,0),(14,14,0),(-14,14,0)],P1)
+    ic.stroke('M32 33L32 16',A3,AW); ic.fill(arrowhead(32,7,0,-1,10,11),A3)        # the normal as it was
+    ic.stroke('M32 41L32 49',P3,AW); ic.fill(arrowhead(32,58,0,1,10,11),P3)        # and flipped
+    return ic.recenter()
+def reverse_normal():
     ic=Icon('reverse_normal','Reverse normal'); I=Iso(1,32,38)
     face(ic,I,[(-24,-24,0),(24,-24,0),(24,24,0),(-24,24,0)],P1)
     ic.stroke('M32 40L32 14',A3,AW); ic.fill(arrowhead(32,6,0,-1,9,10),A3)
     ic.stroke('M32 44L32 54',P3,AW); ic.fill(arrowhead(32,60,0,1,9,10),P3)
     return ic
 @icon
+def thicken():
+    ic=Icon('thicken','Thicken'); I=Iso(1,32,34)
+    I.box(ic,-14,-14,-12,14,14,-4,B)
+    ic.stroke(I.poly((-14,-14,10),(14,-14,10),(14,14,10),(-14,14,10)),INK,OW,fill=P1)
+    return ic.recenter()
 def thicken():
     ic=Icon('thicken','Thicken'); I=Iso(0.9,32,36)
     I.box(ic,-24,-24,-14,24,24,-4,B)
@@ -288,14 +300,14 @@ def stitch():
     ic=Icon('stitch','Stitch'); I=Iso().fit([(0,0,0),(48,0,0),(48,32,0),(0,32,0)],58,50)
     tile(ic,I,0,24,0,32,P1); tile(ic,I,24,48,0,32,P2)
     for y in (4,12,20,28):
-        ic.stroke(poly([I.p(20,y,0),I.p(28,y,0)],False),A3,AW)
+        ic.stroke(poly([I.p(20,y,0),I.p(28,y,0)],False),A3,3.4)
     return ic
 @icon
 def unstitch():
     ic=Icon('unstitch','Unstitch'); I=Iso().fit([(0,0,0),(52,0,0),(52,32,0),(0,32,0)],58,50)
     tile(ic,I,0,22,0,32,P1); tile(ic,I,30,52,0,32,P2)
     for y in (4,12,20,28):
-        ic.stroke(poly([I.p(17,y,0),I.p(21,y,0)],False),A3,AW); ic.stroke(poly([I.p(31,y,0),I.p(35,y,0)],False),A3,AW)
+        ic.stroke(poly([I.p(17,y,0),I.p(21,y,0)],False),A3,3.4); ic.stroke(poly([I.p(31,y,0),I.p(35,y,0)],False),A3,3.4)
     return ic
 @icon
 def untrim():

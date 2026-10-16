@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Checkpoint</title>
-  <path d="M16 8L16 58" fill="none" stroke="#34465b" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M16 12L54 12L46 23L54 34L16 34Z" fill="#328bd3"/>
-  <path d="M16 12L54 12L46 23L54 34L16 34Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.42 7L13.42 57" fill="none" stroke="#34465b" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.42 11L51.42 11L43.42 22L51.42 33L13.42 33Z" fill="#328bd3"/>
+  <path d="M13.42 11L51.42 11L43.42 22L51.42 33L13.42 33Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

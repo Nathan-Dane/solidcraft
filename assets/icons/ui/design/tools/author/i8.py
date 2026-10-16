@@ -19,7 +19,8 @@ def edit():
     ic.stroke(poly([T,at(T,11,5.5),at(E,0,5.5),at(E,0,-5.5),at(T,11,-5.5)]),INK,OW)
     ic.stroke(poly([at(T,11,5.5),at(T,11,-5.5)],False),INK,OW)
     ic.stroke(poly([at(E,-7,5.5),at(E,-7,-5.5)],False),INK,OW)
-    return ic
+    return ic.recenter()
+
 @icon
 def rename():
     ic=Icon('rename','Rename')
@@ -63,7 +64,7 @@ def activate():
 @icon
 def play():
     ic=Icon('play','Play')
-    ic.stroke(poly([(20,10),(54,32),(20,54)]),INK,OW,fill=A2); return ic
+    ic.stroke(poly([(17,9),(52,32),(17,55)]),INK,OW,fill=A2); return ic
 @icon
 def explode():
     ic=Icon('explode','Explode'); I=Iso().fit([(0,0,0),(36,36,0),(0,0,44),(36,36,44),(0,36,0),(36,0,0)],56,58)
@@ -78,20 +79,23 @@ def library():
         ic.stroke(poly([(x0,y0+8),(x1,y0+8)],False),INK,OW) if False else None
         ic.stroke(poly([(x0+3.5,y0+7),(x1-3.5,y0+7)],False),INK,OW)
     t=poly([(51,24),(61,22),(66,56) if False else (60,56),(50,56)]) if False else None
-    return ic
+    return ic.recenter()
+
 @icon
 def restore():
     ic=Icon('restore','Restore')
     ic.fill(ell(32,33,14),P1); ic.stroke(ell(32,33,14),INK,OW)
     ic.stroke('M32 25L32 33L38 37',A3,AW*0.8)
     arc_arrow(ic,32,33,23,30,-200,A3,AW*0.9,8,9)
-    return ic
+    return ic.recenter()
+
 @icon
 def checkpoint():
     ic=Icon('checkpoint','Checkpoint')
     ic.stroke('M16 8L16 58',INK,AW)
     d=poly([(16,12),(54,12),(46,23),(54,34),(16,34)]); ic.fill(d,A2); ic.stroke(d,INK,OW)
-    return ic
+    return ic.recenter()
+
 @icon
 def suppress():
     ic=Icon('suppress','Suppress')
@@ -107,7 +111,8 @@ def rollback():
     ic.fill(poly([(36,56),(27,44),(45,44)]),A3) if False else None
     ic.dot(36,46,5.5,A3)
     ic.fill(poly([(36,8),(52,13),(36,20)]),A2); ic.stroke(poly([(36,8),(52,13),(36,20)]),INK,OW*0.8)
-    return ic
+    return ic.recenter()
+
 @icon
 def reorder():
     ic=Icon('reorder','Reorder')

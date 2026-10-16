@@ -1,9 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Rollback</title>
-  <path d="M8 46L36 46" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M36 46L56 46" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M36 8L36 40" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="36" cy="46" r="5.5" fill="#236ead"/>
-  <path d="M36 8L52 13L36 20Z" fill="#328bd3"/>
-  <path d="M36 8L52 13L36 20Z" fill="none" stroke="#34465b" stroke-width="2.04" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M8 49.31L36 49.31" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M36 49.31L56 49.31" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M36 11.31L36 43.31" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="36" cy="49.31" r="5.5" fill="#236ead"/>
+  <path d="M36 11.31L52 16.31L36 23.31Z" fill="#328bd3"/>
+  <path d="M36 11.31L52 16.31L36 23.31Z" fill="none" stroke="#34465b" stroke-width="2.04" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

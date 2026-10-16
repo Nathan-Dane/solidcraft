@@ -1,8 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Unfold</title>
-  <path d="M6 44L26 44L38 22" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M10 52L54 52" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M10 52L54 52" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M38 22C46 22 52 28 54 38" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M54 44L48.73 36.49L57.68 35.59Z" fill="#236ead"/>
+  <path d="M6.21 37.21L26.21 37.21L38.21 15.21" fill="none" stroke="#8e9faf" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10.21 45.21L54.21 45.21" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M10.21 45.21L54.21 45.21" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M38.21 15.21C46.21 15.21 52.21 21.21 54.21 31.21" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M54.21 37.21L48.94 29.7L57.89 28.8Z" fill="#236ead"/>
 </svg>

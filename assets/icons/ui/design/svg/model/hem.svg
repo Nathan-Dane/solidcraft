@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Hem</title>
-  <path d="M8 44L36 44A9 9 0 0 0 36 26L12 26" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M8 44L36 44A9 9 0 0 0 36 26L12 26" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.5 41L41.5 41A9 9 0 0 0 41.5 23L17.5 23" fill="none" stroke="#34465b" stroke-width="11.4" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.5 41L41.5 41A9 9 0 0 0 41.5 23L17.5 23" fill="none" stroke="#328bd3" stroke-width="6.3" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

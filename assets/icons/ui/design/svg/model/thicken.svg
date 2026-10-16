@@ -1,10 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Thicken</title>
-  <path d="M-5.41 39.6L32 61.2L32 70.2L-5.41 48.6Z" fill="#328bd3"/>
-  <path d="M69.41 39.6L32 61.2L32 70.2L69.41 48.6Z" fill="#236ead"/>
-  <path d="M32 18L69.41 39.6L32 61.2L-5.41 39.6Z" fill="#b9ddf8"/>
-  <path d="M32 18L69.41 39.6L69.41 48.6L32 70.2L-5.41 48.6L-5.41 39.6Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M-5.41 39.6L32 61.2L69.41 39.6" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 61.2L32 70.2" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 3.6L69.41 25.2L32 46.8L-5.41 25.2Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7.75 35L32 49L32 57L7.75 43Z" fill="#328bd3"/>
+  <path d="M56.25 35L32 49L32 57L56.25 43Z" fill="#236ead"/>
+  <path d="M32 21L56.25 35L32 49L7.75 35Z" fill="#b9ddf8"/>
+  <path d="M32 21L56.25 35L56.25 43L32 57L7.75 43L7.75 35Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7.75 35L32 49L56.25 35" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 49L32 57" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 7L56.25 21L32 35L7.75 21Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
