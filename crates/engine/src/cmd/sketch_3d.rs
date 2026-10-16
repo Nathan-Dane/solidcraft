@@ -25,7 +25,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .enabled(in_sketch)
         .params(concat!("point: [x,y,z] world point (needs 3D Sketch on)", created_doc!())),
     CommandSpec::new("sketch.move3d", "Move 3D Point", move3d)
-        .icon("move")
+        .icon("sketch_move")
         .enabled(in_sketch)
         .params("wire: drawn 3D curve or point id, index?: fit point (default 0), to: [x,y,z] | by: [dx,dy,dz]; points joined to it move too"),
 ];

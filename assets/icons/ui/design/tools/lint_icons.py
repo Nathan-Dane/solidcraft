@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Rules every icon master in svg/ must satisfy (stdlib only). usage: lint_icons.py <design dir>"""
 import sys, glob, os, re, tomllib, xml.etree.ElementTree as ET
+import icon_palette
 from pathlib import Path
 d = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 pal = tomllib.load(open(d + '/palette.toml', 'rb'))
-light = {r['light'] for r in pal['roles'].values()}
+light = {r.get('source', r['light']) for r in pal['roles'].values()}
 OK_TAGS = {'svg', 'title', 'path', 'circle', 'defs', 'mask', 'clipPath', 'g'}
 FAMILIES = {'model', 'small', 'flat', 'workspace'}
 bad = []
@@ -76,9 +77,8 @@ if os.path.exists(references):
     for category in tomllib.load(open(references, 'rb')).get('category', {}).values():
         for name in category['icons']:
             if name not in names and name not in al: err(references, name + ': reference artwork is missing')
-for fam_acc, roles_ in pal.get('accents', {}).items():
-    for r in roles_:
-        if r not in pal['roles']: err(d + '/palette.toml', 'accent %s overrides unknown role %s' % (fam_acc, r))
+for message in icon_palette.validation_errors(pal, names | set(al)):
+    err(d + '/palette.toml', message)
 # an icon accepted as final on the review page must not change (un-accept it there to work on it again)
 import json, hashlib
 rp = d + '/review.json'

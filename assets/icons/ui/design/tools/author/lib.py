@@ -1,9 +1,10 @@
 import math, os, re, tomllib
 OUT=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'svg','model')
 PALETTE=tomllib.load(open(os.path.join(os.path.dirname(os.path.dirname(OUT)),'palette.toml'),'rb'))
-INK=PALETTE['roles']['ink']['light']; GAP=PALETTE['roles']['gap']['light']; GUIDE=PALETTE['roles']['guide']['light']
-P1,P2,P3=(PALETTE['roles']['passive-'+str(i)]['light'] for i in (1,2,3))
-A1,A2,A3=(PALETTE['roles']['active-'+str(i)]['light'] for i in (1,2,3))
+def source(role): return PALETTE['roles'][role].get('source', PALETTE['roles'][role]['light'])
+INK=source('ink'); GAP=source('gap'); GUIDE=source('guide')
+P1,P2,P3=(source('passive-'+str(i)) for i in (1,2,3))
+A1,A2,A3=(source('active-'+str(i)) for i in (1,2,3))
 OW=PALETTE['strokes']['geometry']; AW=PALETTE['strokes']['action']; NW=PALETTE['strokes']['navigation']
 R3=math.sqrt(3)
 def f(v):

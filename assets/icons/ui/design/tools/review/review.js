@@ -79,7 +79,7 @@ function view() {
   return {filter, tab, q: query.value, y: scrollY};
 }
 function preferences() {
-  return {dark: document.body.classList.contains('dark'), size: document.documentElement.style.getPropertyValue('--sz')};
+  return {dark: document.body.classList.contains('dark'), vision: document.body.dataset.vision, size: document.documentElement.style.getPropertyValue('--sz')};
 }
 function savePreferences() { try { localStorage.setItem(prefsKey, JSON.stringify(preferences())); } catch {} }
 function setSize(size) {
@@ -129,6 +129,9 @@ document.querySelectorAll('.sz').forEach(button => button.onclick = () => { setS
 document.getElementById('dk').onclick = function () {
   document.body.classList.toggle('dark'); this.classList.toggle('on'); savePreferences();
 };
+document.getElementById('vision').onchange = event => {
+  document.body.dataset.vision = event.target.value; savePreferences();
+};
 query.oninput = run;
 document.getElementById('rescan').onclick = async () => {
   if (!dirty || await flush()) location.reload();
@@ -160,6 +163,7 @@ try {
   }
   const prefs = JSON.parse(localStorage.getItem(prefsKey) || 'null');
   if (prefs) {
+    if (prefs.vision && ['off', 'red-green', 'blue-yellow'].includes(prefs.vision)) { document.body.dataset.vision = prefs.vision; document.getElementById('vision').value = prefs.vision; }
     if (prefs.dark) document.getElementById('dk').click();
     const size = parseInt(prefs.size);
     if ([16,24,48,64].includes(size)) setSize(size);

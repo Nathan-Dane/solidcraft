@@ -98,9 +98,9 @@ fn icon_data() -> Result<(), String> {
         let d = hex(role.get("dark"), &format!("role {name} dark"))?;
         lights.push(rgb(&l));
         darks.push(rgb(&d));
-        light_hex.push(l);
+        light_hex.push(hex(role.get("source").or_else(|| role.get("light")), &format!("role {name} source"))?);
     }
-    let _ = writeln!(out, "pub(crate) const ROLE_LIGHT_HEX: &[&str] = &{:?};", light_hex);
+    let _ = writeln!(out, "pub(crate) const ROLE_SOURCE_HEX: &[&str] = &{:?};", light_hex);
     let _ = writeln!(out, "pub(crate) const PALETTE: [&[[u8; 3]]; 2] = [&[{}], &[{}]];", lights.join(", "), darks.join(", "));
     let mut accent_names = Vec::new();
     let mut accents = Vec::new();
@@ -110,6 +110,11 @@ fn icon_data() -> Result<(), String> {
             let mut items = Vec::new();
             for (role, v) in roles_of {
                 let idx = names.iter().position(|n| *n == role).ok_or_else(|| format!("accent {acc}: unknown role {role}"))?;
+                let v = if let Some(link) = v.get("use").and_then(toml::Value::as_str) {
+                    roles_of.get(link).ok_or_else(|| format!("accent {acc}: unknown linked role {link}"))?
+                } else {
+                    v
+                };
                 let l = hex(v.get("light"), &format!("accent {acc} {role} light"))?;
                 let d = hex(v.get("dark"), &format!("accent {acc} {role} dark"))?;
                 items.push(format!("({idx}, {}, {})", rgb(&l), rgb(&d)));
@@ -120,8 +125,40 @@ fn icon_data() -> Result<(), String> {
     }
     let _ = writeln!(out, "pub(crate) const ACCENT_NAMES: &[&str] = &{:?};", accent_names);
     let _ = writeln!(out, "pub(crate) const ACCENTS: &[&[(usize, [u8; 3], [u8; 3])]] = &[{}];", accents.join(", "));
+    // UI tokens and SVGs share the same primary strokes, including accessibility overrides.
+    for (constant, value) in [
+        ("SKETCH_PRIMARY", palette.get("accents").and_then(|v| v.get("sketch"))),
+        ("CONSTRAINT_PRIMARY", palette.get("accents").and_then(|v| v.get("constraint"))),
+        ("CONSTRUCTION_PRIMARY", palette.get("accents").and_then(|v| v.get("construction"))),
+        ("SKETCH_RED_GREEN", palette.get("variants").and_then(|v| v.get("red-green")).and_then(|v| v.get("sketch"))),
+        ("CONSTRAINT_BLUE_YELLOW", palette.get("variants").and_then(|v| v.get("blue-yellow")).and_then(|v| v.get("constraint"))),
+    ] {
+        let role = value.and_then(|v| v.get("active-3"));
+        let l = hex(role.and_then(|v| v.get("light")), constant)?;
+        let d = hex(role.and_then(|v| v.get("dark")), constant)?;
+        let _ = writeln!(out, "pub(crate) const {constant}: [[u8; 3]; 2] = [{}, {}];", rgb(&l), rgb(&d));
+    }
+    let mut variants = Vec::new();
+    if let Some(groups) = palette.get("variants").and_then(toml::Value::as_table) {
+        for (vision, group) in groups {
+            if !matches!(vision.as_str(), "red-green" | "blue-yellow") {
+                return Err(format!("unknown icon colour-vision group {vision}"));
+            }
+            for (accent, overrides) in group.as_table().ok_or("invalid variant group")? {
+                let a = accent_names.iter().position(|n| n == accent).ok_or_else(|| format!("variant: unknown accent {accent}"))?;
+                for (role, value) in overrides.as_table().ok_or("invalid variant roles")? {
+                    let r = names.iter().position(|n| *n == role).ok_or_else(|| format!("variant: unknown role {role}"))?;
+                    let l = hex(value.get("light"), "variant light")?;
+                    let d = hex(value.get("dark"), "variant dark")?;
+                    variants.push(format!("({vision:?}, {a}, {r}, {}, {})", rgb(&l), rgb(&d)));
+                }
+            }
+        }
+    }
+    let _ = writeln!(out, "pub(crate) const ACCENT_VARIANTS: &[(&str, usize, usize, [u8; 3], [u8; 3])] = &[{}];", variants.join(", "));
     // The masters, by family.
     let mut svgs = Vec::new();
+    let mut ids = std::collections::BTreeSet::new();
     let svg_dir = root.join("svg");
     println!("cargo:rerun-if-changed={}", root.display());
     for fam in ["model", "small", "flat", "workspace"] {
@@ -131,6 +168,9 @@ fn icon_data() -> Result<(), String> {
         files.sort();
         for f in files.iter().filter(|f| f.extension().is_some_and(|e| e == "svg")) {
             let id = f.file_stem().and_then(|s| s.to_str()).ok_or("bad file name")?;
+            if fam != "small" {
+                ids.insert(id.to_owned());
+            }
             let abs = f.canonicalize().map_err(|e| e.to_string())?;
             println!("cargo:rerun-if-changed={}", abs.display());
             svgs.push(format!("({id:?}, {fam:?}, include_str!({:?}))", abs.display().to_string()));
@@ -152,10 +192,32 @@ fn icon_data() -> Result<(), String> {
             if !accent.is_empty() && !accent_names.contains(&accent) {
                 return Err(format!("alias {alias}: unknown accent {accent}"));
             }
+            if !ids.contains(&master) {
+                return Err(format!("alias {alias}: unknown master {master}"));
+            }
             al.push(format!("({alias:?}, {master:?}, {accent:?})"));
         }
     }
     let _ = writeln!(out, "pub(crate) const ALIASES: &[(&str, &str, &str)] = &[{}];", al.join(", "));
+    if let Some(t) = aliases.get("alias").and_then(toml::Value::as_table) {
+        ids.extend(t.keys().cloned());
+    }
+    let mut defaults = std::collections::BTreeMap::new();
+    if let Some(groups) = palette.get("icon-accents").and_then(toml::Value::as_table) {
+        for (accent, icons) in groups {
+            if !accent_names.contains(accent) {
+                return Err(format!("icon-accents: unknown accent {accent}"));
+            }
+            for icon in icons.as_array().ok_or("icon-accents: expected icon array")? {
+                let icon = icon.as_str().ok_or("icon-accents: expected icon id")?;
+                if !ids.contains(icon) || defaults.insert(icon, accent).is_some() {
+                    return Err(format!("icon-accents: unknown or repeated icon {icon}"));
+                }
+            }
+        }
+    }
+    let defaults: Vec<_> = defaults.iter().map(|(id, accent)| format!("({id:?}, {accent:?})")).collect();
+    let _ = writeln!(out, "pub(crate) const ICON_ACCENTS: &[(&str, &str)] = &[{}];", defaults.join(", "));
     let dest = std::path::Path::new(&std::env::var("OUT_DIR").map_err(|e| e.to_string())?).join("icon_data.rs");
     std::fs::write(dest, out).map_err(|e| e.to_string())
 }

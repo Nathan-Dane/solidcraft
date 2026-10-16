@@ -8,6 +8,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import tomllib
 import unittest
 import urllib.error
 import urllib.request
@@ -61,6 +62,48 @@ def review_fixture():
 
 
 class IconReviewTest(unittest.TestCase):
+    def test_semantic_colours_reload_from_one_palette_without_changing_acceptance(self):
+        with review_fixture() as (root, design, get, post):
+            palette = design / 'palette.toml'
+            colours = tomllib.loads(palette.read_text())
+            source = colours['roles']['active-3'].get('source', colours['roles']['active-3']['light'])
+            art = SVG.replace('currentColor', source)
+            for name in ('line', 'c_fix'):
+                (design / f'svg/model/{name}.svg').write_text(art)
+            with (design / 'aliases.toml').open('a') as aliases:
+                aliases.write('ground="c_fix"\nsurface_line={master="line",accent="surface"}\n')
+            state, accepted = get('/api/review'), (design / 'review.json').read_bytes()
+            def card(page, icon):
+                return page.split('data-id="' + icon + '"', 1)[1].split('<div class="meta">', 1)[0]
+            page = get('/')
+            self.assertIn(colours['accents']['sketch']['active-3']['light'], card(page, 'line'))
+            self.assertIn(colours['variants']['red-green']['sketch']['active-3']['dark'], card(page, 'line'),
+                          'red/green vision shares the application ramp')
+            self.assertIn(colours['accents']['constraint']['active-3']['light'], card(page, 'c_fix'))
+            self.assertIn(colours['roles']['active-3']['light'], card(page, 'ground'),
+                          'a shared master does not transfer its meaning to an alias')
+            self.assertIn(colours['accents']['surface']['active-3']['light'], card(page, 'surface_line'),
+                          'explicit alias accent wins over the Sketch master')
+            def set_light(section, colour):
+                lines, current = palette.read_text().splitlines(), ''
+                for index, line in enumerate(lines):
+                    if line.strip().startswith('['):
+                        current = line.strip().split(']', 1)[0] + ']'
+                    elif current == '[' + section + ']' and line.split('=', 1)[0].strip() == 'light':
+                        lines[index] = 'light = ' + json.dumps(colour)
+                        palette.write_text('\n'.join(lines) + '\n')
+                        return
+                self.fail('missing palette section ' + section)
+            replacement = '#123456' if colours['accents']['sketch']['active-3']['light'] != '#123456' else '#654321'
+            set_light('accents.sketch.active-3', replacement)
+            self.assertNotEqual(state['rev'], get('/api/review')['rev'])
+            self.assertIn(replacement, card(get('/'), 'line'), 'a running server reads the updated palette')
+            base = '#345678' if colours['roles']['active-3']['light'] != '#345678' else '#876543'
+            set_light('roles.active-3', base)
+            self.assertIn(base, card(get('/'), 'ground'), 'source identifiers survive changing the base display palette too')
+            self.assertEqual((design / 'review.json').read_bytes(), accepted)
+            self.assertEqual((design / 'svg/model/line.svg').read_text(), art)
+
     def test_new_unused_masters_and_alias_targets_are_never_hidden(self):
         with review_fixture() as (root, design, get, post):
             original = get('/api/review')

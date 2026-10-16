@@ -19,18 +19,22 @@ ROOT = os.path.abspath(os.path.join(D, '..', '..', '..', '..'))
 REVIEW = D + '/review.json'
 REQUESTS = os.path.join(ROOT, 'target', 'codex-icon-review', 'inbox')
 args = sys.argv[1:]
+SERVER_REV = uuid.uuid4().hex if '--serve' in args else ''
 out_path = args[args.index('--out') + 1] if '--out' in args else os.path.join(ROOT, 'target', 'icon-status.html')
 
 sys.path.insert(0, HERE)
 import review_state
+import icon_palette
 load_review = review_state.load
 master_hash = review_state.master_hash
 
 def art_rev():
     h = hashlib.sha256()
+    h.update(SERVER_REV.encode())  # A backend restart must refresh already-open review tabs too.
     paths = glob.glob(D + '/svg/*/*.svg') + glob.glob(HERE + '/review/*')
     paths += glob.glob(ROOT + '/crates/engine/src/**/*.rs', recursive=True)
     paths += glob.glob(ROOT + '/crates/ui-egui/src/**/*.rs', recursive=True)
+    paths += glob.glob(HERE + '/*.py')
     paths += [D + '/palette.toml', D + '/aliases.toml', __file__]
     for path in sorted(paths):
         st = os.stat(path)
@@ -83,9 +87,7 @@ def scan():
     if os.path.exists(mk):
         for name in re.findall(r'=> "(c_[a-z_]+)"', open(mk, encoding='utf-8').read()): uses[name].append('ui:sketch constraint glyph')
     def alias_of(n):
-        v = alias_raw.get(n)
-        if v is None: return n, ''
-        return (v['master'], v.get('accent', '')) if isinstance(v, dict) else (v, '')
+        return icon_palette.resolve(pal, alias_raw, n)
     targets = {alias_of(a)[0] for a in alias_raw}
     rows = []
     for n in sorted(set(uses) | set(masters) | set(alias_raw)):
@@ -111,7 +113,6 @@ if '--resolve' in args:
     sys.exit(0)
 
 rows, masters, pal, summary = scan()
-roles = pal['roles']; accents = pal.get('accents', {})
 print(summary)
 if '--check' in args: sys.exit(1 if unassigned or any(r['status'] == 'placeholder' and r['id'] != 'placeholder' for r in rows) else 0)
 if '--summary' in args and '--csv' not in args: sys.exit(0)
@@ -153,15 +154,8 @@ def group_of(r):
     if r['alias_target']: return (65, 0, 'SHARED MASTERS', 'used through aliases')
     return (70, 0, 'UNUSED', 'no app use yet')
 
-def colours(theme, accent):
-    m = {r['light'].lower(): r[theme] for r in roles.values()}
-    for rn, v in accents.get(accent, {}).items():
-        m[roles[rn]['light'].lower()] = v[theme]
-    return m, roles['line'][theme]
-def themed(svg, theme, accent):
-    m, line = colours(theme, accent)
-    svg = re.sub(r'#[0-9a-fA-F]{6}', lambda x: m.get(x.group(0).lower(), x.group(0)), svg)
-    return svg.replace('currentColor', line)
+def themed(svg, theme, accent, pal, vision='off'):
+    return icon_palette.themed(svg, pal, theme, accent, vision)
 
 def build_page(serving):
     rows, masters, pal, summary = scan()
@@ -182,27 +176,29 @@ def build_page(serving):
         last = g
         missing = r['status'] == 'placeholder'
         svg_f = open(masters[r['master']][1], encoding='utf-8').read() if r['master'] in masters else '<svg viewBox="0 0 64 64"><title>Missing artwork</title><path d="M10 10L54 10L54 54L10 54Z" fill="none" stroke="currentColor" stroke-width="2.55" stroke-dasharray="3 5"/></svg>'
-        arts = {}
-        for theme in ('light', 'dark'):
-            arts[theme] = themed(svg_f, theme, r['accent'])
         small = glob.glob(D + '/svg/small/' + r['master'] + '.svg')
-        sm = {t: themed(open(small[0], encoding='utf-8').read(), t, r['accent']) for t in ('light', 'dark')} if small else None
-        def art(cls, s): return '<span class="%s">%s</span>' % (cls, s)
-        inner = art('al', arts['light']) + art('ad', arts['dark'])
-        if sm: inner += art('sl', sm['light']) + art('sd', sm['dark'])
+        small_svg = open(small[0], encoding='utf-8').read() if small else None
+        inner = ''
+        for vision in icon_palette.VISIONS:
+            inner += '<span class="vision vision-' + vision + '">'
+            for theme, cls in [('light', 'al'), ('dark', 'ad')]:
+                inner += '<span class="' + cls + '">' + themed(svg_f, theme, r['accent'], pal, vision) + '</span>'
+                if small_svg:
+                    inner += '<span class="' + ('sl' if theme == 'light' else 'sd') + '">' + themed(small_svg, theme, r['accent'], pal, vision) + '</span>'
+            inner += '</span>'
         src = ('= ' + r['master']) if r['master'] != r['id'] else ''
         tip = '; '.join('%s ▸ %s: %s' % w for w in r['where']) or ', '.join(r['ui']) or ('%d command(s)' % r['commands'])
         extra = ((' <i class="acc">%s accent</i>' % r['accent']) if r['accent'] else '') + (' <i class="st">%s</i>' % r['status'] if r['status'] != 'done' else '')
         if r['id'] not in valid and protected[r['master']]:
             extra += ' <span class="shared" title="Accepted as ' + html.escape(', '.join(protected[r['master']])) + '; reopen that alias before requesting a redraw">shared artwork accepted</span>'
         if r['id'] in rv['final'] and r['id'] not in valid: extra += ' <i class="st">changed since acceptance</i>'
-        cards.append('<div class="card" data-id="%s" data-tab="%s" data-k="%s" title="%s" data-missing="%s"><div class="art%s">%s</div><div class="meta"><b>%s</b>%s%s<br><small>%s</small></div>'
+        cards.append('<div class="card" data-id="%s" data-accent="%s" data-tab="%s" data-k="%s" title="%s" data-missing="%s"><div class="art%s">%s</div><div class="meta"><b>%s</b>%s%s<br><small>%s</small></div>'
                      '<button class="ck" title="Accept as final" aria-label="Accept %s as final" %s>✓</button><button class="nt" title="Notes">✎</button></div>' % (
-            html.escape(r['id']), html.escape(g[2]), html.escape(r['id'] + ' ' + r['example'] + ' ' + r['accent'] + ' ' + g[3].lower()), html.escape(tip), 'true' if missing else 'false',
-            ' hs' if sm else '', inner, html.escape(r['id']), ('<span class="src"> ' + html.escape(src) + '</span>') if src else '', extra, html.escape(r['example'] or ', '.join(r['ui']) or ''), html.escape(r['id']), 'disabled' if missing else ''))
+            html.escape(r['id']), html.escape(r['accent']), html.escape(g[2]), html.escape(r['id'] + ' ' + r['example'] + ' ' + r['accent'] + ' ' + g[3].lower()), html.escape(tip), 'true' if missing else 'false',
+            ' hs' if small_svg else '', inner, html.escape(r['id']), ('<span class="src"> ' + html.escape(src) + '</span>') if src else '', extra, html.escape(r['example'] or ', '.join(r['ui']) or ''), html.escape(r['id']), 'disabled' if missing else ''))
     tabchips = ''.join('<button class="chip" data-tab="%s">%s</button>' % (html.escape(t), html.escape(t.title())) for t in tabs_seen)
     state = json.dumps({'final': sorted(valid), 'notes': rv['notes'], 'serving': serving, 'rev': art_rev(), 'hashes': {r['id']: master_hash(r['master']) for r in shown if r['status'] != 'placeholder'}}).replace('<', r'\u003c')
-    return load_template().replace('@@GUIDE@@', '/guide' if serving else os.path.basename(out_path) + '.guide.html').replace('@@WARNINGS@@', ('Unassigned commands: ' + html.escape(', '.join(unassigned))) if unassigned else '').replace('@@SUMMARY@@', html.escape(summary)).replace('@@CARDS@@', ''.join(cards)).replace('@@TABS@@', tabchips).replace('@@STATE@@', state)
+    return load_template().replace('@@PALETTE_CSS@@', icon_palette.review_css(pal)).replace('@@GUIDE@@', '/guide' if serving else os.path.basename(out_path) + '.guide.html').replace('@@WARNINGS@@', ('Unassigned commands: ' + html.escape(', '.join(unassigned))) if unassigned else '').replace('@@SUMMARY@@', html.escape(summary)).replace('@@CARDS@@', ''.join(cards)).replace('@@TABS@@', tabchips).replace('@@STATE@@', state)
 
 WEB = os.path.join(HERE, 'review')
 def load_template():
@@ -213,18 +209,18 @@ def load_template():
 def build_guide():
     sys.path.insert(0, os.path.join(HERE, 'author'))
     from bases import examples
-    rows, masters, _, _ = scan()
+    rows, masters, pal, _ = scan()
     by_id = {r['id']: r for r in rows}
     catalogue = tomllib.load(open(D + '/references.toml', 'rb'))
     sections = '<h2>Canonical bases</h2><div class="examples">'
     for label, svg in examples().items():
-        sections += '<article><b>' + label + '</b>' + themed(svg, 'light', '') + '</article>'
+        sections += '<article><b>' + label + '</b>' + themed(svg, 'light', '', pal) + '</article>'
     sections += '</div>'
     for category in catalogue['category'].values():
         sections += '<h2>' + html.escape(category['label']) + '</h2><p>' + html.escape(category['rule']) + '</p><div class="examples">'
         for name in category['icons']:
             row = by_id[name]; svg = open(masters[row['master']][1], encoding='utf-8').read()
-            sections += '<article><b>' + name + '</b><div class="light">' + themed(svg, 'light', row['accent']) + '</div><div class="dark">' + themed(svg, 'dark', row['accent']) + '</div></article>'
+            sections += '<article><b>' + name + '</b><div class="light">' + themed(svg, 'light', row['accent'], pal) + '</div><div class="dark">' + themed(svg, 'dark', row['accent'], pal) + '</div></article>'
         sections += '</div>'
     template = open(os.path.join(WEB, 'guide.html'), encoding='utf-8').read()
     return template.replace('@@EXAMPLES@@', sections)

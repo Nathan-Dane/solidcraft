@@ -259,7 +259,7 @@ fn parse_paint(v: Option<&str>, in_mask: bool) -> Result<Paint, String> {
         "black" if in_mask => Ok(Paint::Fixed([0, 0, 0])),
         _ => {
             let lower = v.to_ascii_lowercase();
-            ROLE_LIGHT_HEX.iter().position(|h| *h == lower).map(Paint::Role).ok_or_else(|| format!("colour {v} is not a palette colour"))
+            ROLE_SOURCE_HEX.iter().position(|h| *h == lower).map(Paint::Role).ok_or_else(|| format!("colour {v} is not a palette colour"))
         }
     }
 }
@@ -369,11 +369,20 @@ impl Doc {
 pub struct Look {
     pub dark: bool,
     pub accent: Option<usize>,
+    pub vision: crate::theme::ColorVision,
 }
 
 impl Look {
     fn rgb(self, role: usize) -> [u8; 3] {
         let theme = usize::from(self.dark);
+        let vision = match self.vision {
+            crate::theme::ColorVision::Off => "",
+            crate::theme::ColorVision::Protan | crate::theme::ColorVision::Deutan => "red-green",
+            crate::theme::ColorVision::Tritan => "blue-yellow",
+        };
+        if let Some((_, _, _, l, d)) = ACCENT_VARIANTS.iter().find(|(v, a, r, _, _)| *v == vision && Some(*a) == self.accent && *r == role) {
+            return if self.dark { *d } else { *l };
+        }
         if let Some((_, l, d)) = self.accent.and_then(|a| ACCENTS.get(a)).and_then(|items| items.iter().find(|(r, _, _)| *r == role)) {
             return if self.dark { *d } else { *l };
         }
@@ -490,6 +499,19 @@ fn accent_index(name: &str) -> Option<usize> {
     if name.is_empty() { None } else { ACCENT_NAMES.iter().position(|a| *a == name) }
 }
 
+/// A semantic default belongs to the requested id, never to the caller's current workspace.
+fn default_accent(name: &str) -> Option<usize> {
+    ICON_ACCENTS.iter().find(|(id, _)| *id == name).and_then(|(_, accent)| accent_index(accent))
+}
+
+/// Primary semantic stroke, also used by toolbar affordances. The palette owns its value.
+pub(crate) fn primary(name: &str, dark: bool, vision: crate::theme::ColorVision) -> egui::Color32 {
+    let role = ROLE_NAMES.iter().position(|n| *n == "active-3");
+    let look = Look { dark, accent: resolve(name).accent, vision };
+    let [r, g, b] = role.map(|role| look.rgb(role)).unwrap_or([255, 0, 255]);
+    crate::theme::icon_color([r, g, b])
+}
+
 /// The master and accent for an app icon id: an alias (with its accent), a master of that name,
 /// or the placeholder.
 pub fn resolve(name: &str) -> Resolved {
@@ -497,12 +519,12 @@ pub fn resolve(name: &str) -> Resolved {
     let placeholder = Resolved { master: PLACEHOLDER, accent: None, placeholder: true };
     if let Some((_, master, accent)) = ALIASES.iter().find(|(a, _, _)| *a == name) {
         return match big.get_key_value(master) {
-            Some((k, _)) => Resolved { master: k, accent: accent_index(accent), placeholder: false },
+            Some((k, _)) => Resolved { master: k, accent: accent_index(accent).or_else(|| default_accent(name)), placeholder: false },
             None => placeholder,
         };
     }
     match big.get_key_value(name) {
-        Some((k, _)) if name != PLACEHOLDER => Resolved { master: k, accent: None, placeholder: false },
+        Some((k, _)) if name != PLACEHOLDER => Resolved { master: k, accent: default_accent(name), placeholder: false },
         _ => placeholder,
     }
 }
@@ -543,6 +565,70 @@ mod tests {
             assert!(table().0.contains_key(master), "{alias} -> {master}");
             assert!(accent.is_empty() || ACCENT_NAMES.contains(accent), "{alias}: accent {accent}");
             assert!(!resolve(alias).placeholder);
+        }
+    }
+
+    #[test]
+    fn command_meanings_choose_the_same_accent_on_every_surface() {
+        let accent = |name| resolve(name).accent.map(|i| ACCENT_NAMES[i]);
+        for c in solidcraft_engine::command_specs() {
+            let want = if c.id.starts_with("surface.") {
+                Some("surface")
+            } else if c.panel == "CONSTRAINTS" {
+                Some("constraint")
+            } else if matches!(c.id, "sketch.construction" | "sketch.centerline") {
+                Some("construction")
+            } else if c.id.starts_with("sketch.") && matches!(c.panel, "CREATE" | "MODIFY" | "PATTERN" | "FINISH SKETCH") {
+                Some("sketch")
+            } else if c.id == "file.save_mesh" {
+                Some("mesh")
+            } else {
+                continue;
+            };
+            assert_eq!(accent(c.icon), want, "{} ({})", c.id, c.icon);
+        }
+        for id in ["move", "scale", "copy", "delete", "export", "ground", "axis_two_planes"] {
+            assert_eq!(accent(id), None, "shared utility / modelling icon {id}");
+        }
+        for (alias, master) in [("sketch_move", "move"), ("sketch_scale", "scale"), ("surface_fair", "spline_cv"), ("mesh_export", "export")] {
+            assert_eq!(resolve(alias).master, resolve(master).master, "reuse accepted shapes");
+        }
+    }
+
+    #[test]
+    fn semantic_ui_tokens_and_icon_strokes_share_the_palette_including_accessibility() {
+        for dark in [false, true] {
+            for vision in crate::theme::ColorVision::ALL {
+                let tokens = crate::theme::Tokens::themed(dark, vision);
+                assert_eq!(primary("line", dark, vision), tokens.sketch_accent);
+                assert_eq!(primary("c_parallel", dark, vision), tokens.glyph_text);
+                assert_eq!(primary("centerline", dark, vision), tokens.construction_geom);
+                assert_eq!(primary("construction", dark, vision), tokens.construction_geom);
+            }
+        }
+    }
+
+    #[test]
+    fn semantic_ramps_preserve_silhouettes_and_passive_faces_in_all_themes() {
+        use crate::theme::ColorVision;
+        for id in ["line", "c_parallel", "construction", "centerline", "sketch_rect_pattern", "surface_extrude", "mesh_export"] {
+            let resolved = resolve(id);
+            for dark in [false, true] {
+                for vision in ColorVision::ALL {
+                    let look = Look { dark, accent: resolved.accent, vision };
+                    let base = Look { accent: None, ..look };
+                    for role in ["ink", "line", "passive-1", "passive-2", "passive-3", "gap"] {
+                        let role = ROLE_NAMES.iter().position(|name| *name == role).unwrap();
+                        assert_eq!(look.rgb(role), base.rgb(role), "{id} changes passive paint");
+                    }
+                    for px in [16, 24, 64] {
+                        let doc = doc_for(resolved.master, px).unwrap();
+                        let changed = render(doc, look, px).unwrap();
+                        let original = render(doc, base, px).unwrap();
+                        assert!(changed.pixels().iter().zip(original.pixels()).all(|(a, b)| a.alpha() == b.alpha()), "{id}: silhouette at {px}px");
+                    }
+                }
+            }
         }
     }
 
@@ -599,7 +685,7 @@ mod tests {
         let source = SVGS.iter().find(|(id, fam, _)| *id == "folder" && *fam == "model").unwrap().2;
         let expected = Doc::parse(source).unwrap();
         for dark in [false, true] {
-            let look = Look { dark, accent: None };
+            let look = Look { dark, accent: None, vision: crate::theme::ColorVision::Off };
             let actual = render(doc_for("folder", 64).unwrap(), look, 64).unwrap();
             let reviewed = render(&expected, look, 64).unwrap();
             assert_eq!(actual.data(), reviewed.data());
@@ -623,7 +709,8 @@ mod tests {
             for dark in [false, true] {
                 for px in [16, 20, 26, 64] {
                     let Some(doc) = doc_for(id, px) else { panic!("{id}") };
-                    let pm = render(doc, Look { dark, accent: None }, px).unwrap_or_else(|| panic!("{id} at {px}"));
+                    let pm = render(doc, Look { dark, accent: None, vision: crate::theme::ColorVision::Off }, px)
+                        .unwrap_or_else(|| panic!("{id} at {px}"));
                     assert!(coverage(&pm) > 8, "{id} at {px}px (dark {dark}) is blank");
                 }
             }
@@ -637,12 +724,13 @@ mod tests {
     #[test]
     fn dark_theme_and_accents_change_colour_not_shape() {
         let doc = doc_for("extrude", 64).unwrap_or_else(|| panic!("extrude"));
-        let light = render(doc, Look { dark: false, accent: None }, 64).unwrap_or_else(|| panic!("render"));
-        let dark = render(doc, Look { dark: true, accent: None }, 64).unwrap_or_else(|| panic!("render"));
+        let light = render(doc, Look { dark: false, accent: None, vision: crate::theme::ColorVision::Off }, 64).unwrap_or_else(|| panic!("render"));
+        let dark = render(doc, Look { dark: true, accent: None, vision: crate::theme::ColorVision::Off }, 64).unwrap_or_else(|| panic!("render"));
         assert_ne!(rgba(&light), rgba(&dark));
         let r = resolve("surface_extrude");
         assert_eq!(r.master, "extrude");
-        let surface = render(doc, Look { dark: false, accent: r.accent }, 64).unwrap_or_else(|| panic!("render"));
+        let surface =
+            render(doc, Look { dark: false, accent: r.accent, vision: crate::theme::ColorVision::Off }, 64).unwrap_or_else(|| panic!("render"));
         assert!(r.accent.is_some());
         assert_ne!(rgba(&light), rgba(&surface));
         // Same silhouette: the alpha channel is identical.
@@ -671,9 +759,12 @@ mod tests {
 
     #[test]
     fn palette_roles_are_distinct_and_complete() {
-        assert_eq!(ROLE_NAMES.len(), ROLE_LIGHT_HEX.len());
+        assert_eq!(ROLE_NAMES.len(), ROLE_SOURCE_HEX.len());
         let mut seen = std::collections::HashSet::new();
-        assert!(ROLE_NAMES.iter().zip(ROLE_LIGHT_HEX).filter(|(n, _)| **n != "line").all(|(_, h)| seen.insert(*h)), "two roles share a light hex");
+        assert!(
+            ROLE_NAMES.iter().zip(ROLE_SOURCE_HEX).filter(|(n, _)| **n != "line").all(|(_, h)| seen.insert(*h)),
+            "two roles share a source identifier"
+        );
         assert!(ROLE_NAMES.contains(&"line"));
         assert_eq!(PALETTE.len(), 2);
         assert!(PALETTE.iter().all(|p| p.len() == ROLE_NAMES.len()));

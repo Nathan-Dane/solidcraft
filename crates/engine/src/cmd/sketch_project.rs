@@ -54,7 +54,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .icon("fit_section")
         .enabled(in_sketch)
         .params(concat!("body: name (a mesh or solid body): its section with the sketch plane, fitted with lines and arcs, as normal (unlinked) geometry", created_doc!())),
-    CommandSpec::new("sketch.break_link", "Break Link", break_link).icon("break")
+    CommandSpec::new("sketch.break_link", "Break Link", break_link).icon("sketch_break")
         .enabled(in_sketch)
         .params("link?: link id (j1) | entities?: [curve or point ids]: linked geometry becomes normal sketch geometry"),
     CommandSpec::new("sketch.auto_project", "Auto-Project Edges on Reference", auto_project).icon("project")

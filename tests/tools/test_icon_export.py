@@ -21,7 +21,7 @@ class IconExportTest(unittest.TestCase):
             design = root / 'assets/icons/ui/design'
             tools = design / 'tools'
             tools.mkdir(parents=True)
-            for name in ('icon_status.py', 'review_state.py'):
+            for name in ('icon_status.py', 'review_state.py', 'icon_palette.py'):
                 shutil.copy(source / name, tools / name)
             shutil.copytree(source / 'review', tools / 'review')
             (design / 'palette.toml').write_text('[roles.line]\nlight="#000000"\ndark="#ffffff"\n')
@@ -64,7 +64,7 @@ class IconExportTest(unittest.TestCase):
             design = root / 'assets/icons/ui/design'
             tools = design / 'tools'
             tools.mkdir(parents=True)
-            for name in ('icon_status.py', 'review_state.py'):
+            for name in ('icon_status.py', 'review_state.py', 'icon_palette.py'):
                 shutil.copy(source / name, tools / name)
             shutil.copytree(source / 'review', tools / 'review')
             for name in ('palette.toml', 'aliases.toml'):

@@ -46,6 +46,21 @@ available. The Style guide link shows the bases and finished references.
   a hash-bearing review JSON. A companion `.guide.html` contains the style-reference
   page. Static pages do not write the repository or inbox.
 
+## Change colours in one location
+
+Edit **`design/palette.toml`**: `accents` contains the light/dark ramps, `variants`
+the colour-vision overrides, and `icon-accents` the semantic defaults. `active-3`
+is the primary stroke. `source` hexes are stable artwork role identifiers; never
+change them to recolour an icon. Linked roles follow their referenced ramp entry.
+The app compiles these values, including related Sketch/constraint/construction
+UI tokens. Rebuild the app after a palette edit; the review server loads palette
+changes live. Its Colour vision selector uses the same adjustment tables.
+
+Explicit accents in `aliases.toml` take precedence. Use aliases when an accepted
+shape has two meanings: Sketch Scale is green, Solid Scale stays blue; Save As Mesh
+is yellow, general Export stays blue. Keep matching command and timeline ids.
+Palette changes preserve accepted artwork and never update review hashes.
+
 ## Resource map
 
 | Path | Authority / purpose |

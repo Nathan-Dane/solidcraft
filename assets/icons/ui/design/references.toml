@@ -9,7 +9,7 @@ rule = "Grey defining geometry and guides, one blue point, axis or plane as the 
 icons = ["axis_two_planes", "axis_normal_to_face", "point_three_planes", "plane_midplane"]
 [category.sketch]
 label = "Sketch and constraints"
-rule = "Flat blue geometry, sparse grey guides and round point markers; no decorative 3D."
+rule = "Flat green Sketch geometry, red constraints, sparse grey guides and round points; colour roles resolve from palette.toml, with no decorative 3D."
 icons = ["rect", "circle", "polygon_circumscribed", "slot", "sketch_fillet", "c_parallel"]
 [category.utility]
 label = "Documents and utility objects"

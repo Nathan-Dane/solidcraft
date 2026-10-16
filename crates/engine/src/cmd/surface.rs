@@ -78,7 +78,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params("body (a surface); faces?: [[x,y,z]] (points on the faces to turn over; default: all of them)"),
     CommandSpec::new("surface.fair", "Fair Surface", fair)
         .at("SURFACE", "MODIFY")
-        .icon("spline_cv")
+        .icon("surface_fair")
         .params("body: surface name; faces?: [[x,y,z]] points on the faces to fair (default: every face); strength?: number (0..1 of the full fairing step, default 1); iterations?: number (1..1000 steps, default 1); keep_edges?: bool (default true: hold the boundary row and the row next to it, so a face keeps meeting its neighbours in position and in tangent); tolerance?: expr mm (how far a control vertex may move, default 0.001 of the body's size). Moves the interior control vertices of each B-spline face to flatten its curvature variation while the boundary stays put: the face keeps its edges and the body its shape within the tolerance, and the warning in the reply carries the energy before and after; name?"),
     planned!("surface.fillet", "Surface Fillet", "769")
         .at("SURFACE", "MODIFY")

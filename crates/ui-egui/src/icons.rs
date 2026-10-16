@@ -44,7 +44,7 @@ pub fn paint_on(p: &Painter, r: Rect, name: &str, dark: Option<bool>, opacity: f
     let side = r.width().min(r.height());
     let px = (side * ppp).round().clamp(8.0, 512.0) as u32;
     let resolved = icon_svg::resolve(name);
-    let look = Look { dark: dark.unwrap_or_else(|| ctx.global_style().visuals.dark_mode), accent: resolved.accent };
+    let look = Look { dark: dark.unwrap_or_else(|| ctx.global_style().visuals.dark_mode), accent: resolved.accent, vision: crate::theme::vision() };
     let cache = ctx.data_mut(|d| d.get_temp_mut_or_insert_with(egui::Id::new("sc_icon_cache"), Cache::default).clone());
     let Ok(mut map) = cache.0.lock() else { return };
     let key = (resolved.master, look, px);
@@ -60,4 +60,35 @@ pub fn paint_on(p: &Painter, r: Rect, name: &str, dark: Option<bool>, opacity: f
     let min = pos2(((r.center().x - size / 2.0) * ppp).round() / ppp, ((r.center().y - size / 2.0) * ppp).round() / ppp);
     let tint = Color32::from_white_alpha((opacity.clamp(0.0, 1.0) * 255.0).round() as u8);
     p.image(tex.id(), Rect::from_min_size(min, egui::vec2(size, size)), Rect::from_min_max(pos2(0.0, 0.0), pos2(1.0, 1.0)), tint);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::theme::{self, ColorVision};
+
+    #[test]
+    fn actual_uploaded_icon_pixels_follow_semantics_and_vision_cache_changes() {
+        let ctx = egui::Context::default();
+        let previous = theme::vision();
+        for dark in [false, true] {
+            for vision in [ColorVision::Off, ColorVision::Protan, ColorVision::Tritan] {
+                theme::set_vision(vision);
+                for icon in ["line", "c_parallel", "construction", "centerline", "surface_extrude", "mesh_export"] {
+                    let expected = icon_svg::primary(icon, dark, vision);
+                    let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                        let r = Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(64.0, 64.0));
+                        paint_on(ui.painter(), r, icon, Some(dark), 1.0);
+                    });
+                    assert!(
+                        output.textures_delta.set.iter().any(|(_, deltas)| deltas.iter().any(|delta| match &delta.image {
+                            egui::ImageData::Color(image) => image.pixels.contains(&expected),
+                        })),
+                        "{icon}, {dark}, {vision:?}: actual texture misses its semantic stroke or reused a stale cache entry"
+                    );
+                }
+            }
+        }
+        theme::set_vision(previous);
+    }
 }

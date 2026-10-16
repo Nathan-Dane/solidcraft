@@ -12,7 +12,7 @@ old screenshots, proposals, authoring experiments or any remembered chat instruc
 | --- | --- | --- |
 | Solid / modelling feature | One substantial isometric volume; grey reference geometry, blue change/result | `model/box.svg`, `extrude.svg`, `hole.svg`, `rib.svg`, `contact_sets.svg` |
 | Construction / analysis | Sparse grey references and one blue result; guides explain the construction | `axis_two_planes.svg`, `axis_normal_to_face.svg`, `point_three_planes.svg`, `plane_midplane.svg` |
-| Sketch / constraints | Flat analytic geometry with blue strokes, grey guides and sparse round points | `rect.svg`, `circle.svg`, `polygon_circumscribed.svg`, `slot.svg`, `sketch_fillet.svg`, `c_parallel.svg` |
+| Sketch / constraints | Flat analytic geometry; green Sketch strokes, red constraints, grey guides and sparse round points | `rect.svg`, `circle.svg`, `polygon_circumscribed.svg`, `slot.svg`, `sketch_fillet.svg`, `c_parallel.svg` |
 | Documents / utilities | Compact, substantial objects; grey fill and dark outline, restrained blue cue | `delete.svg`, `copy.svg`, `paste.svg`, `library.svg`, `new.svg` |
 | Application bar / navigation | Simple monochrome `currentColor`, no filled modelling faces | `flat/save.svg`, `undo.svg`, `orbit.svg`, `fit.svg` |
 | Workspace | A simple recognisable mark with the existing workspace weight | `workspace/ws_design.svg`, `ws_animate.svg` |
@@ -76,7 +76,7 @@ Its projected circle uses the same axes; do not arbitrarily flatten the ellipse.
 
 ## Colour and semantic roles
 
-Only use the light palette values below in model SVGs. The renderer maps roles to
+Only use the stable `source` identifiers below in model SVGs. The renderer maps roles to
 light/dark theme values. `currentColor` is the background line-art role, not a way
 to add arbitrary colours. All values and accents come from `design/palette.toml`.
 
@@ -92,10 +92,37 @@ to add arbitrary colours. All values and accents come from `design/palette.toml`
 | Guide | GUIDE | #6f879c | Sparse construction references |
 | Gap | GAP | #ffffff | Deliberate background knockout |
 
-Blue means changed/result geometry, not decorative trim. Neutral objects stay grey.
-Surface aliases use the shared orange accent; form, mesh and Sketch accents are
-available only where the operation calls for them. Do not sample colours from
-screenshots, hard-code dark variants, or quietly change the shared palette.
+The source hexes identify paint roles, not the displayed colour. **Never recolour an
+SVG to apply a workspace accent.** Keep these identifiers and every finished shape
+unchanged; the runtime and review page resolve them through `design/palette.toml`.
+
+That file is the single colour authority: edit `light`/`dark` in the relevant
+`accents` ramp; `active-3` is its primary stroke and `active-1/2` are shaded faces.
+Do not edit a role's `source` identifier. `variants` holds colour-vision adjustments.
+A role with `use = "active-3"` follows that stroke automatically.
+
+| Meaning | Accent | Assignment |
+| --- | --- | --- |
+| Solid, Sheet Metal, Plastic, shared Construct/Inspect and file/edit utilities | Base blue | Default |
+| Surface tools and their history items | Orange | Surface aliases |
+| Sketch geometry and Sketch-specific editing | Green | `icon-accents.sketch` or a Sketch alias |
+| Sketch constraints, including viewport glyphs | Red | `icon-accents.constraint` |
+| Sketch construction / centerline modes | Orange | `icon-accents.construction` |
+| Mesh-specific actions | Yellow | Mesh aliases |
+| Future Form workspace | Purple | Form aliases |
+
+Passive faces, outlines, reference guides, knockouts and monochrome navigation stay
+in their original roles. Construction line mode is the one guide-paint exception;
+its accent links guide paint to the primary stroke. Construct planes/axes/points
+remain blue. The active workspace never recolours shared tools.
+
+Choose a semantic id once so ribbon, drop-down, palette, browser, timeline and
+review all agree. An explicit alias accent wins over an id's default. Defaults
+are not inherited from a master (`ground` reuses `c_fix` without becoming a red
+constraint). Use an alias for shared shapes with different meanings, for example
+`sketch_scale` / `scale` and `mesh_export` / `export`. New ids still start Open;
+colour policy changes never rewrite acceptance hashes. Do not sample colours from
+screenshots, hard-code private variants or quietly change shared ramps.
 
 ## Arrows, overlap and detail — the frequent failure points
 
