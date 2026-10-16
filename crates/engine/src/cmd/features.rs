@@ -62,7 +62,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params("path_sketch: sketch; path: [curve ids in order]; diameter: expr; wall?: expr (hollow); operation?, targets?, name?, body_name?"),
     CommandSpec::new("solid.bounding_solid", "Bounding Solid", bounding_solid)
         .at("SOLID", "CREATE")
-        .icon("box")
+        .icon("bounding_solid")
         .params("bodies?: [names] (default: all); margin?: expr; name?, body_name?"),
     CommandSpec::new("solid.scale", "Scale", scale)
         .at("SOLID", "MODIFY")
@@ -70,7 +70,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params("bodies: [names]; factor: expr | factors: [x, y, z] exprs; origin?: [x,y,z]"),
     CommandSpec::new("face.delete", "Delete Face", delete_face)
         .at("SOLID", "MODIFY")
-        .icon("delete")
+        .icon("delete_face")
         .params("faces: [[x,y,z] points on the faces, or face names from model.faces]; body?; heal?: bool (default true: the neighbouring planes close the gap, as when a rounded edge, hole or boss is taken off; false: the gap stays open and the faces left are a surface body)"),
     CommandSpec::new("solid.offset_face", "Offset Face", offset_face)
         .at("SOLID", "MODIFY")

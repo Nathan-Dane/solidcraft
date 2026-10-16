@@ -596,7 +596,15 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let ws = Rect::from_min_max(pos2(r.left() + 6.0, r.top() + 4.0), pos2(r.left() + 104.0, r.bottom() - 5.0));
         let wresp = ui.interact(ws, ui.id().with("workspace_switcher"), Sense::click());
         painter.rect(ws, 4.0, if wresp.hovered() { t.hover } else { t.field }, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-        icons::paint(&painter, Rect::from_center_size(pos2(ws.center().x, ws.top() + 24.0), vec2(26.0, 26.0)), "box", t.icon, t.icon_fill, t.accent);
+        let workspace_icon = if crate::render_workspace::active(app) { "ws_render" } else { "ws_design" };
+        icons::paint(
+            &painter,
+            Rect::from_center_size(pos2(ws.center().x, ws.top() + 24.0), vec2(26.0, 26.0)),
+            workspace_icon,
+            t.icon,
+            t.icon_fill,
+            t.accent,
+        );
         painter.text(
             pos2(ws.center().x - 5.0, ws.top() + 52.0),
             Align2::CENTER_CENTER,
@@ -775,7 +783,6 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 };
                 let icon = match selected.id {
                     "sketch.finish" => "finish",
-                    "config.table" => "configuration_table",
                     _ => selected.icon,
                 };
                 let icon_rect =

@@ -31,12 +31,12 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params(concat!("point | a, b: a corner of two lines; distance", created_doc!())),
     CommandSpec::new("sketch.chamfer.distance_angle", "Distance and Angle Chamfer", chamfer_dist_angle)
         .at("SKETCH", "MODIFY")
-        .icon("sketch_chamfer")
+        .icon("sketch_chamfer_angle")
         .enabled(in_sketch)
         .params(concat!("point | a, b: a corner of two lines; distance: along a, angle: deg from a", created_doc!())),
     CommandSpec::new("sketch.chamfer.two_distance", "Two Distance Chamfer", chamfer_two)
         .at("SKETCH", "MODIFY")
-        .icon("sketch_chamfer")
+        .icon("sketch_chamfer_two_distances")
         .enabled(in_sketch)
         .params(concat!("point | a, b: a corner of two lines; distance: along a, distance2: along b", created_doc!())),
     CommandSpec::new("sketch.offset", "Offset", offset)

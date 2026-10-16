@@ -468,7 +468,8 @@ fn table() -> &'static (HashMap<&'static str, Entry>, HashMap<&'static str, Entr
             match Doc::parse(src) {
                 Ok(doc) => {
                     let map = if *fam == "small" { &mut small } else { &mut big };
-                    map.insert(*id, Entry { doc });
+                    // Model masters precede flat glyphs: keep the reviewed command artwork.
+                    map.entry(*id).or_insert(Entry { doc });
                 }
                 Err(e) => log::warn!("icon {fam}/{id}: {e}"),
             }
@@ -542,6 +543,66 @@ mod tests {
             assert!(table().0.contains_key(master), "{alias} -> {master}");
             assert!(accent.is_empty() || ACCENT_NAMES.contains(accent), "{alias}: accent {accent}");
             assert!(!resolve(alias).placeholder);
+        }
+    }
+
+    #[test]
+    fn command_artwork_resolves_and_construct_methods_are_distinct() {
+        let specs = solidcraft_engine::command_specs();
+        for command in &specs {
+            assert!(!resolve(command.icon).placeholder, "{}: {}", command.id, command.icon);
+        }
+        let construction: Vec<_> = specs.iter().filter(|c| c.panel == "CONSTRUCT").collect();
+        let distinct: std::collections::HashSet<_> = construction.iter().map(|c| c.icon).collect();
+        assert_eq!(construction.len(), 19);
+        assert_eq!(distinct.len(), construction.len(), "construction methods need distinct visual identities");
+    }
+
+    #[test]
+    fn helper_controls_resolve_without_command_registry_entries() {
+        for name in ["agent_chat", "normal", "infinite", "pattern_flip", "pattern_center"] {
+            assert!(!resolve(name).placeholder, "UI helper: {name}");
+        }
+    }
+
+    #[test]
+    fn sketch_construction_modes_have_distinct_icons() {
+        let families: &[&[&str]] = &[
+            &["sketch.polygon.inscribed", "sketch.polygon.circumscribed", "sketch.polygon.edge"],
+            &["sketch.slot.center_to_center", "sketch.slot.overall", "sketch.slot.center_point"],
+            &["sketch.slot.arc_three_point", "sketch.slot.arc_center"],
+            &["sketch.chamfer.equal_distance", "sketch.chamfer.distance_angle", "sketch.chamfer.two_distance"],
+        ];
+        for commands in families {
+            let icons: std::collections::HashSet<_> = commands.iter().map(|id| solidcraft_engine::find_command(id).unwrap().icon).collect();
+            assert_eq!(icons.len(), commands.len(), "Sketch modes share an icon: {commands:?}");
+            for icon in icons {
+                assert!(!resolve(icon).placeholder, "{icon}");
+            }
+        }
+    }
+
+    #[test]
+    fn contact_actions_have_distinct_icons_from_interference_analysis() {
+        let mut icons = std::collections::HashSet::new();
+        let interference = solidcraft_engine::find_command("inspect.interference").unwrap().icon;
+        for id in ["contact.enable_sets", "contact.enable_all", "contact.disable_all", "contact.create"] {
+            let icon = solidcraft_engine::find_command(id).unwrap().icon;
+            assert_ne!(icon, interference, "{id} is a contact control, not an interference result");
+            assert!(icons.insert(icon), "contact controls share an icon: {id}");
+            assert!(!resolve(icon).placeholder, "{id}: {icon}");
+        }
+    }
+
+    #[test]
+    fn reviewed_model_folder_is_also_the_folder_drawn_in_the_app() {
+        let source = SVGS.iter().find(|(id, fam, _)| *id == "folder" && *fam == "model").unwrap().2;
+        let expected = Doc::parse(source).unwrap();
+        for dark in [false, true] {
+            let look = Look { dark, accent: None };
+            let actual = render(doc_for("folder", 64).unwrap(), look, 64).unwrap();
+            let reviewed = render(&expected, look, 64).unwrap();
+            assert_eq!(actual.data(), reviewed.data());
         }
     }
 

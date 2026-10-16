@@ -91,12 +91,12 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params(concat!("center, radius (to vertices), sides, angle?: deg", connect_doc!(), created_doc!())),
     CommandSpec::new("sketch.polygon.circumscribed", "Circumscribed Polygon", polygon_circumscribed)
         .at("SKETCH", "CREATE")
-        .icon("polygon")
+        .icon("polygon_circumscribed")
         .enabled(in_sketch)
         .params(concat!("center, radius (to edge midpoints), sides, angle?: deg", connect_doc!(), created_doc!())),
     CommandSpec::new("sketch.polygon.edge", "Edge Polygon", polygon_edge)
         .at("SKETCH", "CREATE")
-        .icon("polygon")
+        .icon("polygon_edge")
         .enabled(in_sketch)
         .params(concat!("p0, p1: one edge, sides", connect_doc!(), created_doc!())),
     CommandSpec::new("sketch.slot.center_to_center", "Center to Center Slot", slot_c2c)
@@ -106,7 +106,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params(concat!("p0, p1: arc centres, width", connect_doc!(), created_doc!())),
     CommandSpec::new("sketch.slot.overall", "Overall Slot", slot_overall)
         .at("SKETCH", "CREATE")
-        .icon("slot")
+        .icon("slot_overall")
         .enabled(in_sketch)
         .params(concat!("p0, p1: overall ends, width", connect_doc!(), created_doc!())),
     CommandSpec::new("sketch.point", "Point", draw_point).at("SKETCH", "CREATE").icon("point").enabled(in_sketch).params(concat!("point: [x,y], id?", connect_doc!(), created_doc!())),

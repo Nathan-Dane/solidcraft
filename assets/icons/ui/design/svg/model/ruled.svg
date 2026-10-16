@@ -1,12 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Ruled surface</title>
-  <path d="M6 18C20 6 40 26 58 12L58 44C40 58 20 38 6 50Z" fill="#b9ddf8"/>
-  <path d="M13.46 14.36L13.46 46.36" fill="none" stroke="#328bd3" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M21.7 14.22L21.7 46.22" fill="none" stroke="#328bd3" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M30.5 15.75L30.5 47.75" fill="none" stroke="#328bd3" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M39.63 17.11L39.63 49.11" fill="none" stroke="#328bd3" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M48.87 16.47L48.87 48.47" fill="none" stroke="#328bd3" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M6 18C20 6 40 26 58 12" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M6 50C20 38 40 58 58 44" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M6 18L6 50M58 12L58 44" fill="none" stroke="#236ead" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M31.22 19.85L42.13 26.15L42.13 38.75L31.22 32.45Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M16.41 5L47.59 23L42.13 26.15L31.22 19.85Z" fill="#236ead"/>
+  <path d="M47.59 23L47.59 59L42.13 38.75L42.13 26.15Z" fill="#328bd3"/>
+  <path d="M47.59 59L16.41 41L31.22 32.45L42.13 38.75Z" fill="#b9ddf8"/>
+  <path d="M16.41 41L16.41 5L31.22 19.85L31.22 32.45Z" fill="#328bd3"/>
+  <path d="M16.41 5L47.59 23L47.59 59L16.41 41Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M31.22 19.85L42.13 26.15L42.13 38.75L31.22 32.45Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M16.41 5L31.22 19.85" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M47.59 23L42.13 26.15" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M47.59 59L42.13 38.75" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M16.41 41L31.22 32.45" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

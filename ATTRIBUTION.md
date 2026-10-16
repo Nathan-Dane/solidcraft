@@ -17,25 +17,13 @@ Editable drawing code, native projects and shipped exports are collected under `
 | examples/render-studio.json | SolidCraft contributors | original procedural box/cylinder enclosure script for the integrated Render workspace | MIT OR Apache-2.0 |
 | examples/render-opaque-studio.json | SolidCraft contributors | original procedural sphere study varying opaque metal fraction and roughness independently; no external assets or engineering data | MIT OR Apache-2.0 |
 | crates/gpu/src/pbr.rs | SolidCraft contributors | original WGSL translation of SolidCraft's opaque surface and fixed studio reference, embedded as Rust source; no external shader code | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.svg | SolidCraft contributors | original macOS adaptation of the code-drawn SolidCraft mark, edited and exported with VectorCraft; Apple HIG and production templates consulted as layout references only | MIT OR Apache-2.0 |
 | assets/icons/app/macos/source/SolidCraft.icon/icon.json | SolidCraft contributors | approved Icon Composer composition and appearance settings for the original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/app/macos/source/SolidCraft.icon/Assets/02-grid.svg | SolidCraft contributors | original perspective grid with elliptical radial alpha, exported from VectorCraft | MIT OR Apache-2.0 |
 | assets/icons/app/macos/source/SolidCraft.icon/Assets/02-grid-dark.svg | SolidCraft contributors | original blue perspective grid with elliptical radial alpha, exported from VectorCraft for the Dark appearance | MIT OR Apache-2.0 |
 | assets/icons/app/macos/source/SolidCraft.icon/Assets/03-solid-blue-cutout.svg | SolidCraft contributors | original saturated blue CAD solid with transparent topology cutouts, edited and exported with VectorCraft | MIT OR Apache-2.0 |
 | assets/icons/app/macos/exports/Assets.car | SolidCraft contributors | Apple actool compilation of assets/icons/app/macos/source/SolidCraft.icon for macOS; contains original artwork only | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/source/icon.vectorcraft | SolidCraft contributors | editable VectorCraft source for assets/archive/icons/macos-v1/exports/icon.svg, with named face and background layers | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.png | SolidCraft contributors | 1024 × 1024 transparent sRGB export of assets/archive/icons/macos-v1/exports/icon.svg from VectorCraft | MIT OR Apache-2.0 |
+| assets/archive/icons/macos-v1/source/icon.vectorcraft | SolidCraft contributors | retained editable historical VectorCraft source, with named face and background layers; redundant exports retired | MIT OR Apache-2.0 |
 | assets/icons/app/macos/exports/icon.icns | SolidCraft contributors | macOS fallback compiled by Apple's actool from the approved assets/icons/app/macos/source/SolidCraft.icon composition | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_16x16.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_16x16@2x.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_32x32.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_32x32@2x.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_128x128.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_128x128@2x.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_256x256.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_256x256@2x.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_512x512.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
-| assets/archive/icons/macos-v1/exports/icon.iconset/icon_512x512@2x.png | SolidCraft contributors | native sips export from assets/archive/icons/macos-v1/exports/icon.png | MIT OR Apache-2.0 |
 | docs/screenshots/class-a-blend.png | SolidCraft contributors | screenshot of SolidCraft itself: two boxes bridged by `surface.blend` (a 40x10 sheet, `solidcraft-cli snapshot` of plan/evidence script ev_blend) | MIT OR Apache-2.0 |
 | docs/screenshots/class-a-crown.png | SolidCraft contributors | screenshot of SolidCraft itself: a patch crowned with `surface.patch crown=0.3` over a saddle rim (`solidcraft-cli snapshot`) | MIT OR Apache-2.0 |
 | docs/screenshots/class-a-boundary.png | SolidCraft contributors | screenshot of SolidCraft itself: a patch through two sketch lines built by `surface.boundary` with `crown: 0.4` (`solidcraft-cli snapshot`) | MIT OR Apache-2.0 |
@@ -117,9 +105,7 @@ Editable drawing code, native projects and shipped exports are collected under `
 | crates/io/src/native_cad/fixtures/block.FCStd | SolidCraft contributors | original 10 × 20 × 30 mm test box saved by FreeCAD 1.1.4 run as an external program (`make_block_fcstd.py` beside it); no third-party geometry | MIT OR Apache-2.0 |
 | crates/io/src/native_cad/fixtures/block.3dm | SolidCraft contributors | original 10 × 20 × 30 mm test box written with McNeel's MIT-licensed rhino3dm Python package (`make_block_3dm.py` beside it); no third-party geometry | MIT OR Apache-2.0 |
 | assets/icons/ui/design/aliases.toml | SolidCraft contributors | icon ids that share a master, original SolidCraft data | MIT OR Apache-2.0 |
-| assets/icons/ui/design/inventory.csv | SolidCraft contributors | generated by tools/icon_status.py --csv: every app icon id with its status, original SolidCraft data | MIT OR Apache-2.0 |
 | assets/icons/ui/design/palette.toml | SolidCraft contributors | icon colour roles (light and dark) and accents, original SolidCraft data | MIT OR Apache-2.0 |
-| assets/icons/ui/design/status.toml | SolidCraft contributors | list of stand-in icon masters still to be redrawn, original SolidCraft data | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/bug_report.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/chevron.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/flat/fit.svg | SolidCraft contributors | single-colour application/navigation icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
@@ -339,28 +325,68 @@ Editable drawing code, native projects and shipped exports are collected under `
 | assets/icons/ui/design/svg/small/pattern.svg | SolidCraft contributors | small-slot icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/small/section.svg | SolidCraft contributors | small-slot icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_animate.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/polygon_circumscribed.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/polygon_edge.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/slot_overall.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/slot_center.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/arc_slot_center.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sketch_chamfer_angle.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/sketch_chamfer_two_distances.svg | SolidCraft contributors | original sketch variant icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/gear.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/rack_pinion.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/screw.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/cam.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/trace.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/agent_chat.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/normal.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/infinite.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/pattern_flip.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/pattern_center.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/reach.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/cut.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/compare.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/web.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/replace_face.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/bounding_solid.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/delete_face.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/snap_fit.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/contact_sets.svg | SolidCraft contributors | original contact icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/contact_all.svg | SolidCraft contributors | original contact icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/contact_off.svg | SolidCraft contributors | original contact icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/contact_new.svg | SolidCraft contributors | original contact icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis_through_cylinder.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis_normal_to_face.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis_two_planes.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis_two_points.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/axis_edge.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_vertex.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_two_edges.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_three_planes.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_center.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_edge_plane.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/point_along_path.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_midplane.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_two_edges.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_three_points.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_tangent.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_along_path.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/plane_perpendicular.svg | SolidCraft contributors | original construction icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_design.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_drawing.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/workspace/ws_render.svg | SolidCraft contributors | workspace icon master (64 grid), original SolidCraft artwork | MIT OR Apache-2.0 |
+| assets/icons/ui/design/references.toml | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/author/bases.py | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/author/new_icon.py | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/review/index.html | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/review/guide.html | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/review/review.css | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
+| assets/icons/ui/design/tools/review/review.js | SolidCraft contributors | original icon authoring or review tool resource | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/icon_status.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/lint_icons.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/preview.py | SolidCraft contributors | icon lint, status page or preview tool (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/review_state.py | SolidCraft contributors | icon review state helper (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i11.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i10.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i9.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/review.json | SolidCraft contributors | icon review state (accepted icons and notes), original SolidCraft data | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/gen.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i1.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i2.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i3.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i4.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i5.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i6.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i7.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/i8.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 | assets/icons/ui/design/tools/author/lib.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
-| assets/icons/ui/design/tools/author/sheet.py | SolidCraft contributors | icon authoring script (standard-library Python), original SolidCraft code | MIT OR Apache-2.0 |
 
 | docs/book/src/og.png | SolidCraft contributors | copy of assets/branding/web/source/og.png staged by cargo xtask book (gitignored) | MIT OR Apache-2.0 |
 

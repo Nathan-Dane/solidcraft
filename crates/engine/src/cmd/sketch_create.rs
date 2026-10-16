@@ -47,7 +47,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params(concat!("curves: [three lines/circles/arcs], near: [x,y] (which of the solutions)", created_doc!())),
     CommandSpec::new("sketch.slot.center_point", "Center Point Slot", slot_center_point)
         .at("SKETCH", "CREATE")
-        .icon("slot")
+        .icon("slot_center")
         .enabled(in_sketch)
         .params(concat!("center: slot centre, end: one arc centre, width", created_doc!())),
     CommandSpec::new("sketch.slot.arc_three_point", "Three Point Arc Slot", arc_slot_three)
@@ -57,7 +57,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .params(concat!("start, through, end: points on the centre arc, width", created_doc!())),
     CommandSpec::new("sketch.slot.arc_center", "Center Point Arc Slot", arc_slot_center)
         .at("SKETCH", "CREATE")
-        .icon("arc_slot")
+        .icon("arc_slot_center")
         .enabled(in_sketch)
         .params(concat!("center, start: centre arc start, end: direction of the centre arc end (counter-clockwise), width", created_doc!())),
     CommandSpec::new("sketch.ellipse", "Ellipse", ellipse).at("SKETCH", "CREATE").icon("ellipse").enabled(in_sketch).params(concat!(
@@ -97,7 +97,7 @@ pub static COMMANDS: &[CommandSpec] = &[
         .icon("centerline")
         .enabled(in_sketch)
         .params("curves: [line ids], value?: bool (default toggles): centerline line type (not in profiles; an axis)"),
-    CommandSpec::new("sketch.infinite", "Infinite Line", infinite_line)
+    CommandSpec::new("sketch.infinite", "Infinite Line", infinite_line).icon("infinite")
         .enabled(in_sketch)
         .params("curves: [line ids], value?: bool (default toggles): infinite line type (#1359): construction geometry drawn across the whole view through the line's two points; off, a normal line"),
     CommandSpec::new("sketch.text", "Text", text).at("SKETCH", "CREATE").icon("text").enabled(in_sketch).params(concat!(

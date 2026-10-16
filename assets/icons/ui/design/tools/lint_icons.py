@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Rules every icon master in svg/ must satisfy (stdlib only). usage: lint_icons.py <design dir>"""
 import sys, glob, os, re, tomllib, xml.etree.ElementTree as ET
+from pathlib import Path
 d = sys.argv[1] if len(sys.argv) > 1 else os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 pal = tomllib.load(open(d + '/palette.toml', 'rb'))
 light = {r['light'] for r in pal['roles'].values()}
@@ -9,6 +10,16 @@ FAMILIES = {'model', 'small', 'flat', 'workspace'}
 bad = []
 def err(f, m): bad.append('%s: %s' % (os.path.relpath(f, d), m))
 files = sorted(glob.glob(d + '/svg/*/*.svg'))
+# Keep the collection free of generated previews, reports and authoring snapshots.
+for path in Path(d).rglob('*'):
+    if not path.is_file(): continue
+    rel = path.relative_to(d).as_posix()
+    allowed = (rel in {'palette.toml', 'aliases.toml', 'review.json', 'references.toml'}
+               or path.suffix == '.md'
+               or (rel.startswith('svg/') and path.suffix == '.svg')
+               or (path.parent in {Path(d) / 'tools', Path(d) / 'tools/author'} and path.suffix == '.py')
+               or (path.parent == Path(d) / 'tools/review' and path.suffix in {'.html', '.css', '.js'}))
+    if not allowed: err(str(path), 'generated or unsupported resource; keep temporary output under target/')
 for f in files:
     fam, name = os.path.basename(os.path.dirname(f)), os.path.basename(f)[:-4]
     if fam not in FAMILIES: err(f, 'unknown family'); continue
@@ -53,10 +64,18 @@ for a, t in al.items():
         t = t.get('master')
     if t not in names: err(d + '/aliases.toml', '%s -> %s: no such master' % (a, t))
     if a in names: err(d + '/aliases.toml', '%s is both an alias and a master' % a)
-import os
-if os.path.exists(d + '/status.toml'):
-    for sid in tomllib.load(open(d + '/status.toml', 'rb')).get('stand_in', []):
-        if sid not in names: err(d + '/status.toml', 'stand_in %s has no master' % sid)
+primary = {}
+for file in files:
+    family, name = Path(file).parent.name, Path(file).stem
+    if family != 'small': primary.setdefault(name, set()).add(family)
+for name, families in primary.items():
+    if len(families) > 1 and not (name == 'folder' and families == {'flat', 'model'}):
+        err(d + '/svg', name + ': duplicate primary master across families')
+references = d + '/references.toml'
+if os.path.exists(references):
+    for category in tomllib.load(open(references, 'rb')).get('category', {}).values():
+        for name in category['icons']:
+            if name not in names and name not in al: err(references, name + ': reference artwork is missing')
 for fam_acc, roles_ in pal.get('accents', {}).items():
     for r in roles_:
         if r not in pal['roles']: err(d + '/palette.toml', 'accent %s overrides unknown role %s' % (fam_acc, r))
@@ -70,7 +89,7 @@ if os.path.exists(rp):
         if not want: continue
         h = hashlib.sha256()
         for f in sorted(glob.glob(d + '/svg/*/' + m + '.svg')):
-            h.update(os.path.relpath(f, d).encode()); h.update(open(f, 'rb').read())
+            h.update(os.path.relpath(f, d).replace(os.sep, '/').encode()); h.update(open(f, 'rb').read())
         if h.hexdigest() != want: err(rp, 'final icon %s changed (master %s): un-accept it on the review page before editing it' % (iid, m))
 print('\n'.join(bad) if bad else 'icons: %d masters, palette, naming and element rules ok' % len(files))
 sys.exit(1 if bad else 0)

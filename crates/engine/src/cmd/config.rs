@@ -14,7 +14,7 @@ pub static COMMANDS: &[CommandSpec] = &[
     ),
     CommandSpec::new("config.table", "Display Configuration Table", show)
         .at("SOLID", "CONFIGURE")
-        .icon("params")
+        .icon("configuration_table")
         .noundo()
         .params("→ columns (param:<name> or suppress:<feature>), rows, the active row and whether the design still matches it"),
     CommandSpec::new("config.column", "Configuration Column", column).icon("configuration_table").params("param? | feature? | material? | appearance? (target name); delete?: bool"),

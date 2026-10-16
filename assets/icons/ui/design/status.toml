@@ -1,3 +1,0 @@
-# Masters that are quick stand-ins drawn in the handoff palette, to be redrawn as proper masters.
-# Remove an id once it is redrawn: it then counts as "done" in tools/icon_status.py.
-stand_in = []

@@ -1,8 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Delete</title>
-  <path d="M27 6L37 6A3 3 0 0 1 40 9L40 13A3 3 0 0 1 37 16L27 16A3 3 0 0 1 24 13L24 9A3 3 0 0 1 27 6Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M14 22L50 22L46.5 57L17.5 57Z" fill="#e2e8ef"/>
-  <path d="M14 22L50 22L46.5 57L17.5 57Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M12 14L52 14A4 4 0 0 1 56 18L56 20A4 4 0 0 1 52 24L12 24A4 4 0 0 1 8 20L8 18A4 4 0 0 1 12 14Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M25 33L26 49M39 33L38 49" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M17 22.5L47 22.5L44.4 51Q44.1 53.5 41.6 53.5L22.4 53.5Q19.9 53.5 19.6 51Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M26 30.5L27 45.5M38 30.5L37 45.5" fill="none" stroke="#ffffff" stroke-width="3.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M14 17.5L25 17.5L25 12.5Q25 10.5 27 10.5L37 10.5Q39 10.5 39 12.5L39 17.5L50 17.5Q52 17.5 52 19.5L52 22.5L12 22.5L12 19.5Q12 17.5 14 17.5Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

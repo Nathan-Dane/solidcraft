@@ -1,13 +1,15 @@
-import math, os, re
+import math, os, re, tomllib
 OUT=os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'svg','model')
-INK='#34465b'; P1='#e2e8ef'; P2='#b8c3cf'; P3='#8e9faf'; GAP='#ffffff'; GUIDE='#6f879c'
-A1='#b9ddf8'; A2='#328bd3'; A3='#236ead'
-OW=2.55; AW=4.25; NW=5.6
+PALETTE=tomllib.load(open(os.path.join(os.path.dirname(os.path.dirname(OUT)),'palette.toml'),'rb'))
+INK=PALETTE['roles']['ink']['light']; GAP=PALETTE['roles']['gap']['light']; GUIDE=PALETTE['roles']['guide']['light']
+P1,P2,P3=(PALETTE['roles']['passive-'+str(i)]['light'] for i in (1,2,3))
+A1,A2,A3=(PALETTE['roles']['active-'+str(i)]['light'] for i in (1,2,3))
+OW=PALETTE['strokes']['geometry']; AW=PALETTE['strokes']['action']; NW=PALETTE['strokes']['navigation']
 R3=math.sqrt(3)
 def f(v):
     s=('%.2f'%v).rstrip('0').rstrip('.')
     return '0' if s in('-0','') else s
-def pts(ps): return ' '.join('%s%s %s'%('ML'[i>0],f(x),f(y)) for i,(x,y) in enumerate(ps)) if False else ''.join(('M' if i==0 else 'L')+f(x)+' '+f(y) for i,(x,y) in enumerate(ps))
+def pts(ps): return ''.join(('M' if i==0 else 'L')+f(x)+' '+f(y) for i,(x,y) in enumerate(ps))
 def poly(ps, close=True): return pts(ps)+('Z' if close else '')
 def ell(cx,cy,rx,ry=None):
     ry=rx if ry is None else ry
@@ -163,7 +165,6 @@ def cylinder(ic,X,Y,rx,h,cols=(P1,P2,P3),w=OW,top=True,ry=None,sh=0.35):
     ic.fill(strip,cols[2])
     ic.stroke(body,INK,w)
     if top: ic.stroke(ell(X,Y,rx,ry),INK,w,fill=cols[0])
-def disc_dot_row(): pass
 
 def clip_poly(subject,clip):
     """Sutherland-Hodgman: the part of polygon `subject` inside the convex polygon `clip` (lists of (x, y))."""
