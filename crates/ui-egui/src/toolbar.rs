@@ -1039,10 +1039,19 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 }
             }
             if !collapsed {
+                if !gallery.is_empty() {
+                    // A quiet rule sets the grid apart from the large button before it.
+                    painter.line_segment(
+                        [pos2(button_x + 2.5, top + 10.0), pos2(button_x + 2.5, top + 52.0)],
+                        Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)),
+                    );
+                }
                 for c in &gallery {
                     let index = crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).unwrap_or(0);
-                    let cell =
-                        Rect::from_min_size(pos2(button_x + (index % 3) as f32 * 36.0, top + 2.0 + (index / 3) as f32 * 32.0), vec2(32.0, 28.0));
+                    let cell = Rect::from_min_size(
+                        pos2(button_x + 8.0 + (index % 3) as f32 * 31.0, top + 2.0 + (index / 3) as f32 * 32.0),
+                        vec2(28.0, 28.0),
+                    );
                     let info = c.info(&app.session);
                     let resp = ui.interact(cell, ui.id().with(("cmd", c.id)), Sense::click_and_drag());
                     let active = running.as_deref() == Some(c.id);
@@ -1348,7 +1357,8 @@ enum RowAction {
 
 const ROW_H: f32 = 30.0;
 
-const CONSTRAINT_GRID_WIDTH: f32 = 104.0;
+/// A leading rule and room for three square 28 px cells.
+const CONSTRAINT_GRID_WIDTH: f32 = 98.0;
 
 /// Registry parameter syntax is not a user-facing description. Reuse existing catalog prose
 /// where present; other commands intentionally show only their name and registered shortcut.
@@ -2345,7 +2355,7 @@ mod ribbon_gallery_tests {
         let mut cells = Vec::new();
         for id in crate::workspace::CONSTRAINT_GALLERY {
             let cell = rect_of(&format!("ribbon:constraint:{id}")).unwrap();
-            assert_eq!(cell.size(), vec2(32.0, 28.0));
+            assert_eq!(cell.size(), vec2(28.0, 28.0));
             assert_eq!(rect_of(&format!("button:{id}")), Some(cell));
             assert!(cell.left() > dimension.right());
             cells.push(cell);
