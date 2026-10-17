@@ -374,8 +374,8 @@ fn the_title_bar_offers_the_new_version_and_opens_the_update_window() {
     let at = h.widget(&label).unwrap_or_else(|| panic!("no `{label}` in the title bar"));
     let pill = crate::scenario::rect_of("titlebar:update").unwrap();
     assert!(pill.contains(egui::pos2(at[0] as f32, at[1] as f32)));
-    let settings = crate::scenario::handle_at("titlebar:preferences").unwrap();
-    assert!(pill.right() < settings.x && settings.x - 12.0 - pill.right() < 12.0, "beside Settings: {pill:?} {settings:?}");
+    let assistant = crate::scenario::rect_of("titlebar:assistant").unwrap();
+    assert!(pill.right() < assistant.left() && assistant.left() - pill.right() < 12.0, "beside Assistant: {pill:?} {assistant:?}");
     assert!((pill.center().y - report.center().y).abs() < 1.0 && pill.height() <= report.height());
     assert_eq!(crate::scenario::rect_of("titlebar:report"), Some(report), "Report a bug stays where it was");
     assert!(!h.app.updater.open, "no window pops up by itself");
@@ -420,7 +420,7 @@ fn the_pill_shortens_in_a_narrow_title_bar() {
             last = p.width();
         }
         shortened |= pill.is_none_or(|p| p.width() < wide.width());
-        if width == 800.0 {
+        if width == 1000.0 {
             assert!(h.widget("Update").is_some() && h.widget(&label).is_none(), "the short label keeps room for the tabs");
         }
     }

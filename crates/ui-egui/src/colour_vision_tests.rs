@@ -416,6 +416,7 @@ const NO_MEANING: &[(&str, &str)] = &[
     ("subheading_bg", "chrome"),
     ("overlay", "a chip's ground over the view"),
     ("app_bar_text", "text"),
+    ("app_bar_separator", "neutral chrome divider"),
     ("app_bar_hover", "a hovered tab, translucent white"),
     ("timeline_marker", "the rollback marker, alone"),
     ("field", "a field's ground"),

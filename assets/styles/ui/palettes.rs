@@ -32,6 +32,7 @@ impl Tokens {
             font_button: 13.0,
             font_heading: 14.0,
             app_bar: Color32::from_rgb(52, 56, 64),
+            app_bar_separator: Color32::from_rgb(136, 145, 160),
             toolbar: Color32::from_rgb(246, 247, 249),
             panel: Color32::from_rgb(250, 251, 252),
             panel_header: Color32::from_rgb(236, 238, 242),

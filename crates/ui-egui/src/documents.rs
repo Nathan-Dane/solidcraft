@@ -364,22 +364,6 @@ pub fn control(app: &mut SolveApp, p: &Value) -> Value {
 /// + for a new design.
 pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let t = Tokens::get();
-    let home = Rect::from_min_size(pos2(x0, r.top() + 5.0), vec2(66.0, r.height() - 5.0));
-    let response = ui.interact(home, ui.id().with("home_tab"), Sense::click());
-    tab_shape(ui.painter(), &t, home, app.home.open, response.hovered() || response.has_focus());
-    let home_text = app.tr("ui.home");
-    ui.painter().text(
-        home.center(),
-        Align2::CENTER_CENTER,
-        home_text,
-        FontId::proportional(13.0),
-        if app.home.open { t.text } else { t.app_bar_text },
-    );
-    crate::scenario::publish_handle("tab:home", home.center());
-    if response.clicked() && !app.file_load.busy() {
-        app.home.show(app.session.revision);
-    }
-    let x0 = x0 + 70.0;
     let info = tabs_info(app);
     let n = info.len();
     let (first, shown, w) = layout(n, app.docs.active, x1 - x0);
@@ -391,6 +375,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         let active = !app.home.open && (i == app.docs.active || app.docs.slots.is_empty());
         let resp = ui.interact(tr, ui.id().with(("doc_tab", i)), Sense::click_and_drag());
         crate::scenario::publish_handle(&format!("tab:design:{i}"), tr.center());
+        crate::scenario::publish_rect(&format!("tab:design:{i}"), tr);
         // The tabs are part of the title bar: dragging one moves the window, a double click
         // maximizes it.
         if app.custom_titlebar || app.integrated_titlebar {
@@ -401,7 +386,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
             }
         }
         tab_shape(ui.painter(), &t, tr, active, resp.hovered() || resp.has_focus());
-        let ink = if active { t.text } else { t.app_bar_text };
+        let ink = t.app_bar_text;
         let name_display = if name == "Untitled" { app.tr("ui.untitled") } else { name };
         let label = format!("{name_display}{}", if *dirty { " •" } else { "" });
         let g = ui.painter().layout_no_wrap(label, FontId::proportional(13.0), ink);
@@ -411,11 +396,13 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         // ×
         let xr = Rect::from_center_size(pos2(tr.right() - 13.0, tr.center().y), vec2(16.0, 16.0));
         let xresp = ui.interact(xr, ui.id().with(("doc_close", i)), Sense::click());
+        crate::scenario::publish_handle(&format!("tab:close:{i}"), xr.center());
+        crate::scenario::publish_rect(&format!("tab:close:{i}"), xr);
         if xresp.hovered() || xresp.has_focus() {
             ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
         let c = xr.center();
-        let s = Stroke::new(1.3, if active { t.text_dim } else { t.app_bar_text });
+        let s = Stroke::new(1.3, t.app_bar_text);
         ui.painter().line_segment([c - vec2(3.5, 3.5), c + vec2(3.5, 3.5)], s);
         ui.painter().line_segment([c - vec2(3.5, -3.5), c + vec2(3.5, -3.5)], s);
         if xresp.on_hover_text("Close").clicked() {
@@ -483,18 +470,20 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     }
 }
 
-/// One tab of the strip: the active tab takes the toolbar's colour and runs into it; the others
-/// sit on the application bar, lighter while hovered.
+/// Tabs stay on the dark bar; a stronger fill and bottom rule mark the active design.
 fn tab_shape(painter: &egui::Painter, t: &Tokens, r: Rect, active: bool, hovered: bool) {
     let corners = egui::CornerRadius { nw: 5, ne: 5, sw: 0, se: 0 };
     let fill = if active {
-        t.toolbar
+        t.app_bar_hover_strong
     } else if hovered {
         t.app_bar_hover
     } else {
         t.app_bar
     };
     painter.rect_filled(r, corners, fill);
+    if active {
+        painter.line_segment([r.left_bottom(), r.right_bottom()], Stroke::new(2.0, t.app_bar_text));
+    }
 }
 
 /// Which tabs the strip shows in `room` points: (first, how many, tab width). Tabs shrink to
@@ -653,8 +642,7 @@ mod tests {
         assert_eq!(layout(12, 0, 600.0).0, 0);
     }
 
-    /// The tabs sit on the dark application bar in both themes: a hovered tab (the Home tab
-    /// included) keeps the bar's light text readable, and no tab is outlined.
+    /// Active and hovered document tabs keep the bar's light text readable in both themes.
     #[test]
     fn title_bar_tabs_keep_their_text_readable_on_hover() {
         fn luminance(c: Color32) -> f32 {
@@ -681,11 +669,9 @@ mod tests {
                     })
                     .collect();
                 let fill = rects.iter().find(|(rect, _)| rect.fill.a() > 0).map(|(rect, _)| rect.fill).unwrap_or_default();
-                if !active {
-                    let bg = over(fill, t.app_bar);
-                    let (hi, lo) = (luminance(t.app_bar_text).max(luminance(bg)), luminance(t.app_bar_text).min(luminance(bg)));
-                    assert!((hi + 0.05) / (lo + 0.05) >= 4.5, "text on a tab (hovered: {hovered}) must stay readable: {bg:?} {t:?}");
-                }
+                let bg = over(fill, t.app_bar);
+                let (hi, lo) = (luminance(t.app_bar_text).max(luminance(bg)), luminance(t.app_bar_text).min(luminance(bg)));
+                assert!((hi + 0.05) / (lo + 0.05) >= 4.5, "text on a tab (hovered: {hovered}) must stay readable: {bg:?} {t:?}");
                 assert!(rects.iter().all(|(rect, _)| rect.stroke.width == 0.0), "tabs have no outline (active: {active})");
             }
         }

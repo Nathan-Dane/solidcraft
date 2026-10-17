@@ -225,6 +225,8 @@ pub struct Tokens {
     pub font_button: f32,
     pub font_heading: f32,
     pub app_bar: Color32,
+    /// Dividers between the application bar groups.
+    pub app_bar_separator: Color32,
     pub toolbar: Color32,
     pub panel: Color32,
     pub panel_header: Color32,
