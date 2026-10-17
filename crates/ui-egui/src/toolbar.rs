@@ -92,6 +92,8 @@ pub const COLLAPSED_WIDTH: f32 = 72.0;
 /// The gap after each panel (its separator).
 const PANEL_GAP: f32 = 1.0;
 pub const TAB_ROW_HEIGHT: f32 = 30.0;
+/// Distance from the ribbon card's edges to the first tab and the search field.
+const RIBBON_TAB_INSET: f32 = 4.0;
 pub const GROUP_HEIGHT: f32 = 86.0;
 pub const RIBBON_HEIGHT: f32 = TAB_ROW_HEIGHT + GROUP_HEIGHT + 1.0;
 pub(crate) const WORKSPACE_WIDTH: f32 = 88.0;
@@ -760,12 +762,20 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
         + tabs.len().saturating_sub(1) as f32 * 2.0
         + tabs.iter().filter(|tab| matches!(**tab, "SKETCH" | "SHEET METAL")).count() as f32 * 6.0;
     let search_width = if row.width() >= tabs_width + 188.0 + 16.0 { 188.0 } else { 24.0 };
-    let search = Rect::from_min_size(pos2((row.right() - search_width - 6.0).max(row.left()), row.top() + 3.0), vec2(search_width, 24.0));
+    // The first tab and the search field sit the same distance from the card's top, left and right
+    // edges, so their outer corners are concentric with the card's corners.
+    let floating = app.ui.layout == crate::shell::LayoutMode::Floating;
+    let inset = RIBBON_TAB_INSET;
+    let corner = if floating { u8::try_from(t.radius_lg).unwrap_or(8).saturating_sub(inset as u8).max(2) } else { 5 };
+    let search = Rect::from_min_size(
+        pos2((row.right() - search_width - inset).max(row.left()), row.top() + inset),
+        vec2(search_width, TAB_ROW_HEIGHT - 2.0 * inset),
+    );
     let resp = ui.interact(search, ui.id().with("ribbon_search"), Sense::click());
     crate::scenario::publish_handle("ribbon:search", search.center());
     crate::scenario::publish_rect("ribbon:search", search);
     ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("sc_ribbon_search"), search));
-    ui.painter().rect(search, 5.0, t.field, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+    ui.painter().rect(search, corner, t.field, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
     // The existing zoom glyph is the icon system's magnifier; no new artwork.
     icons::paint_icon(ui.painter(), Rect::from_center_size(search.left_center() + vec2(12.0, 0.0), vec2(16.0, 16.0)), "zoom", 1.0);
     let label = app.tr_label("Search commands");
@@ -786,7 +796,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
         d.insert_temp(id, state);
         changed
     });
-    let span = Rect::from_min_max(row.left_top() + vec2(4.0, 0.0), pos2((search.left() - 6.0).max(row.left() + 4.0), row.bottom()));
+    let span = Rect::from_min_max(row.left_top() + vec2(inset, 0.0), pos2((search.left() - 6.0).max(row.left() + inset), row.bottom()));
     ui.scope_builder(egui::UiBuilder::new().max_rect(span), |ui| {
         ui.set_clip_rect(span);
         egui::ScrollArea::horizontal()
@@ -802,7 +812,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
                     if contextual {
                         x += 6.0;
                     }
-                    let tr = Rect::from_min_size(pos2(x, all.top() + 3.0), vec2(width, 24.0));
+                    let tr = Rect::from_min_size(pos2(x, all.top() + inset), vec2(width, TAB_ROW_HEIGHT - 2.0 * inset));
                     let active = app.ui.tab == tab;
                     if active && changed {
                         ui.scroll_to_rect(tr, Some(egui::Align::Center));
@@ -819,7 +829,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
                     } else {
                         Color32::TRANSPARENT
                     };
-                    ui.painter().rect_filled(tr, t.radius_sm.saturating_add(1), fill);
+                    ui.painter().rect_filled(tr, corner, fill);
                     ribbon_text(
                         ui,
                         tr.center(),
