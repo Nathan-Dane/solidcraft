@@ -227,7 +227,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         crate::scenario::publish_rect("titlebar:home", home);
         crate::scenario::publish_rect("appbar:home", home);
         if idle && (home_response.hovered() || home_response.has_focus()) {
-            ui.painter().rect_filled(home, t.radius_sm, t.app_bar_hover_button);
+            ui.painter().rect_filled(home.shrink(3.0), t.radius_sm, t.app_bar_hover_button);
         }
         icons::paint_app_bar(ui.painter(), home.shrink(7.0), "home", if idle { 1.0 } else { 0.35 });
         if home_response.on_hover_text(home_tip).clicked() && idle {
@@ -269,7 +269,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::scenario::publish_handle(&format!("titlebar:{icon}"), br.center());
             crate::scenario::publish_rect(&format!("titlebar:{icon}"), br);
             if enabled && (resp.hovered() || resp.has_focus()) {
-                ui.painter().rect_filled(br, t.radius_sm, t.app_bar_hover_button);
+                ui.painter().rect_filled(br.shrink(3.0), t.radius_sm, t.app_bar_hover_button);
             }
             icons::paint_app_bar(ui.painter(), Rect::from_center_size(br.center(), vec2(18.0, 18.0)), icon, if enabled { 1.0 } else { 0.35 });
             let clicked = resp.on_hover_text(tip).clicked();
@@ -358,7 +358,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let gear = Rect::from_center_size(pos2(report.left() - 52.0, r.center().y), vec2(32.0, 32.0));
         let gresp = ui.interact(gear, ui.id().with("sc_prefs_button"), Sense::click());
         if gresp.hovered() || gresp.has_focus() {
-            ui.painter().rect_filled(gear, t.radius_sm, t.app_bar_hover_button);
+            ui.painter().rect_filled(gear.shrink(3.0), t.radius_sm, t.app_bar_hover_button);
         }
         icons::paint_app_bar(ui.painter(), gear.shrink(7.0), "settings", 1.0);
         crate::scenario::publish_rect("titlebar:preferences", gear);
@@ -1129,11 +1129,15 @@ fn assistant_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
     let mark = crate::agent_chat::assistant_mark(app);
     let tip = crate::agent_chat::assistant_tip(mark);
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), &tip));
+    // The highlight is a 26 px square, like the other icon buttons; the mark sits on the bubble's corner.
+    let mut ring = t.app_bar;
     if app.agent_chat.open || resp.hovered() || resp.has_focus() {
-        ui.painter().rect_filled(at, t.radius_sm, if app.agent_chat.open { t.app_bar_hover_strong } else { t.app_bar_hover_button });
+        let fill = if app.agent_chat.open { t.app_bar_hover_strong } else { t.app_bar_hover_button };
+        ui.painter().rect_filled(at.shrink(3.0), t.radius_sm, fill);
+        ring = t.app_bar.blend(fill);
     }
     icons::paint_app_bar(ui.painter(), at.shrink(7.0), "assistant", 1.0);
-    let c = at.right_top() + vec2(-6.0, 6.0);
+    let c = at.min + vec2(23.5, 9.5);
     match mark {
         AssistantMark::Quiet => {}
         AssistantMark::Ready | AssistantMark::NeedsAuth | AssistantMark::Stopped => {
@@ -1142,6 +1146,7 @@ fn assistant_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
                 AssistantMark::NeedsAuth => t.warning,
                 _ => t.error,
             };
+            ui.painter().circle_filled(c, 5.5, ring);
             ui.painter().circle_filled(c, 4.0, color);
         }
         AssistantMark::Busy => {
@@ -1151,6 +1156,7 @@ fn assistant_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
             } else {
                 0.0
             };
+            ui.painter().circle_filled(c, 6.0, ring);
             let points = (0..=24)
                 .map(|i| {
                     let angle = phase + i as f32 / 24.0 * std::f32::consts::TAU * 0.75;
@@ -1164,6 +1170,7 @@ fn assistant_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
             let font = FontId::proportional(t.font_badge);
             let galley = ui.painter().layout_no_wrap(text, font, t.app_bar);
             let badge = Rect::from_center_size(c, vec2((galley.size().x + 6.0).max(14.0), 14.0));
+            ui.painter().rect_filled(badge.expand(1.5), 8.5, ring);
             ui.painter().rect_filled(badge, 7.0, t.warning);
             ui.painter().galley(badge.center() - galley.size() / 2.0, galley, t.app_bar);
         }
