@@ -1391,6 +1391,8 @@
   "ui.restore_defaults": "初期値に戻す",
   "ui.reverse_zoom_direction": "ズーム方向を反転",
   "ui.revolve": "回転",
+  "ui.ribbon_exit": "終了",
+  "ui.ribbon_workspace": "ワークスペース",
   "ui.right": "右側面",
   "ui.save": "保存",
   "ui.save_as": "名前を付けて保存",

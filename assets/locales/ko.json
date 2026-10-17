@@ -1126,6 +1126,8 @@
   "ui.restore_defaults": "기본값 복원",
   "ui.reverse_zoom_direction": "확대/축소 방향 반전",
   "ui.revolve": "회전",
+  "ui.ribbon_exit": "종료",
+  "ui.ribbon_workspace": "작업 공간",
   "ui.right": "우측면",
   "ui.save": "저장",
   "ui.save_as": "다른 이름으로 저장",

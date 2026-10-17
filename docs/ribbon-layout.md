@@ -129,3 +129,13 @@ Additional old panels used for shared layouts migrate as follows: SELECT on any 
 The tab handle form stays `tab:<UPPERCASE NAME>`. Added: `tab:MODEL`, `tab:ASSEMBLE`, `tab:INSERT`, `tab:INSPECT`, `tab:MANAGE`, `tab:VIEW`. SURFACE and RENDER retain their names; SKETCH and SHEET METAL are available only in context. Legacy aliases remain: `tab:SOLID` and `tab:PLASTIC` → MODEL; `tab:MESH` → SURFACE; `tab:UTILITIES` → MANAGE. The Home and document-tab handles are unchanged.
 
 Section labels retain `panel:<tab>:<section>` and collapsed sections retain `collapsed:<tab>:<section>`, with destinations from the tables above. In particular, `panel:SOLID:CREATE` becomes `panel:MODEL:CREATE`, selection-filter panels become `panel:VIEW:SELECT`, and `panel:SKETCH:CONSTRAINTS` becomes `panel:SKETCH:CONSTRAIN`. Command button and menu handles keep their command ids.
+
+## Docked ribbon painting
+
+The ribbon is a full-width surface immediately below the 34 px application bar, with no outer gap or rounding. `toolbar::{TAB_ROW_HEIGHT,GROUP_HEIGHT,RIBBON_HEIGHT}` reserve 30 + 86 + 1 px; browser and viewport placement follows the panel allocation. The workspace column is 88 px wide. Promoted buttons are 54 × 60 px with 3 px gaps (Sketch Create retains wider family selectors). Section labels occupy a 20 px row, inset 3 px, and retain the existing command lists, pin actions and drag targets.
+
+Tab labels use normal word casing. Selected standard tabs use their soft accent; contextual tabs use their solid accent and add a row-wide line when selected. The existing `TabAccent` helper supplies all selection colours. Search is a 188 × 24 px launcher for the S box, using the existing `zoom` magnifier; it shrinks to 24 px before the tabs scroll horizontally. The selected tab scrolls into view after a context change or resize. Clicking Search or pressing S anchors the existing search popup below the field. The bottom command line remains available.
+
+Sketch's Finish group reserves space at the far right even when other groups collapse. Its unfilled Finish Sketch button uses the existing `finish` icon. The chevron-free Exit row still opens the existing command list, preserving Finish with Auto-Constrain and saved pin customizations.
+
+Additional handles: `ribbon:workspace`, `ribbon:search`, and `ribbon:section:<TAB>:<SECTION>`. Existing workspace, tab, panel, collapsed, family and command handles remain available. Layout evidence also publishes rectangles for these handles, `button:<command id>`, and the open `ribbon:search_popup`.

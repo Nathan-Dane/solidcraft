@@ -161,14 +161,15 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     let mut picked: Option<&'static str> = None;
     let mut pin: Option<&'static str> = None;
     let mut menu: Option<(Pos2, &'static str)> = None;
-    let h = 380.0;
+    let w = W.min((screen.width() - 8.0).max(32.0));
+    let h = 380.0_f32.min((screen.height() - 8.0).max(120.0));
     let pos = pos2(
-        at.x.clamp(screen.left() + 4.0, (screen.right() - W - 4.0).max(screen.left())),
-        at.y.clamp(screen.top() + 4.0, (screen.bottom() - h).max(screen.top())),
+        at.x.clamp(screen.left() + 4.0, (screen.right() - w - 4.0).max(screen.left() + 4.0)),
+        at.y.clamp(screen.top() + 4.0, (screen.bottom() - h).max(screen.top() + 4.0)),
     );
     let resp = crate::frame::area(egui::Id::new("sc_sbox")).fixed_pos(pos).order(egui::Order::Foreground).show(ctx, |ui| {
         crate::context_menu::menu_frame(ui, |ui| {
-            ui.set_width(W - 10.0);
+            ui.set_width(w - 10.0);
             // Pinned commands: a mini toolbar.
             if !app.sbox.pinned.is_empty() {
                 ui.horizontal_wrapped(|ui| {
@@ -189,7 +190,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
             let te = ui.add(
                 egui::TextEdit::singleline(&mut app.sbox.text)
                     .hint_text(crate::i18n::tr_label("Search commands"))
-                    .desired_width(W - 20.0)
+                    .desired_width(w - 20.0)
                     .id(egui::Id::new("sc_sbox_text")),
             );
             if std::mem::take(&mut app.sbox.focus) {
@@ -206,7 +207,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
                 ui.spacing_mut().item_spacing.y = 0.0;
                 for (i, (id, label, icon, place)) in list.iter().enumerate().take(80) {
                     let enabled = solidcraft_engine::find_command(id).is_some_and(|c| c.info(&app.session).enabled);
-                    let (r, resp) = ui.allocate_exact_size(vec2(W - 20.0, 26.0), Sense::click());
+                    let (r, resp) = ui.allocate_exact_size(vec2(w - 20.0, 26.0), Sense::click());
                     let lit = i == app.sbox.index || resp.hovered();
                     if lit {
                         ui.painter().rect_filled(r, 4.0, t.hover);
@@ -258,6 +259,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
             });
         });
     });
+    crate::scenario::publish_rect("ribbon:search_popup", resp.response.rect);
     if let Some(id) = pin {
         app.sbox.toggle_pin(id);
     }

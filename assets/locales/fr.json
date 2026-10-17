@@ -1379,6 +1379,8 @@
   "ui.restore_defaults": "Rétablir les valeurs par défaut",
   "ui.reverse_zoom_direction": "Inverser le sens du zoom",
   "ui.revolve": "Révolution",
+  "ui.ribbon_exit": "Quitter",
+  "ui.ribbon_workspace": "Espace de travail",
   "ui.right": "Droite",
   "ui.save": "Enregistrer",
   "ui.save_as": "Enregistrer sous",

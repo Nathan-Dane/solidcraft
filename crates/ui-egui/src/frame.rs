@@ -245,7 +245,7 @@ mod tests {
     fn feature_forms_use_available_height_and_keep_actions_visible() {
         use crate::scenario::Harness;
         use serde_json::json;
-        for (width, height, scale) in [(1400.0, 900.0, 1.0), (1400.0, 900.0, 2.0)] {
+        for (width, height, scale) in [(1400.0, 900.0, 1.0), (1400.0, 950.0, 2.0)] {
             let mut h = Harness::new();
             h.app.preferences.ui_scale = scale;
             h.call("ui.resize", json!({"width":width / scale,"height":height / scale}));

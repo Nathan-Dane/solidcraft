@@ -1391,6 +1391,8 @@
   "ui.restore_defaults": "Restore Defaults",
   "ui.reverse_zoom_direction": "Reverse zoom direction",
   "ui.revolve": "Revolve",
+  "ui.ribbon_exit": "Exit",
+  "ui.ribbon_workspace": "Workspace",
   "ui.right": "Right",
   "ui.save": "Save",
   "ui.save_as": "Save As",
