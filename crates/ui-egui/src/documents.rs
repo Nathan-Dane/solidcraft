@@ -429,7 +429,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     }
     // More tabs than fit: a chevron lists them all.
     if shown < n {
-        let mr = Rect::from_center_size(pos2(x + 12.0, r.center().y + 2.0), vec2(20.0, 22.0));
+        let mr = Rect::from_center_size(pos2(x + 12.0, r.center().y), vec2(20.0, 22.0));
         let mresp = ui.interact(mr, ui.id().with("doc_more"), Sense::click());
         if mresp.hovered() {
             ui.painter().rect_filled(mr, 4.0, t.app_bar_hover_button);
@@ -463,7 +463,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         x += 26.0;
     }
     // New design: a new tab showing the start page.
-    let pr = Rect::from_center_size(pos2(x + 14.0, r.center().y + 2.0), vec2(22.0, 22.0));
+    let pr = Rect::from_center_size(pos2(x + 14.0, r.center().y), vec2(22.0, 22.0));
     let presp = ui.interact(pr, ui.id().with("doc_new"), Sense::click());
     if presp.hovered() {
         ui.painter().rect_filled(pr, 4.0, t.app_bar_hover_button);
