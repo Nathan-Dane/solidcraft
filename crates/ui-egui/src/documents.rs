@@ -418,7 +418,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
             ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
         if show_close {
-            crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(xr.center(), vec2(14.0, 14.0)), "close", 1.0);
+            crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(xr.center(), vec2(14.0, 14.0)), "close", if xresp.hovered() || xresp.has_focus() { 1.0 } else { 0.55 });
         }
         if xresp.on_hover_text("Close").clicked() {
             shut = Some(i);
@@ -468,7 +468,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     if presp.hovered() {
         ui.painter().rect_filled(pr, 4.0, t.app_bar_hover_button);
     }
-    crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(pr.center(), vec2(16.0, 16.0)), "plus", 1.0);
+    crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(pr.center(), vec2(16.0, 16.0)), "plus", if presp.hovered() { 1.0 } else { 0.55 });
     // A file loading into the window keeps the tabs as they are (dragging still moves it).
     let idle = !app.file_load.busy();
     if presp.on_hover_text("New Design (Ctrl+N)").clicked() && idle {
