@@ -124,19 +124,44 @@ fn floating_sketch_palette_and_compass_share_measured_clearance() {
     }
 }
 
-/// Strict compass clearance conflicts with the palette's existing minimum content height.
-/// Keep a reproducer for the later palette layout work instead of changing that layout here.
 #[test]
-#[ignore = "short floating palette needs a decision about whole-panel scrolling or compass clearance"]
 fn short_floating_palette_stays_in_viewport() {
-    let mut h = Harness::new();
-    h.call("ui.resize", json!({"width":700,"height":475}));
-    h.call("ui.prefs", json!({"ui_scale":2.0}));
-    h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
-    h.settle();
-    let viewport = h.app.viewport.rect.unwrap();
-    let palette = h.app.viewport.palette_rect.unwrap();
-    assert!(viewport.contains_rect(palette), "{palette:?} extends beyond {viewport:?}");
+    for style in crate::prefs::NavigatorStyle::ALL {
+        for height in [475, 385, 300] {
+            let mut h = Harness::new();
+            h.app.preferences.navigator_style = style;
+            h.call("ui.resize", json!({"width":700,"height":height}));
+            h.call("ui.prefs", json!({"ui_scale":2.0}));
+            h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
+            // Include the extra Feature Options section in the tiny-height case.
+            if height == 300 {
+                h.app.start("sketch.rectangle.two_point");
+            }
+            h.settle();
+            let viewport = h.app.viewport.rect.unwrap();
+            let palette = h.app.viewport.palette_rect.unwrap();
+            assert!(
+                viewport.contains_rect(palette),
+                "{style:?}, height={height}: {palette:?} extends beyond {viewport:?}, right={:.9}, bottom={:.9}",
+                palette.right(),
+                palette.bottom()
+            );
+            let compass = h.app.viewport.layout.as_ref().unwrap().axis_view;
+            if compass.is_positive() {
+                assert!(palette.top() < compass.bottom(), "short panels reclaim compass space");
+            }
+            let finish = crate::scenario::handle_at("sketch_palette:finish").unwrap();
+            if !palette.contains(finish) {
+                // Once reclaiming is insufficient, the whole palette must scroll to Finish.
+                h.call("ui.scroll", json!({"x":palette.center().x,"y":palette.center().y,"delta":-1200}));
+                h.frames(20);
+            }
+            let finish = crate::scenario::handle_at("sketch_palette:finish").unwrap();
+            assert!(palette.contains(finish), "Finish Sketch must be reachable: {style:?}, height={height}, {finish:?} in {palette:?}");
+            h.call("ui.click", json!({"x":finish.x,"y":finish.y}));
+            assert!(h.app.session.active_sketch.is_none(), "Finish Sketch must work after scrolling");
+        }
+    }
 }
 
 #[test]

@@ -110,13 +110,13 @@ pub(crate) fn content_rect(app: &SolveApp, viewport: Rect) -> Rect {
 pub(crate) fn panel_top(app: &SolveApp, viewport: Rect, bottom: f32, side: crate::frame::Side) -> f32 {
     let content = content_rect(app, viewport);
     if app.ui.layout == LayoutMode::Floating && side == crate::frame::Side::Right {
-        // Unlike compact mode, short panels never reclaim the compass's reserved area.
-        app.viewport.layout.as_ref().map_or(
-            content.top(),
-            |l| {
-                if l.axis_view.is_positive() { l.axis_view.bottom().min(bottom) } else { content.top() }
-            },
-        )
+        // Preserve measured compass clearance when there is room; reclaim it on short
+        // views with the same 360 px panel budget as Docked.
+        app.viewport
+            .layout
+            .as_ref()
+            .map_or(content.top(), |l| if l.axis_view.is_positive() { l.axis_view.bottom().min(bottom) } else { content.top() })
+            .min((bottom - 360.0).max(content.top()))
     } else {
         (viewport.top() + crate::viewport::AXIS_VIEW_CLEARANCE).min((bottom - 360.0).max(viewport.top()))
     }
