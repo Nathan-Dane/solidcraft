@@ -612,7 +612,10 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     if collapsible && (response.hovered() || response.has_focus()) {
         ui.painter().rect_filled(rect, t.radius_lg.saturating_sub(CARD_INSET as u8), t.hover);
     }
-    let galley = ui.painter().layout_no_wrap(crate::i18n::tr("ui.browser_title").to_string(), FontId::proportional(t.font_heading), t.text);
+    let title = crate::i18n::tr("ui.browser_title").to_string();
+    let kind = if collapsible { egui::WidgetType::Button } else { egui::WidgetType::Label };
+    response.widget_info(|| egui::WidgetInfo::labeled(kind, true, &title));
+    let galley = ui.painter().layout_no_wrap(title, FontId::proportional(t.font_heading), t.text);
     ui.painter().galley(pos2(rect.left() + t.space_6, rect.center().y - galley.size().y / 2.0), galley, t.text);
     let mut right = rect.right() - t.space_6;
     if collapsible {

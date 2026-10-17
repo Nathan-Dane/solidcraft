@@ -111,7 +111,6 @@ mod file_load_ui_tests;
 #[cfg(test)]
 mod fillet_spline_handle_tests;
 pub(crate) mod navigation;
-pub mod palette;
 pub mod params_dialog;
 pub(crate) mod pick_buffer;
 pub(crate) mod pick_index;
@@ -309,7 +308,6 @@ pub struct SolveApp {
     /// The Design Properties window, when open.
     pub design_properties: Option<design_properties::DesignProperties>,
     material_card_review: Option<material_card_review::ReviewWindow>,
-    pub palette: palette::Palette,
     /// Context menus, rename box and Properties window.
     pub menu: context_menu::MenuState,
     /// Browser tree state (reveal, groups being edited, occurrence moves).
@@ -441,7 +439,6 @@ impl SolveApp {
             params: None,
             design_properties: None,
             material_card_review: None,
-            palette: palette::Palette::default(),
             menu: context_menu::MenuState::default(),
             tree: browser::TreeState::default(),
             sbox: shortcut_box::ShortcutBox::default(),
@@ -897,8 +894,7 @@ impl SolveApp {
             Some(d) => self.dialog = Some(d),
             None => {
                 let _ = dialogs::roll_marker(self, marker);
-                self.palette.text = format!("timeline.edit {{\"feature\": {id}, \"set\": {{}}}}");
-                self.ui.palette_open = true;
+                self.set_status(format!("This feature has no editor yet: change it with the timeline.edit command (feature {id})."), true);
             }
         }
     }
@@ -1385,7 +1381,6 @@ impl SolveApp {
         if !floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
-        palette::palette_bar(self, ui);
         let full = ui.available_rect_before_wrap();
         if floating {
             let cards = shell::Cards::new(full, self.ui.layout);

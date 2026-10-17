@@ -716,8 +716,7 @@ mod tests {
                 assert_eq!(rect_of("history:card").unwrap().bottom(), viewport.bottom() - crate::shell::SHELL_GAP);
             } else {
                 let strip = rect_of("history:strip").unwrap();
-                // The existing 28-point command-input bar remains between viewport and history.
-                assert_eq!(strip.top(), viewport.bottom() + 28.0);
+                assert_eq!(strip.top(), viewport.bottom());
                 assert_eq!(strip.bottom(), h.ctx.content_rect().bottom());
                 assert_eq!(strip.left(), 0.0);
                 assert_eq!(strip.height(), 40.0);
