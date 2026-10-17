@@ -41,6 +41,7 @@ pub enum Fit {
 }
 
 /// A panel's width with `buttons` buttons.
+#[cfg(test)]
 pub fn panel_width(buttons: usize) -> f32 {
     (buttons.max(1) as f32 * BUTTON_STRIDE - BUTTON_GAP + 8.0).max(COLLAPSED_WIDTH)
 }
@@ -56,7 +57,11 @@ pub const RIBBON_HEIGHT: f32 = TAB_ROW_HEIGHT + GROUP_HEIGHT + 1.0;
 const WORKSPACE_WIDTH: f32 = 88.0;
 const BUTTON_HEIGHT: f32 = 60.0;
 const BUTTON_GAP: f32 = 3.0;
-const BUTTON_STRIDE: f32 = 54.0 + BUTTON_GAP;
+const BUTTON_MIN_WIDTH: f32 = 54.0;
+const BUTTON_MAX_WIDTH: f32 = 76.0;
+const BUTTON_LABEL_PADDING: f32 = 10.0;
+#[cfg(test)]
+const BUTTON_STRIDE: f32 = BUTTON_MIN_WIDTH + BUTTON_GAP;
 const SECTION_HEIGHT: f32 = 20.0;
 
 /// Fit panels of these full widths into `room`: all of them in full when they fit; otherwise
@@ -584,7 +589,37 @@ fn export_as(app: &mut SolveApp, ext: &str, format: Option<&str>) {
 /// Choose at most two lines at spaces or after `/`, then truncate each line at
 /// Unicode character boundaries. An oversized word stays on one line with an ellipsis.
 fn ribbon_button_lines(painter: &egui::Painter, label: &str, width: f32) -> Vec<String> {
-    let measure = |text: &str| painter.layout_no_wrap(text.to_owned(), FontId::proportional(12.0), Color32::WHITE).size().x;
+    let mut lines = ribbon_label_lines(painter, label, width);
+    for line in &mut lines {
+        if ribbon_label_width(painter, line) > width {
+            while !line.is_empty() {
+                line.pop();
+                if ribbon_label_width(painter, &format!("{}…", line.trim_end())) <= width {
+                    break;
+                }
+            }
+            *line = format!("{}…", line.trim_end());
+        }
+    }
+    lines
+}
+
+fn ribbon_label_width(painter: &egui::Painter, text: &str) -> f32 {
+    let mut job = egui::text::LayoutJob::simple(text.to_owned(), FontId::proportional(12.0), Color32::WHITE, f32::INFINITY);
+    job.halign = egui::Align::Center;
+    painter.layout_job(job).size().x
+}
+
+fn ribbon_button_width(painter: &egui::Painter, label: &str) -> f32 {
+    let widest = ribbon_label_lines(painter, label, BUTTON_MAX_WIDTH - BUTTON_LABEL_PADDING)
+        .iter()
+        .map(|line| ribbon_label_width(painter, line))
+        .fold(0.0_f32, f32::max);
+    (widest + BUTTON_LABEL_PADDING).clamp(BUTTON_MIN_WIDTH, BUTTON_MAX_WIDTH)
+}
+
+fn ribbon_label_lines(painter: &egui::Painter, label: &str, width: f32) -> Vec<String> {
+    let measure = |text: &str| ribbon_label_width(painter, text);
     let normalized = label.split_whitespace().collect::<Vec<_>>().join(" ");
     let label = normalized.as_str();
     let mut end = 0;
@@ -599,17 +634,6 @@ fn ribbon_button_lines(painter: &egui::Painter, label: &str, width: f32) -> Vec<
     let mut lines = vec![first.trim().to_owned()];
     if !rest.trim().is_empty() {
         lines.push(rest.trim().to_owned());
-    }
-    for line in &mut lines {
-        if measure(line) > width {
-            while !line.is_empty() {
-                line.pop();
-                if measure(&format!("{}…", line.trim_end())) <= width {
-                    break;
-                }
-            }
-            *line = format!("{}…", line.trim_end());
-        }
     }
     lines
 }
@@ -825,10 +849,24 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 (panel, cmds, shown)
             })
             .collect();
-        let width_of = |panel: &str, count: usize| {
-            if tab == "SKETCH" && panel == "CREATE" { count.max(1) as f32 * 71.0 - BUTTON_GAP + 8.0 } else { panel_width(count) }
-        };
-        let widths: Vec<f32> = lists.iter().map(|(panel, _, shown)| width_of(panel, shown.len())).collect();
+        let button_widths: Vec<Vec<f32>> = lists
+            .iter()
+            .map(|(panel, _, shown)| {
+                shown
+                    .iter()
+                    .map(|c| {
+                        let family = crate::sketch_families::family(c.id)
+                            .filter(|f| tab == "SKETCH" && *panel == "CREATE" && f.commands.first().copied() == Some(c.id));
+                        let label = family.map_or_else(|| crate::workspace::ribbon_button_label(c), |f| f.label);
+                        ribbon_button_width(&painter, app.tr_label(label))
+                    })
+                    .collect()
+            })
+            .collect();
+        let widths: Vec<f32> = button_widths
+            .iter()
+            .map(|buttons| (buttons.iter().sum::<f32>() + buttons.len().saturating_sub(1) as f32 * BUTTON_GAP + 8.0).max(COLLAPSED_WIDTH))
+            .collect();
         let right = r.right();
         // Keep the Sketch exit group at the far right and reachable at every width.
         let finish_width = if tab == "SKETCH" { widths.last().copied().unwrap_or(0.0).max(80.0) } else { 0.0 };
@@ -839,7 +877,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
         crate::scenario::publish_count("toolbar_collapsed", fits.iter().filter(|f| **f == Fit::Collapsed).count() as f64);
         crate::scenario::publish_count("toolbar_more", fits.iter().filter(|f| **f == Fit::More).count() as f64);
-        for ((panel, cmds, shown), fit) in lists.into_iter().zip(fits) {
+        for (((panel, cmds, shown), fit), (button_widths, full_width)) in lists.into_iter().zip(fits).zip(button_widths.into_iter().zip(widths)) {
             let panel: &&str = &panel;
             if fit == Fit::More {
                 overflow.push((*panel, menu_commands(&cmds, &shown)));
@@ -850,16 +888,15 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             let width = if finish {
                 finish_width
             } else if collapsed {
-                COLLAPSED_WIDTH.min(width_of(panel, shown.len()))
+                COLLAPSED_WIDTH.min(full_width)
             } else {
-                width_of(panel, shown.len())
+                full_width
             };
             if finish {
                 px = right - finish_width;
                 painter.line_segment([pos2(px, top), pos2(px, r.bottom() - 1.0)], Stroke::new(1.0, t.border));
             }
             let sketch_create = tab == "SKETCH" && *panel == "CREATE";
-            let stride = if sketch_create { 71.0 } else { BUTTON_STRIDE };
             let enabled_panel = !cmds.is_empty() || *panel == "SELECT";
             // Per tab: panels of the same name on other tabs (MODIFY, CREATE…) list other commands,
             // and the drop-down's area remembers its size by this id (#874).
@@ -868,9 +905,10 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             // its end.
             let drawn = if collapsed { 0 } else { shown.len() };
             // Buttons narrower than the panel's minimum width (a one-button panel) are centred.
-            let inset = if drawn == 0 { 0.0 } else { ((width - 8.0 - (drawn as f32 * stride - BUTTON_GAP)) / 2.0).max(0.0).floor() };
+            let buttons_width = button_widths.iter().take(drawn).sum::<f32>() + drawn.saturating_sub(1) as f32 * BUTTON_GAP;
+            let inset = if drawn == 0 { 0.0 } else { ((width - 8.0 - buttons_width) / 2.0).max(0.0).floor() };
             let bx = px + 4.0 + inset;
-            let free_x = bx + drawn as f32 * stride;
+            let free_x = bx + buttons_width + BUTTON_GAP;
             let free = Rect::from_min_size(pos2(free_x, top + 2.0), vec2((px + width - 4.0 - free_x).max(0.0), BUTTON_HEIGHT));
             let fresp = ui.interact(free, ui.id().with(("panel_free", panel)), if collapsed { Sense::click() } else { Sense::hover() });
             let mut opened = false;
@@ -893,12 +931,14 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     opened = true;
                 }
             }
-            for (i, c) in shown.iter().enumerate().take(drawn) {
+            let mut button_x = bx;
+            for (c, button_width) in shown.iter().zip(button_widths.iter().copied()).take(drawn) {
                 // Only the family's default pin follows the part's choice. Explicitly pinned
                 // variants remain exact commands, including in customised toolbars.
                 let family = crate::sketch_families::family(c.id).filter(|f| sketch_create && f.commands.first().copied() == Some(c.id));
                 let selected = family.and_then(|f| app.sketch_choices.selected(f)).unwrap_or(c);
-                let whole = Rect::from_min_size(pos2(bx + i as f32 * stride, top + 2.0), vec2(stride - BUTTON_GAP, BUTTON_HEIGHT));
+                let whole = Rect::from_min_size(pos2(button_x, top + 2.0), vec2(button_width, BUTTON_HEIGHT));
+                button_x += button_width + BUTTON_GAP;
                 let mut br = whole;
                 if family.is_some() {
                     br.max.y = whole.top() + 32.0;
@@ -968,7 +1008,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 } else {
                     let label = app.tr_label(crate::workspace::ribbon_button_label(selected));
                     let color = if info.enabled { t.text } else { t.text_dim };
-                    let galley = ribbon_button_galley(&painter, label, whole.width() - 4.0, color);
+                    let galley = ribbon_button_galley(&painter, label, whole.width() - BUTTON_LABEL_PADDING, color);
                     painter.galley(pos2(whole.center().x, whole.top() + 32.0), galley, t.text);
                 }
             }
@@ -1004,7 +1044,12 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             // Respect the current layer so a dropdown covering the panel is not a drop target.
             let panel_rect = Rect::from_min_max(pos2(px, top + 2.0), pos2(px + width, r.bottom()));
             let over_button = ui.input(|input| input.pointer.hover_pos()).is_some_and(|p| {
-                (0..drawn).any(|i| Rect::from_min_size(pos2(bx + i as f32 * stride, top + 2.0), vec2(stride - BUTTON_GAP, BUTTON_HEIGHT)).contains(p))
+                let mut x = bx;
+                button_widths.iter().take(drawn).any(|width| {
+                    let rect = Rect::from_min_size(pos2(x, top + 2.0), vec2(*width, BUTTON_HEIGHT));
+                    x += width + BUTTON_GAP;
+                    rect.contains(p)
+                })
             });
             if !over_button && ui.rect_contains_pointer(panel_rect) && egui::DragAndDrop::payload::<ToolbarDrag>(ui.ctx()).is_some() {
                 painter.line_segment([pos2(px + width - 4.0, top + 4.0), pos2(px + width - 4.0, top + 38.0)], Stroke::new(2.0, t.accent));
@@ -2068,14 +2113,14 @@ mod ribbon_label_tests {
             let specs = solidcraft_engine::command_specs();
             for section in crate::workspace::SECTIONS {
                 let (commands, count) = crate::workspace::layout(section.tab, section.panel, &specs).unwrap();
-                let width = if section.tab == "SKETCH" && section.panel == "CREATE" { 71.0 } else { BUTTON_STRIDE } - BUTTON_GAP - 4.0;
                 for command in commands.iter().take(count) {
                     for catalog in crate::i18n::LOCALES {
                         let locale = crate::i18n::Locale::for_language(catalog.id);
                         let label = locale.label(crate::workspace::ribbon_button_label(command));
+                        let width = ribbon_button_width(&painter, label) - BUTTON_LABEL_PADDING;
                         let galley = ribbon_button_galley(&painter, label, width, Color32::WHITE);
                         assert!(galley.rows.len() <= 2, "{}: {label}", command.id);
-                        assert!(galley.size().x <= width + 0.01, "{}: {label}", command.id);
+                        assert!(galley.size().x <= width + 0.01, "{}: {label}: {} > {width}", command.id, galley.size().x);
                         let first = galley.rows.first().unwrap().text();
                         let visible = first.strip_suffix('…').unwrap_or(&first);
                         assert!(label.starts_with(visible), "{}: {label} -> {first}", command.id);
@@ -2098,6 +2143,15 @@ mod ribbon_label_tests {
                     }
                 }
             }
+            for label in ["Rectangular", "Dimension", "Coincident"] {
+                let width = ribbon_button_width(&painter, label);
+                assert_eq!(ribbon_button_lines(&painter, label, width - BUTTON_LABEL_PADDING), vec![label]);
+                assert!((BUTTON_MIN_WIDTH..=BUTTON_MAX_WIDTH).contains(&width));
+            }
+            let finish = solidcraft_engine::find_command("sketch.finish").unwrap();
+            let label = crate::workspace::ribbon_button_label(finish);
+            let width = ribbon_button_width(&painter, label);
+            assert_eq!(ribbon_button_lines(&painter, label, width - BUTTON_LABEL_PADDING), vec!["Finish", "Sketch"]);
             // Exercise full labels and pinned commands too, not just compact defaults.
             for (label, width, expected) in [
                 ("Coincident", 50.0, vec!["Coincident"]),

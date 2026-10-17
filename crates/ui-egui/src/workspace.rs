@@ -242,7 +242,7 @@ pub const RIBBON_LABELS: &[(&str, &str)] = &[
     ("sketch.constraint.horizontal_vertical", "Horiz./Vert."),
     ("sketch.create", "New Sketch"),
     ("sketch.dimension", "Dimension"),
-    ("sketch.finish", "Finish"),
+    ("sketch.finish", "Finish Sketch"),
     ("sketch.pattern.circular", "Circular"),
     ("sketch.pattern.rectangular", "Rectangular"),
     ("sketch.rectangle.two_point", "Rectangle"),
