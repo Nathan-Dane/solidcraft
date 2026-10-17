@@ -199,6 +199,67 @@ pub const SECTIONS: &[Section] = &[
     Section { tab: "RENDER", panel: "IMAGE", promoted: 1, ids: &["render.start"] },
 ];
 
+/// Compact source labels for painted big buttons only. Menus, search and tooltips
+/// retain the engine label. Route these through `tr_label`, like other UI labels.
+pub const RIBBON_LABELS: &[(&str, &str)] = &[
+    ("appearance.assign", "Appearance"),
+    ("component.capture_position", "Capture Pos."),
+    ("component.create", "New Comp."),
+    ("component.from_bodies", "From Bodies"),
+    ("component.insert_design", "Insert"),
+    ("component.properties", "Properties"),
+    ("component.revert_position", "Revert Pos."),
+    ("config.table", "Config Table"),
+    ("contact.check", "Contact"),
+    ("contact.enable_sets", "Contact Sets"),
+    ("document.inspect", "Inspect"),
+    ("document.units", "Units"),
+    ("inspect.accessibility", "Access"),
+    ("inspect.center_of_mass", "Mass Center"),
+    ("inspect.curvature_comb", "Curv. Comb"),
+    ("inspect.curvature_map", "Curvature"),
+    ("inspect.draft", "Draft"),
+    ("inspect.interference", "Interference"),
+    ("inspect.isocurve", "Isocurve"),
+    ("inspect.section", "Section"),
+    ("inspect.zebra", "Zebra"),
+    ("joint.as_built", "As-Built"),
+    ("material.assign", "Material"),
+    ("parameters.change", "Parameters"),
+    ("parameters.graph", "Param. Graph"),
+    ("parts.fastener", "Fastener"),
+    ("parts.library", "Parts"),
+    ("parts.resize", "Resize Part"),
+    ("plastic.assign_rule", "Assign Rule"),
+    ("plastic.manage_rules", "Plastic Rules"),
+    ("render.scene", "Scene"),
+    ("sheet.export_bend_table", "Bend Table"),
+    ("sheet.export_dxf", "Export DXF"),
+    ("sheet.flat_pattern", "Flat Pattern"),
+    ("sheet.manage_rules", "Sheet Rules"),
+    ("sketch.circle.center", "Circle"),
+    ("sketch.constraint.coincident", "Coincident"),
+    ("sketch.constraint.horizontal_vertical", "Horiz./Vert."),
+    ("sketch.create", "New Sketch"),
+    ("sketch.dimension", "Dimension"),
+    ("sketch.finish", "Finish"),
+    ("sketch.pattern.circular", "Circular"),
+    ("sketch.pattern.rectangular", "Rectangular"),
+    ("sketch.rectangle.two_point", "Rectangle"),
+    ("solid.move", "Move / Copy"),
+    ("solid.pattern.rectangular", "Pattern"),
+    ("surface.extrude", "Extrude"),
+    ("surface.revolve", "Revolve"),
+    ("surface.sweep", "Sweep"),
+    ("timeline.dependents", "Dependents"),
+    ("view.apply", "Restore View"),
+    ("view.save", "Save View"),
+];
+
+pub fn ribbon_button_label(command: &CommandSpec) -> &str {
+    RIBBON_LABELS.iter().find(|(id, _)| *id == command.id).map_or(command.label, |(_, label)| *label)
+}
+
 /// Registry placement → default ribbon destination, after explicit id overrides.
 pub const PLACEMENTS: &[(&str, &str, &str, &str)] = &[
     ("SOLID", "CREATE", "MODEL", "CREATE"),
@@ -417,6 +478,27 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn promoted_long_labels_have_compact_ribbon_names() {
+        let specs = solidcraft_engine::command_specs();
+        let english: std::collections::BTreeMap<String, String> = serde_json::from_str(include_str!("../../../assets/locales/en.json")).unwrap();
+        for section in SECTIONS {
+            let (commands, count) = layout(section.tab, section.panel, &specs).unwrap();
+            for command in commands.iter().take(count) {
+                if command.label.chars().count() > 12 || command.label.split_whitespace().any(|word| word.chars().count() > 9) {
+                    assert!(RIBBON_LABELS.iter().any(|(id, _)| *id == command.id), "missing compact label for {}", command.id);
+                }
+            }
+        }
+        for (id, label) in RIBBON_LABELS {
+            assert!(solidcraft_engine::find_command(id).is_some(), "unknown command {id}");
+            assert!(label.chars().count() <= 13, "{id}: {label}");
+            assert!(english.values().any(|value| value == label), "untranslated ribbon label {label}");
+        }
+        assert_eq!(ribbon_button_label(solidcraft_engine::find_command("sketch.create").unwrap()), "New Sketch");
+        assert_eq!(solidcraft_engine::find_command("sketch.create").unwrap().label, "Create Sketch");
+    }
+
+    #[test]
     fn every_placed_command_is_reachable_and_every_layout_id_exists() {
         let specs = solidcraft_engine::command_specs();
         let lists: Vec<_> = SECTIONS.iter().map(|s| (s, layout(s.tab, s.panel, &specs).unwrap())).collect();
@@ -515,7 +597,7 @@ mod tests {
         let (commands, _) = layout("MANAGE", "CONFIGURATIONS", &specs).unwrap();
         assert!(commands.iter().any(|c| c.id == "config.configure"));
         h.step(&json!({"click":{"handle":"tab:MANAGE"}})).unwrap();
-        h.step(&json!({"widget":"Parameters"})).unwrap();
+        h.step(&json!({"click":{"handle":"button:parameters.change"}})).unwrap();
         assert!(h.app.params.is_some(), "the ordinary Parameters button opens the editor");
         assert!(h.app.dialog.is_none());
         assert!(h.widget("User Parameters").is_some());
@@ -530,7 +612,7 @@ mod tests {
         assert!(values["parameters"].as_array().unwrap().iter().any(|p| p["name"] == "width" && p["value"] == 25.0));
         h.step(&json!({"click":{"handle":"params:close"}})).unwrap();
         assert!(h.app.params.is_none());
-        h.step(&json!({"widget":"Configurations"})).unwrap();
+        h.step(&json!({"click":{"handle":"button:config.table"}})).unwrap();
         assert!(h.app.params.is_none());
         assert!(matches!(
             h.app.dialog.as_ref().map(|d| &d.kind),

@@ -581,6 +581,47 @@ fn export_as(app: &mut SolveApp, ext: &str, format: Option<&str>) {
     });
 }
 
+/// Choose at most two lines at spaces or after `/`, then truncate each line at
+/// Unicode character boundaries. An oversized word stays on one line with an ellipsis.
+fn ribbon_button_lines(painter: &egui::Painter, label: &str, width: f32) -> Vec<String> {
+    let measure = |text: &str| painter.layout_no_wrap(text.to_owned(), FontId::proportional(12.0), Color32::WHITE).size().x;
+    let normalized = label.split_whitespace().collect::<Vec<_>>().join(" ");
+    let label = normalized.as_str();
+    let mut end = 0;
+    for token in label.split_inclusive(|c: char| c.is_whitespace() || c == '/') {
+        let next = end + token.len();
+        if end > 0 && measure(label.get(..next).unwrap_or_default().trim()) > width {
+            break;
+        }
+        end = next;
+    }
+    let (first, rest) = label.split_at(end);
+    let mut lines = vec![first.trim().to_owned()];
+    if !rest.trim().is_empty() {
+        lines.push(rest.trim().to_owned());
+    }
+    for line in &mut lines {
+        if measure(line) > width {
+            while !line.is_empty() {
+                line.pop();
+                if measure(&format!("{}…", line.trim_end())) <= width {
+                    break;
+                }
+            }
+            *line = format!("{}…", line.trim_end());
+        }
+    }
+    lines
+}
+
+fn ribbon_button_galley(painter: &egui::Painter, label: &str, width: f32, color: Color32) -> std::sync::Arc<egui::Galley> {
+    let lines = ribbon_button_lines(painter, label, width);
+    // Explicit newlines only: egui must never split an oversized word.
+    let mut job = egui::text::LayoutJob::simple(lines.join("\n"), FontId::proportional(12.0), color, f32::INFINITY);
+    job.halign = egui::Align::Center;
+    painter.layout_job(job)
+}
+
 /// Ribbon headings use the translated labels, with normal word casing instead of registry caps.
 fn ribbon_label(app: &SolveApp, label: &str) -> String {
     app.tr_label(label)
@@ -899,12 +940,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 let side = if finish { 30.0 } else { 26.0 };
                 let icon_rect = Rect::from_center_size(pos2(br.center().x, whole.top() + 16.0), vec2(side, side));
                 icons::paint_icon(&painter, icon_rect, icon, if info.enabled { 1.0 } else { 0.35 });
-                let label = match c.id {
-                    "parameters.change" if *panel == "PARAMETERS" => "Parameters",
-                    "config.table" if *panel == "CONFIGURATIONS" => "Configurations",
-                    _ => selected.label,
-                };
-                let tr_label = app.tr_label(label).to_string();
+                let tr_label = app.tr_label(selected.label).to_string();
                 resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled() && info.enabled, &tr_label));
                 let tip = match &info.disabled_reason {
                     Some(why) => format!("{}\n{why}", tr_label),
@@ -930,16 +966,9 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         sketch_menu_rows(app, ui, &variants, &mut menu, &mut toggle);
                     });
                 } else {
-                    let label = if finish && c.id == "sketch.finish" { app.tr("ui.finish_sketch") } else { &tr_label };
-                    let mut job = egui::text::LayoutJob::simple(
-                        label.to_string(),
-                        FontId::proportional(12.0),
-                        if info.enabled { t.text } else { t.text_dim },
-                        whole.width() - 4.0,
-                    );
-                    job.wrap.max_rows = 2;
-                    job.halign = egui::Align::Center;
-                    let galley = painter.layout_job(job);
+                    let label = app.tr_label(crate::workspace::ribbon_button_label(selected));
+                    let color = if info.enabled { t.text } else { t.text_dim };
+                    let galley = ribbon_button_galley(&painter, label, whole.width() - 4.0, color);
                     painter.galley(pos2(whole.center().x, whole.top() + 32.0), galley, t.text);
                 }
             }
@@ -2024,5 +2053,72 @@ mod app_bar_tests {
         assert_eq!(h.app.session.path.as_deref(), Some(path.as_str()));
         let saved = solidcraft_engine::io::read_design(&std::fs::read(path).unwrap()).unwrap();
         assert_eq!(saved, *h.app.session.doc);
+    }
+}
+
+#[cfg(test)]
+mod ribbon_label_tests {
+    use super::*;
+
+    #[test]
+    fn every_promoted_label_wraps_only_at_word_boundaries() {
+        let ctx = egui::Context::default();
+        let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+            let painter = ui.painter().clone();
+            let specs = solidcraft_engine::command_specs();
+            for section in crate::workspace::SECTIONS {
+                let (commands, count) = crate::workspace::layout(section.tab, section.panel, &specs).unwrap();
+                let width = if section.tab == "SKETCH" && section.panel == "CREATE" { 71.0 } else { BUTTON_STRIDE } - BUTTON_GAP - 4.0;
+                for command in commands.iter().take(count) {
+                    for catalog in crate::i18n::LOCALES {
+                        let locale = crate::i18n::Locale::for_language(catalog.id);
+                        let label = locale.label(crate::workspace::ribbon_button_label(command));
+                        let galley = ribbon_button_galley(&painter, label, width, Color32::WHITE);
+                        assert!(galley.rows.len() <= 2, "{}: {label}", command.id);
+                        assert!(galley.size().x <= width + 0.01, "{}: {label}", command.id);
+                        let first = galley.rows.first().unwrap().text();
+                        let visible = first.strip_suffix('…').unwrap_or(&first);
+                        assert!(label.starts_with(visible), "{}: {label} -> {first}", command.id);
+                        if let Some(second) = galley.rows.get(1) {
+                            let second = second.text();
+                            let next = second.strip_suffix('…').unwrap_or(&second);
+                            // The second line must start at a legal source boundary,
+                            // including when the first line was ellipsized.
+                            assert!(
+                                label.char_indices().any(|(at, ch)| {
+                                    let end = at + ch.len_utf8();
+                                    (ch.is_whitespace() || ch == '/')
+                                        && label[end..].trim_start().starts_with(next)
+                                        && (first.ends_with('…') || label[..end].trim() == first)
+                                }),
+                                "{}: {label} -> {first:?}, {second:?} breaks inside a word",
+                                command.id
+                            );
+                        }
+                    }
+                }
+            }
+            // Exercise full labels and pinned commands too, not just compact defaults.
+            for (label, width, expected) in [
+                ("Coincident", 50.0, vec!["Coincident"]),
+                ("Rectangular Pattern", 50.0, vec!["Rectangular", "Pattern"]),
+                ("Move/Copy", 40.0, vec!["Move/", "Copy"]),
+            ] {
+                let lines = ribbon_button_lines(&painter, label, width);
+                // Exact glyph widths depend on the bundled font: verify the source
+                // word stays on its own line, with only an optional suffix omitted.
+                assert_eq!(lines.len(), expected.len(), "{label}: {lines:?}");
+                for (actual, word) in lines.iter().zip(expected) {
+                    assert!(actual == word || actual.strip_suffix('…').is_some_and(|prefix| word.starts_with(prefix)), "{label}: {lines:?}");
+                }
+            }
+            let lines = ribbon_button_lines(&painter, "one two three four five", 50.0);
+            assert_eq!(lines.len(), 2);
+            assert!(lines[1].ends_with('…'));
+            let lines = ribbon_button_lines(&painter, "長い日本語のラベル 続き", 50.0);
+            assert_eq!(lines.len(), 2);
+            assert!(lines[0].ends_with('…'));
+        });
+        output.textures_delta.clear();
     }
 }
