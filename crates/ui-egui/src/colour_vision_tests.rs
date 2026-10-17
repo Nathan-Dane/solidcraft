@@ -403,6 +403,8 @@ const NO_MEANING: &[(&str, &str)] = &[
     ("app_bar_hover_subtle", "translucent hover chrome"),
     ("app_bar_hover_button", "translucent hover chrome"),
     ("app_bar_hover_strong", "translucent hover chrome"),
+    ("app_bar_tab_active", "the active document tab's surface"),
+    ("render_accent", "the Render workspace's identity colour"),
     // The window's chrome: grounds, text and borders (measured as grounds where meaning sits on them).
     ("panel_header", "chrome"),
     ("border", "chrome"),
