@@ -766,7 +766,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
     // edges, so their outer corners are concentric with the card's corners.
     let floating = app.ui.layout == crate::shell::LayoutMode::Floating;
     let inset = RIBBON_TAB_INSET;
-    let corner = if floating { u8::try_from(t.radius_lg).unwrap_or(8).saturating_sub(inset as u8).max(2) } else { 5 };
+    let corner = if floating { t.radius_lg.saturating_sub(inset as u8).max(2) } else { 5 };
     let search = Rect::from_min_size(
         pos2((row.right() - search_width - inset).max(row.left()), row.top() + inset),
         vec2(search_width, TAB_ROW_HEIGHT - 2.0 * inset),
