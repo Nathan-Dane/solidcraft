@@ -369,12 +369,13 @@ fn the_title_bar_offers_the_new_version_and_opens_the_update_window() {
     h.frame();
     wait_for_check(&mut h);
     h.frames(2);
-    // An accent pill reading "Update to <version>", just left of Report a bug, on the bar.
+    // An accent pill reading "Update to <version>", left of the Settings/Help/Report cluster.
     let label = format!("Update to {version}");
     let at = h.widget(&label).unwrap_or_else(|| panic!("no `{label}` in the title bar"));
     let pill = crate::scenario::rect_of("titlebar:update").unwrap();
     assert!(pill.contains(egui::pos2(at[0] as f32, at[1] as f32)));
-    assert!(pill.right() <= report.left() && report.left() - pill.right() < 12.0, "beside Report a bug: {pill:?} {report:?}");
+    let settings = crate::scenario::handle_at("titlebar:preferences").unwrap();
+    assert!(pill.right() < settings.x && settings.x - 12.0 - pill.right() < 12.0, "beside Settings: {pill:?} {settings:?}");
     assert!((pill.center().y - report.center().y).abs() < 1.0 && pill.height() <= report.height());
     assert_eq!(crate::scenario::rect_of("titlebar:report"), Some(report), "Report a bug stays where it was");
     assert!(!h.app.updater.open, "no window pops up by itself");

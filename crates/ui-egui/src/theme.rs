@@ -24,6 +24,52 @@ thread_local! {
     static VISION: Cell<ColorVision> = const { Cell::new(ColorVision::Off) };
 }
 
+/// A tab's selection colours. This is deliberately separate from the global widget style:
+/// application chrome, checkboxes, status colours and dialog actions retain their own tokens.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct TabAccent {
+    pub color: Color32,
+    pub soft: Color32,
+}
+
+impl TabAccent {
+    pub fn for_tab(t: &Tokens, tab: &str) -> Self {
+        let color = match tab {
+            "SKETCH" => t.sketch_accent,
+            "SURFACE" => t.surface_accent,
+            "MESH" => t.mesh_accent,
+            "FORM" => t.form_accent,
+            _ => t.accent,
+        };
+        // Preserve the existing Solid selection exactly. Other tabs blend against the same
+        // panel surface in either theme rather than introducing independent palette entries.
+        let soft = if color == t.accent { t.accent_soft } else { t.panel.lerp_to_gamma(color, 0.18) };
+        Self { color, soft }
+    }
+
+    pub fn current(ctx: &egui::Context) -> Self {
+        ctx.data(|d| d.get_temp::<Self>(egui::Id::new("sc_tab_accent"))).unwrap_or_else(|| Self::for_tab(&Tokens::get(), "SOLID"))
+    }
+
+    pub fn publish(app: &crate::SolveApp, ctx: &egui::Context) {
+        let accent = Self::for_tab(&Tokens::get(), &app.ui.tab);
+        ctx.data_mut(|d| {
+            d.insert_temp(egui::Id::new("sc_tab_accent"), accent);
+            d.insert_temp(egui::Id::new("sc_tool_accent"), app.tool.is_some() || app.dialog.is_some());
+        });
+    }
+
+    /// Paint only the focused numeric editor, without changing sibling buttons or checkboxes.
+    pub fn number_focus(ui: &egui::Ui, response: &egui::Response) {
+        let active = ui.ctx().data(|d| d.get_temp::<bool>(egui::Id::new("sc_tool_accent"))).unwrap_or(false);
+        let accent = Self::current(ui.ctx());
+        let t = Tokens::get();
+        if active && response.has_focus() && accent.color != t.accent {
+            ui.painter().rect_stroke(response.rect, t.radius_sm, Stroke::new(1.0, accent.color), egui::StrokeKind::Inside);
+        }
+    }
+}
+
 /// Is the dark theme on?
 pub fn is_dark() -> bool {
     DARK.get()
@@ -420,6 +466,42 @@ pub fn apply(ctx: &egui::Context) {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn tab_accents_map_tokens_and_derive_selection_without_changing_solid() {
+        for dark in [false, true] {
+            for vision in super::ColorVision::ALL {
+                let t = super::Tokens::themed(dark, vision);
+                for (tab, color) in [("SKETCH", t.sketch_accent), ("SURFACE", t.surface_accent), ("MESH", t.mesh_accent), ("FORM", t.form_accent)] {
+                    let accent = super::TabAccent::for_tab(&t, tab);
+                    assert_eq!(accent.color, color);
+                    assert_eq!(accent.soft, t.panel.lerp_to_gamma(color, 0.18));
+                    assert_ne!(accent.soft, color);
+                    assert_ne!(accent.soft, t.panel);
+                }
+                for tab in ["SOLID", "SHEET METAL", "PLASTIC", "UTILITIES", "RENDER", "unknown"] {
+                    assert_eq!(super::TabAccent::for_tab(&t, tab), super::TabAccent { color: t.accent, soft: t.accent_soft });
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn tab_accent_context_is_per_app_and_does_not_change_widget_visuals() {
+        let mut harness = crate::scenario::Harness::new();
+        let app = &mut harness.app;
+        let first = egui::Context::default();
+        let second = egui::Context::default();
+        let before = first.style_of(egui::Theme::Dark).visuals.clone();
+        app.ui.tab = "SURFACE".into();
+        super::TabAccent::publish(app, &first);
+        assert_eq!(super::TabAccent::current(&first).color, super::Tokens::get().surface_accent);
+        assert_eq!(super::TabAccent::current(&second).color, super::Tokens::get().accent);
+        assert_eq!(first.style_of(egui::Theme::Dark).visuals, before, "dialog OK, checkboxes and status styles must not inherit the tab");
+        app.ui.tab = "SOLID".into();
+        super::TabAccent::publish(app, &first);
+        assert_eq!(super::TabAccent::current(&first).soft, super::Tokens::get().accent_soft);
+    }
+
     #[test]
     fn concurrent_ui_renderers_keep_their_own_theme_and_vision() {
         let barrier = std::sync::Barrier::new(2);

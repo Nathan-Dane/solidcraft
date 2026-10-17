@@ -21,12 +21,7 @@ fn panel_accent(t: &Tokens, tab: &str, panel: &str) -> Color32 {
     if panel == "CONSTRAINTS" {
         return t.glyph_text;
     }
-    match tab {
-        "SKETCH" => t.sketch_accent,
-        "SURFACE" => t.surface_accent,
-        "MESH" => t.mesh_accent,
-        _ => t.accent,
-    }
+    crate::theme::TabAccent::for_tab(t, tab).color
 }
 
 /// Panels shown on each tab (in order). Commands come from the registry by (tab, panel).
@@ -131,13 +126,13 @@ fn menu_commands(
     out
 }
 
-/// What the right-hand group keeps clear between Report a bug and the window's caption buttons:
-/// Help, Preferences and the version.
-const RIGHT_GROUP: f32 = 120.0;
+/// Room for the version between Report a bug and the caption buttons.
+const RIGHT_GROUP: f32 = 60.0;
+const CLUSTER_BUTTONS: f32 = 60.0;
 
-/// The centre of the Help (?) button: left of Preferences.
-fn help_x(bar: Rect, captions: f32) -> f32 {
-    bar.right() - captions - 101.0
+/// The centre of Help, between Settings and Report a bug.
+fn help_x(report: Rect) -> f32 {
+    report.left() - 16.0
 }
 
 /// The Report a bug button: labelled when there is room for its text (`label_width`, measured in
@@ -146,9 +141,9 @@ fn report_rect(bar: Rect, captions: f32, tabs_start: f32, label_width: f32) -> (
     let right = bar.right() - captions - RIGHT_GROUP;
     // Icon, text and a margin; never narrower than the English button.
     let full = (REPORT_TEXT_X + label_width + 10.0).max(124.0);
-    let labeled = right - tabs_start >= 216.0 + full;
+    let labeled = right - CLUSTER_BUTTONS - tabs_start >= 216.0 + full;
     let width = if labeled { full } else { 28.0 };
-    (Rect::from_min_size(pos2(right - width, bar.top() + 4.0), vec2(width, 26.0)), labeled)
+    (Rect::from_min_size(pos2(right - width, bar.center().y - 13.0), vec2(width, 26.0)), labeled)
 }
 
 /// The height of an application-bar pill ([`offer_pill`]), a little under the bar's 26 px buttons.
@@ -208,7 +203,7 @@ pub(crate) fn offer_pill(
 const REPORT_TEXT_X: f32 = 29.0;
 
 /// The application bar's height: the window's title bar on desktop builds.
-pub const APP_BAR_HEIGHT: f32 = 34.0;
+pub const APP_BAR_HEIGHT: f32 = 40.0;
 
 pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
@@ -236,9 +231,22 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 t.app_bar_text,
             );
         }
-        let mut x = left + if compact_actions { 60.0 } else { 128.0 };
-        // While a file loads the design waits: no menus or commands from the bar.
+        let mut x = left + if compact_actions { 44.0 } else { 128.0 };
+        let home = Rect::from_center_size(pos2(x - 4.0, r.center().y), vec2(24.0, 26.0));
         let idle = !app.file_load.busy();
+        let home_response = ui.interact(home, ui.id().with("appbar_home"), if idle { Sense::click() } else { Sense::hover() });
+        home_response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, idle, "Start page"));
+        crate::scenario::publish_handle("appbar:home", home.center());
+        crate::scenario::publish_rect("appbar:home", home);
+        if idle && (home_response.hovered() || home_response.has_focus()) {
+            ui.painter().rect_filled(home, t.radius_sm, t.app_bar_hover_button);
+        }
+        icons::paint_on(ui.painter(), home.shrink(4.0), "home", Some(true), 1.0);
+        if home_response.on_hover_text("Start page").clicked() && idle {
+            app.home.show(app.session.revision);
+        }
+        x += if compact_actions { 24.0 } else { 30.0 };
+        // While a file loads the design waits: no menus or commands from the bar.
         // The File menu: a text button (New, Open, Save, Save As, Export…). Its handle keeps the
         // old `appbar:folder` name too, for scripts written against the folder button.
         let file = {
@@ -268,7 +276,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, enabled, tip));
             crate::scenario::publish_handle(&format!("appbar:{icon}"), br.center());
             crate::scenario::publish_rect(&format!("appbar:{icon}"), br);
-            if enabled && resp.hovered() {
+            if enabled && (resp.hovered() || resp.has_focus()) {
                 ui.painter().rect_filled(br, t.radius_sm, t.app_bar_hover_button);
             }
             icons::paint_on(ui.painter(), br.shrink(5.0), icon, Some(true), if enabled { 1.0 } else { 0.35 });
@@ -313,20 +321,24 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let report_font = FontId::proportional(t.font_button);
         let label_width = ui.painter().layout_no_wrap(report_text.to_string(), report_font.clone(), t.app_bar_text).size().x;
         let (report, report_label) = report_rect(r, captions, tabs_start, label_width);
-        // Help, on the right between Report a bug and Preferences.
-        if click(ui, help_x(r, captions), "help", app.tr("ui.help"), true) {
+        // Settings, Help and Report a bug form the right-hand cluster.
+        if click(ui, help_x(report), "help", app.tr("ui.help"), true) {
             app.help.menu = !app.help.menu;
-            let at = help_x(r, captions);
+            let at = help_x(report);
             ui.ctx().data_mut(|d| {
                 d.insert_temp(egui::Id::new("sc_help_opened"), true);
                 d.insert_temp(egui::Id::new("sc_help_anchor"), at);
             });
         }
-        // A newer release: its Update button, left of Report a bug (`update`), in the space up to
+        // A newer release: its Update button stays before the right cluster, in the space up to
         // the bar's own buttons on the left (File, Undo and Redo, which end before `x`).
-        let span = Rect::from_min_max(pos2(x, report.top()), pos2(report.left() - 6.0, report.bottom()));
-        let update = crate::update::button(app, ui, span, report_label);
-        let tabs_end = update.map_or(report.left(), |u| u.left()) - 8.0;
+        let span = Rect::from_min_max(pos2(x, report.top()), pos2(report.left() - CLUSTER_BUTTONS - 6.0, report.bottom()));
+        // Keep Update's label breakpoints from before the house was inserted. Otherwise
+        // crossing into compact actions can make the pill grow as the window shrinks.
+        let previous_tabs_start = tabs_start - if compact_actions { 8.0 } else { 30.0 };
+        let update_labeled = report_rect(r, captions, previous_tabs_start, label_width).1;
+        let update = crate::update::button(app, ui, span, update_labeled);
+        let tabs_end = update.map_or(report.left() - CLUSTER_BUTTONS, |u| u.left()) - 8.0;
         // Narrow title bars can fit only part of the tab strip. Its hit regions must not
         // extend into the persistent report and window controls.
         let tabs_rect = Rect::from_min_max(pos2(tabs_start.min(tabs_end), r.top()), pos2(tabs_end, r.bottom()));
@@ -347,10 +359,10 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         if response.on_hover_text(crate::i18n::tr_label("Report a bug — review a screenshot and open a GitHub draft")).clicked() {
             crate::help::run(app, &ui.ctx().clone(), "report");
         }
-        // Preferences, at the top right like Fusion's profile menu (also Ctrl+,).
-        let gear = Rect::from_center_size(pos2(r.right() - captions - 70.0, r.center().y), vec2(24.0, 24.0));
+        // Settings sits immediately left of Help (also Ctrl+,).
+        let gear = Rect::from_center_size(pos2(report.left() - 46.0, r.center().y), vec2(24.0, 24.0));
         let gresp = ui.interact(gear, ui.id().with("sc_prefs_button"), Sense::click());
-        if gresp.hovered() {
+        if gresp.hovered() || gresp.has_focus() {
             ui.painter().rect_filled(gear, t.radius_sm, t.app_bar_hover_button);
         }
         icons::paint_on(ui.painter(), gear.shrink(4.0), "settings", Some(true), 1.0);
@@ -376,7 +388,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
     file_menu(app, ui.ctx());
     let help_x = ui.ctx().data(|d| d.get_temp::<f32>(egui::Id::new("sc_help_anchor")).unwrap_or(300.0));
-    crate::help::show(app, &ui.ctx().clone(), pos2(help_x - 14.0, 34.0));
+    crate::help::show(app, &ui.ctx().clone(), pos2(help_x - 14.0, APP_BAR_HEIGHT));
 }
 
 fn file_menu(app: &mut SolveApp, ctx: &egui::Context) {
@@ -386,7 +398,7 @@ fn file_menu(app: &mut SolveApp, ctx: &egui::Context) {
     }
     let mut close = false;
     let resp = crate::frame::area(egui::Id::new("sc_file_area"))
-        .fixed_pos(pos2(ctx.data(|d| d.get_temp::<f32>(egui::Id::new("sc_file_menu_x"))).unwrap_or(100.0), 34.0))
+        .fixed_pos(pos2(ctx.data(|d| d.get_temp::<f32>(egui::Id::new("sc_file_menu_x"))).unwrap_or(100.0), APP_BAR_HEIGHT))
         .order(egui::Order::Foreground)
         .show(ctx, |ui| {
             egui::Frame::popup(ui.style()).show(ui, |ui| {
@@ -768,7 +780,15 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     menu = Some((resp.interact_pointer_pos().unwrap_or(br.left_bottom()), c.id));
                 }
                 if running.as_deref() == Some(selected.id) {
-                    painter.rect_filled(br, t.radius_sm, t.border.gamma_multiply(0.7));
+                    painter.rect_filled(
+                        br,
+                        t.radius_sm,
+                        if tab == "SOLID" || panel_accent(&t, &tab, "") == t.accent {
+                            t.border.gamma_multiply(0.7)
+                        } else {
+                            crate::theme::TabAccent::for_tab(&t, &tab).soft
+                        },
+                    );
                 } else if resp.hovered() && info.enabled {
                     painter.rect_filled(br, t.radius_sm, t.hover);
                 }
@@ -853,7 +873,11 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             let lr = Rect::from_center_size(pos2(px + width / 2.0, top + 51.0), vec2(width, (g.size().y + 2.0).max(18.0)));
             let lresp = ui.interact(lr, ui.id().with(("panel", panel)), Sense::click());
             crate::scenario::publish_handle(&format!("panel:{tab}:{panel}"), lr.center());
-            if lresp.hovered() && enabled_panel {
+            let panel_open = ui.ctx().data(|d| d.get_temp::<egui::Id>(egui::Id::new("sc_panel_open"))) == Some(popup_id);
+            let accent = crate::theme::TabAccent::for_tab(&t, &tab);
+            if panel_open && enabled_panel && accent.color != t.accent {
+                painter.rect_filled(lr, 3.0, accent.soft);
+            } else if lresp.hovered() && enabled_panel {
                 painter.rect_filled(lr, 3.0, t.hover);
             }
             // Centred rows sit around x = 0, so the galley is placed at the text's centre.
@@ -1435,22 +1459,35 @@ mod header_report_tests {
     }
 
     #[test]
+    fn panel_accents_share_the_tab_mapping_but_constraints_keep_their_role() {
+        for dark in [false, true] {
+            for vision in crate::theme::ColorVision::ALL {
+                let t = Tokens::themed(dark, vision);
+                for tab in TABS.iter().copied().chain(["SKETCH", "FORM", "RENDER"]) {
+                    assert_eq!(panel_accent(&t, tab, "CREATE"), crate::theme::TabAccent::for_tab(&t, tab).color);
+                    assert_eq!(panel_accent(&t, tab, "CONSTRAINTS"), t.glyph_text);
+                }
+            }
+        }
+    }
+
+    #[test]
     fn header_report_reserves_controls_at_normal_and_double_scale_widths() {
         for physical_width in [900.0, 1400.0] {
             for scale in [1.0, 2.0] {
                 let width = physical_width / scale;
-                let bar = Rect::from_min_size(egui::Pos2::ZERO, vec2(width, 34.0));
+                let bar = Rect::from_min_size(egui::Pos2::ZERO, vec2(width, APP_BAR_HEIGHT));
                 for captions in [0.0, crate::titlebar::WIDTH] {
                     // The English label, and a longer one (Russian is about 125 px).
                     for label_width in [80.0, 125.0] {
                         let (report, labeled) = report_rect(bar, captions, 354.0, label_width);
                         assert!(bar.contains_rect(report));
-                        let prefs = Rect::from_center_size(pos2(width - captions - 70.0, 17.0), vec2(24.0, 24.0));
-                        let help = Rect::from_center_size(pos2(help_x(bar, captions), 17.0), vec2(26.0, 26.0));
+                        let prefs = Rect::from_center_size(pos2(report.left() - 46.0, APP_BAR_HEIGHT / 2.0), vec2(24.0, 24.0));
+                        let help = Rect::from_center_size(pos2(help_x(report), APP_BAR_HEIGHT / 2.0), vec2(26.0, 26.0));
                         assert!(!report.intersects(prefs) && !report.intersects(help) && !help.intersects(prefs));
-                        assert!(report.right() < help.left() && help.right() < prefs.left());
+                        assert!(prefs.right() < help.left() && help.right() < report.left());
                         let full = (REPORT_TEXT_X + label_width + 10.0).max(124.0);
-                        assert_eq!(labeled, width - captions - RIGHT_GROUP - 354.0 >= 216.0 + full);
+                        assert_eq!(labeled, width - captions - RIGHT_GROUP - CLUSTER_BUTTONS - 354.0 >= 216.0 + full);
                         if labeled {
                             assert!(REPORT_TEXT_X + label_width < report.width(), "{label_width}: the text overruns its button");
                         }
@@ -1460,9 +1497,8 @@ mod header_report_tests {
         }
     }
 
-    /// The title bar: the File menu, Undo, Redo and every tab on the left; Help, Report a bug,
-    /// Preferences and the window's buttons on the right. Home is a tab and the theme a
-    /// preference, so neither has a button of its own, and Save is in the File menu (Ctrl+S).
+    /// The house and Home tab share the start page; the right cluster is Settings, Help,
+    /// Report a bug. Save remains in the File menu (Ctrl+S).
     #[test]
     fn title_bar_keeps_tabs_left_and_help_right() {
         let mut h = crate::scenario::Harness::new();
@@ -1471,7 +1507,7 @@ mod header_report_tests {
         h.app.run("solid.box", json!({"length":10,"width":10,"height":10})).unwrap();
         h.call("ui.resize", json!({"width":1400,"height":720}));
         h.frames(3);
-        for gone in ["appbar:home", "appbar:sun", "appbar:moon", "appbar:save"] {
+        for gone in ["appbar:sun", "appbar:moon", "appbar:save"] {
             assert!(crate::scenario::handle_at(gone).is_none(), "{gone} is no longer in the title bar");
         }
         let at = |name: &str| crate::scenario::handle_at(name).unwrap_or_else(|| panic!("{name}")).x;
@@ -1480,13 +1516,15 @@ mod header_report_tests {
         assert_eq!(file[0] as f32, at("appbar:file"));
         assert!(at("appbar:file") < at("appbar:undo") && at("appbar:undo") < at("appbar:redo"));
         assert!(at("appbar:redo") < at("tab:home") && at("tab:home") < at("tab:design:0"));
-        assert!((at("tab:design:0") as f64) < report && report < at("appbar:help") as f64);
-        assert!(at("appbar:help") < at("titlebar:preferences"));
+        assert!(at("tab:design:0") < at("titlebar:preferences"));
+        assert!(at("titlebar:preferences") < at("appbar:help") && (at("appbar:help") as f64) < report);
+        assert!(at("appbar:home") < at("appbar:file"));
+        assert!(h.widget("Start page").is_some(), "the house button has an accessible name");
         h.step(&json!({"click":{"handle":"appbar:help"}})).unwrap();
         assert!(h.app.help.menu, "? opens the Help menu");
         h.step(&json!({"key":"Escape"})).unwrap();
-        h.step(&json!({"click":{"handle":"tab:home"}})).unwrap();
-        assert!(h.app.home.open, "the Home tab shows the start page");
+        h.step(&json!({"click":{"handle":"appbar:home"}})).unwrap();
+        assert!(h.app.home.open, "the house button shows the start page");
         let dark = h.app.ui.dark;
         h.call("ui.prefs", json!({"theme": if dark { "light" } else { "dark" }}));
         h.frames(2);

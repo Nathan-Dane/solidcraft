@@ -366,7 +366,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let t = Tokens::get();
     let home = Rect::from_min_size(pos2(x0, r.top() + 5.0), vec2(66.0, r.height() - 5.0));
     let response = ui.interact(home, ui.id().with("home_tab"), Sense::click());
-    tab_shape(ui.painter(), &t, home, app.home.open, response.hovered());
+    tab_shape(ui.painter(), &t, home, app.home.open, response.hovered() || response.has_focus());
     let home_text = app.tr("ui.home");
     ui.painter().text(
         home.center(),
@@ -400,7 +400,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
                 crate::titlebar::toggle_maximize(ui.ctx());
             }
         }
-        tab_shape(ui.painter(), &t, tr, active, resp.hovered());
+        tab_shape(ui.painter(), &t, tr, active, resp.hovered() || resp.has_focus());
         let ink = if active { t.text } else { t.app_bar_text };
         let name_display = if name == "Untitled" { app.tr("ui.untitled") } else { name };
         let label = format!("{name_display}{}", if *dirty { " •" } else { "" });
@@ -411,7 +411,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         // ×
         let xr = Rect::from_center_size(pos2(tr.right() - 13.0, tr.center().y), vec2(16.0, 16.0));
         let xresp = ui.interact(xr, ui.id().with(("doc_close", i)), Sense::click());
-        if xresp.hovered() {
+        if xresp.hovered() || xresp.has_focus() {
             ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
         let c = xr.center();

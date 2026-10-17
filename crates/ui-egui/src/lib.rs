@@ -1367,6 +1367,7 @@ impl SolveApp {
             }
         }
         toolbar::toolbar(self, ui);
+        theme::TabAccent::publish(self, ui.ctx());
         let show_timeline = self.ui.show_timeline && !render_workspace::active(self);
         let left_timeline = show_timeline && self.preferences.timeline_left;
         if show_timeline && !left_timeline {

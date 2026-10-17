@@ -323,7 +323,7 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
     let dragged_over = egui::DragAndDrop::has_any_payload(ui.ctx()) && ui.input(|i| i.pointer.hover_pos()).is_some_and(|p| r.contains(p));
     let mut out = RowResp { rect: Some(r), hovered: resp.hovered() || dragged_over, ..Default::default() };
     if row.selected {
-        ui.painter().rect_filled(r, 3.0, t.accent_soft);
+        ui.painter().rect_filled(r, 3.0, crate::theme::TabAccent::current(ui.ctx()).soft);
     } else if resp.hovered() {
         ui.painter().rect_filled(r, 3.0, t.hover);
     }

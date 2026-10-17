@@ -1310,6 +1310,7 @@ fn plane_value(s: &Session, sel: Option<&Sel>) -> Option<Value> {
 /// A value field; true when Enter was pressed in it.
 pub(crate) fn field(ui: &mut egui::Ui, s: &mut String) -> bool {
     let r = ui.text_edit_singleline(s);
+    crate::theme::TabAccent::number_focus(ui, &r);
     publish_row(&r);
     crate::params_dialog::complete(ui, &r, s);
     r.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))
