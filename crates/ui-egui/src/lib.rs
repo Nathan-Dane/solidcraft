@@ -894,7 +894,9 @@ impl SolveApp {
             Some(d) => self.dialog = Some(d),
             None => {
                 let _ = dialogs::roll_marker(self, marker);
-                self.set_status(format!("This feature has no editor yet: change it with the timeline.edit command (feature {id})."), true);
+                // No dialog for this feature: open the search box with the command to edit it.
+                self.sbox.text = format!("timeline.edit {{\"feature\": {id}, \"set\": {{}}}}");
+                self.ui.palette_open = true;
             }
         }
     }
