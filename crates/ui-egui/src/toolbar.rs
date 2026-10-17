@@ -1050,10 +1050,8 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 }
                 for c in &gallery {
                     let index = crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).unwrap_or(0);
-                    let cell = Rect::from_min_size(
-                        pos2(button_x + (index % 3) as f32 * 27.0, top + 6.0 + (index / 3) as f32 * 23.0),
-                        vec2(24.0, 20.0),
-                    );
+                    let cell =
+                        Rect::from_min_size(pos2(button_x + (index % 3) as f32 * 27.0, top + 6.0 + (index / 3) as f32 * 23.0), vec2(24.0, 20.0));
                     let info = c.info(&app.session);
                     let resp = ui.interact(cell, ui.id().with(("cmd", c.id)), Sense::click_and_drag());
                     let active = running.as_deref() == Some(c.id);
@@ -1284,7 +1282,10 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
 /// A short divider between the brand, file actions and document tabs.
 fn app_bar_separator(ui: &egui::Ui, bar: Rect, x: f32, group: &str) {
     let rect = Rect::from_center_size(pos2(x, bar.center().y), vec2(1.0, 20.0));
-    ui.painter().line_segment([rect.center_top(), rect.center_bottom()], Stroke::new(1.0, Tokens::get().app_bar.lerp_to_gamma(Tokens::get().app_bar_separator, 0.4)));
+    ui.painter().line_segment(
+        [rect.center_top(), rect.center_bottom()],
+        Stroke::new(1.0, Tokens::get().app_bar.lerp_to_gamma(Tokens::get().app_bar_separator, 0.4)),
+    );
     crate::scenario::publish_rect(&format!("titlebar:separator:{group}"), rect);
 }
 
