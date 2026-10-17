@@ -2,7 +2,7 @@
 
 Design mockups for a new desktop shell. They are pictures only: nothing in the app changes with
 this proposal. The goal is a layout that is familiar to people coming from other CAD software and
-easy for new users, built from standard patterns, with the current Fusion-style toolbar replaced by
+easy for new users, built from standard patterns, with the current single-row toolbar replaced by
 a ribbon whose tabs are ordered by task instead of by geometry type.
 
 ![Model tab, floating](model-floating.png)
@@ -13,8 +13,7 @@ a ribbon whose tabs are ordered by task instead of by geometry type.
 Redo, the design tabs (each with a close button), then the agent status, Settings, Help and
 Report a bug. There is no search box here, no dark-mode toggle and no status bar.
 
-**Ribbon**: a workspace card at the left (Design and Render now; Animation, Simulation,
-Manufacture and Drawing as they arrive), tabs **Model, Surface, Assemble, Insert, Inspect, Manage, View**, and a small command
+**Ribbon**: a workspace card at the left (Design and Render), tabs **Model, Surface, Assemble, Insert, Inspect, Manage, View**, and a small command
 search at the right end of the tab row (also the S key). Each section shows one to four promoted
 commands. Its label (▾) opens a list of every command in the section, and hovering a row pins it
 to the ribbon, as in the current app. Tooltips show the shortcut and modifier keys.
@@ -32,7 +31,9 @@ bottom edge.
 recovery; Save As and Export are there too. The camera's Home view stays in the navigation bar.
 
 **Workspaces** are product modes that share the same design, history and selection and change only
-the ribbon tabs. The geometry types (Solid, Surface, Mesh) are tabs, not workspaces.
+the ribbon tabs. The geometry types (Solid, Surface, Mesh) are tabs, not workspaces. Only Design
+and Render exist today and are the scope of this work; the switcher mockup also greys out the
+entries the app's own workspace menu already lists as "coming later".
 
 | Board | What it shows |
 |---|---|
@@ -65,6 +66,6 @@ options and collapsed sections, so commands with 10 to 20 options fit.
   first version, and is not part of this proposal.
 - The icons in the mockups are the reviewed SVGs from the icon system in PR #853
   (`assets/icons/ui/design/svg/`), coloured with its accents from `palette.toml`: Sketch tools in
-  the Sketch green, constraints in red, everything else in the Solid blue. Simulation and
-  Manufacture have no icon there yet, so those two are placeholders. This proposal does not
+  the Sketch green, constraints in red, everything else in the Solid blue. The greyed Simulation and
+  Manufacture entries in the switcher mockup use placeholder icons and are not part of this work. This proposal does not
   implement or change any app icons.
