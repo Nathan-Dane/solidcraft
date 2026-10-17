@@ -154,6 +154,30 @@ pub struct IconColors {
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Tokens {
+    // Shared dimensions in logical pixels; identical in both themes.
+    pub space_2: f32,
+    pub space_3: f32,
+    pub space_4: f32,
+    pub space_6: f32,
+    pub space_8: f32,
+    pub space_10: f32,
+    pub space_12: f32,
+    pub space_14: f32,
+    pub space_16: f32,
+    pub space_24: f32,
+    pub radius_sm: u8,
+    pub radius_md: u8,
+    pub radius_lg: u8,
+    pub radius_xl: u8,
+    pub font_badge: f32,
+    pub font_micro: f32,
+    pub font_panel: f32,
+    pub font_small: f32,
+    pub font_caption: f32,
+    pub font_body: f32,
+    pub font_label: f32,
+    pub font_button: f32,
+    pub font_heading: f32,
     pub app_bar: Color32,
     pub toolbar: Color32,
     pub panel: Color32,
@@ -164,6 +188,14 @@ pub struct Tokens {
     pub accent: Color32,
     pub accent_soft: Color32,
     pub sketch_accent: Color32,
+    pub surface_accent: Color32,
+    pub mesh_accent: Color32,
+    pub form_accent: Color32,
+    /// Ink on accent-filled buttons and selection chips.
+    pub on_accent: Color32,
+    /// Agent status on the dark application bar, in either theme.
+    pub agent_ok: Color32,
+    pub agent_busy: Color32,
     pub error: Color32,
     pub warning: Color32,
     pub icon: Color32,
@@ -263,6 +295,9 @@ pub struct Tokens {
     pub app_bar_text: Color32,
     /// A hovered tab on the application bar (keeps `app_bar_text` readable).
     pub app_bar_hover: Color32,
+    pub app_bar_hover_subtle: Color32,
+    pub app_bar_hover_button: Color32,
+    pub app_bar_hover_strong: Color32,
     /// Timeline items: normal and failed.
     pub timeline_item: Color32,
     pub timeline_item_error: Color32,
@@ -368,7 +403,7 @@ fn visuals(dark: bool) -> egui::Visuals {
     v.widgets.hovered.bg_fill = t.hover;
     // egui uses the open-state fill for a movable window's active title bar.
     v.widgets.open.weak_bg_fill = t.panel_header;
-    v.window_corner_radius = egui::CornerRadius::same(6);
+    v.window_corner_radius = egui::CornerRadius::same(t.radius_md);
     v
 }
 
@@ -376,9 +411,10 @@ pub fn apply(ctx: &egui::Context) {
     let dark = is_dark();
     ctx.set_theme(if dark { egui::Theme::Dark } else { egui::Theme::Light });
     ctx.set_visuals(visuals(dark));
+    let t = Tokens::get();
     ctx.global_style_mut(|s| {
-        s.spacing.item_spacing = egui::vec2(6.0, 4.0);
-        s.spacing.button_padding = egui::vec2(6.0, 3.0);
+        s.spacing.item_spacing = egui::vec2(t.space_6, t.space_4);
+        s.spacing.button_padding = egui::vec2(t.space_6, t.space_3);
     });
 }
 

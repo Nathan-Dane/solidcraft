@@ -4,7 +4,7 @@
 //! Closing a design with unsaved changes asks first, and so does quitting: one "save changes?"
 //! per design with unsaved changes ([`request_quit`]).
 
-use egui::{Align2, Color32, FontId, Rect, Sense, Stroke, pos2, vec2};
+use egui::{Align2, FontId, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::{Value, json};
 use solidcraft_engine::Session;
 use solidcraft_engine::render::Camera;
@@ -412,7 +412,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         let xr = Rect::from_center_size(pos2(tr.right() - 13.0, tr.center().y), vec2(16.0, 16.0));
         let xresp = ui.interact(xr, ui.id().with(("doc_close", i)), Sense::click());
         if xresp.hovered() {
-            ui.painter().rect_filled(xr, 3.0, Color32::from_white_alpha(40));
+            ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
         let c = xr.center();
         let s = Stroke::new(1.3, if active { t.text_dim } else { t.app_bar_text });
@@ -430,7 +430,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         let mr = Rect::from_center_size(pos2(x + 12.0, r.center().y + 2.0), vec2(20.0, 22.0));
         let mresp = ui.interact(mr, ui.id().with("doc_more"), Sense::click());
         if mresp.hovered() {
-            ui.painter().rect_filled(mr, 4.0, Color32::from_white_alpha(30));
+            ui.painter().rect_filled(mr, 4.0, t.app_bar_hover_button);
         }
         ui.painter().text(mr.center(), egui::Align2::CENTER_CENTER, format!("»{}", n - shown), FontId::proportional(12.0), t.app_bar_text);
         let id = egui::Id::new("sc_doc_more");
@@ -464,7 +464,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let pr = Rect::from_center_size(pos2(x + 14.0, r.center().y + 2.0), vec2(22.0, 22.0));
     let presp = ui.interact(pr, ui.id().with("doc_new"), Sense::click());
     if presp.hovered() {
-        ui.painter().rect_filled(pr, 4.0, Color32::from_white_alpha(30));
+        ui.painter().rect_filled(pr, 4.0, t.app_bar_hover_button);
     }
     let c = pr.center();
     let s = Stroke::new(1.6, t.app_bar_text);
@@ -635,6 +635,7 @@ pub(crate) fn saved_for_close(app: &mut SolveApp) {
 mod tests {
     use super::*;
     use crate::Services;
+    use egui::Color32;
 
     fn app() -> SolveApp {
         SolveApp::new(Session::default(), Services::default())

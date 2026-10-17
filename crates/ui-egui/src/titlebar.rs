@@ -107,8 +107,8 @@ pub fn caption_buttons(app: &mut SolveApp, ui: &mut Ui, bar: Rect) {
         let fill = match (resp.is_pointer_button_down_on(), resp.hovered()) {
             (true, _) if close => CLOSE_HOVER.gamma_multiply(0.8),
             (_, true) if close => CLOSE_HOVER,
-            (true, _) => Color32::from_white_alpha(18),
-            (_, true) => Color32::from_white_alpha(30),
+            (true, _) => t.app_bar_hover_subtle,
+            (_, true) => t.app_bar_hover_button,
             _ => Color32::TRANSPARENT,
         };
         ui.painter().rect_filled(r, 0.0, fill);

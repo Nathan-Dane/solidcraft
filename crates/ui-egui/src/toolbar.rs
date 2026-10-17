@@ -16,6 +16,19 @@ fn command_accent(icon: &str) -> Color32 {
     crate::icon_svg::primary(icon, crate::theme::is_dark(), crate::theme::vision())
 }
 
+/// Accent for a tab or a panel with a more specific semantic role.
+fn panel_accent(t: &Tokens, tab: &str, panel: &str) -> Color32 {
+    if panel == "CONSTRAINTS" {
+        return t.glyph_text;
+    }
+    match tab {
+        "SKETCH" => t.sketch_accent,
+        "SURFACE" => t.surface_accent,
+        "MESH" => t.mesh_accent,
+        _ => t.accent,
+    }
+}
+
 /// Panels shown on each tab (in order). Commands come from the registry by (tab, panel).
 pub fn panels(tab: &str) -> &'static [&'static str] {
     if let Some(p) = crate::workspace::panels(tab) {
@@ -156,7 +169,7 @@ pub(crate) fn offer_pill(
     handle: &str,
 ) -> Option<(Rect, egui::Response)> {
     let t = Tokens::get();
-    let font = FontId::proportional(12.5);
+    let font = FontId::proportional(t.font_label);
     let (icon_x, text_x, right_pad) = (16.0, 29.0, 11.0);
     let last = labels.len().saturating_sub(1);
     let label = labels.iter().enumerate().filter(|_| labeled).find_map(|(i, text)| {
@@ -215,7 +228,13 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::icons::glyphs::brand_mark(ui.painter(), c);
         }
         if !compact_actions {
-            ui.painter().text(pos2(left + 36.0, r.center().y), Align2::LEFT_CENTER, "SolidCraft", FontId::proportional(14.0), t.app_bar_text);
+            ui.painter().text(
+                pos2(left + 36.0, r.center().y),
+                Align2::LEFT_CENTER,
+                "SolidCraft",
+                FontId::proportional(t.font_heading),
+                t.app_bar_text,
+            );
         }
         let mut x = left + if compact_actions { 60.0 } else { 128.0 };
         // While a file loads the design waits: no menus or commands from the bar.
@@ -224,7 +243,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         // old `appbar:folder` name too, for scripts written against the folder button.
         let file = {
             let label = app.tr("ui.file").to_string();
-            let galley = ui.painter().layout_no_wrap(label.clone(), FontId::proportional(13.0), t.app_bar_text);
+            let galley = ui.painter().layout_no_wrap(label.clone(), FontId::proportional(t.font_button), t.app_bar_text);
             let br = Rect::from_min_size(pos2(x - 13.0, r.center().y - 13.0), vec2(galley.size().x + 16.0, 26.0));
             x = br.right() + 17.0;
             let resp = ui.interact(br, ui.id().with(("ab", "file")), if idle { Sense::click() } else { Sense::hover() });
@@ -234,7 +253,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::scenario::publish_rect("appbar:file", br);
             let open = ui.ctx().data(|d| d.get_temp::<bool>(egui::Id::new("sc_file_menu")).unwrap_or(false));
             if idle && (resp.hovered() || open) {
-                ui.painter().rect_filled(br, 4.0, t.app_bar_hover);
+                ui.painter().rect_filled(br, t.radius_sm, t.app_bar_hover);
             }
             let ink = if idle { t.app_bar_text } else { t.app_bar_text.gamma_multiply(0.35) };
             ui.painter().galley(pos2(br.left() + 8.0, br.center().y - galley.size().y / 2.0), galley, ink);
@@ -250,7 +269,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::scenario::publish_handle(&format!("appbar:{icon}"), br.center());
             crate::scenario::publish_rect(&format!("appbar:{icon}"), br);
             if enabled && resp.hovered() {
-                ui.painter().rect_filled(br, 4.0, Color32::from_white_alpha(30));
+                ui.painter().rect_filled(br, t.radius_sm, t.app_bar_hover_button);
             }
             icons::paint_on(ui.painter(), br.shrink(5.0), icon, Some(true), if enabled { 1.0 } else { 0.35 });
             let clicked = resp.on_hover_text(tip).clicked();
@@ -291,7 +310,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let captions = if app.custom_titlebar { crate::titlebar::WIDTH } else { 0.0 };
         let tabs_start = x - step + 25.0;
         let report_text = crate::i18n::tr("ui.report_a_bug");
-        let report_font = FontId::proportional(13.0);
+        let report_font = FontId::proportional(t.font_button);
         let label_width = ui.painter().layout_no_wrap(report_text.to_string(), report_font.clone(), t.app_bar_text).size().x;
         let (report, report_label) = report_rect(r, captions, tabs_start, label_width);
         // Help, on the right between Report a bug and Preferences.
@@ -318,8 +337,8 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), report_text));
         crate::scenario::publish_handle("titlebar:report", report.center());
         crate::scenario::publish_rect("titlebar:report", report);
-        ui.painter().rect_filled(report, 4.0, if response.hovered() || response.has_focus() { t.hover } else { t.app_bar });
-        ui.painter().rect_stroke(report, 4.0, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+        ui.painter().rect_filled(report, t.radius_sm, if response.hovered() || response.has_focus() { t.hover } else { t.app_bar });
+        ui.painter().rect_stroke(report, t.radius_sm, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
         let icon = Rect::from_center_size(pos2(report.left() + 14.0, report.center().y), vec2(18.0, 18.0));
         icons::paint_on(ui.painter(), icon, "bug_report", Some(true), 1.0);
         if report_label {
@@ -332,7 +351,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let gear = Rect::from_center_size(pos2(r.right() - captions - 70.0, r.center().y), vec2(24.0, 24.0));
         let gresp = ui.interact(gear, ui.id().with("sc_prefs_button"), Sense::click());
         if gresp.hovered() {
-            ui.painter().rect_filled(gear, 4.0, Color32::from_white_alpha(30));
+            ui.painter().rect_filled(gear, t.radius_sm, t.app_bar_hover_button);
         }
         icons::paint_on(ui.painter(), gear.shrink(4.0), "settings", Some(true), 1.0);
         crate::scenario::publish_handle("titlebar:preferences", gear.center());
@@ -348,7 +367,7 @@ pub fn app_bar(app: &mut SolveApp, ui: &mut egui::Ui) {
             pos2(r.right() - 12.0 - captions, r.center().y),
             Align2::RIGHT_CENTER,
             format!("v{}", crate::update::current_version()),
-            FontId::proportional(11.0),
+            FontId::proportional(t.font_small),
             Color32::from_rgb(160, 168, 182),
         );
         if app.custom_titlebar {
@@ -566,7 +585,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         // The workspace switcher spans the toolbar's height (the tab row and the panel row).
         let ws = Rect::from_min_max(pos2(r.left() + 6.0, r.top() + 4.0), pos2(r.left() + 104.0, r.bottom() - 5.0));
         let wresp = ui.interact(ws, ui.id().with("workspace_switcher"), Sense::click());
-        painter.rect(ws, 4.0, if wresp.hovered() { t.hover } else { t.field }, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+        painter.rect(ws, t.radius_sm, if wresp.hovered() { t.hover } else { t.field }, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
         let workspace_icon = if crate::render_workspace::active(app) { "ws_render" } else { "ws_design" };
         icons::paint(
             &painter,
@@ -580,11 +599,17 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             pos2(ws.center().x - 5.0, ws.top() + 52.0),
             Align2::CENTER_CENTER,
             app.tr_label(if crate::render_workspace::active(app) { "RENDER" } else { crate::toolbar_custom::WORKSPACE }),
-            FontId::proportional(12.0),
+            FontId::proportional(t.font_body),
             t.text,
         );
         caret(&painter, pos2(ws.center().x + 27.0, ws.top() + 52.0), t.text);
-        painter.text(pos2(ws.center().x, ws.top() + 69.0), Align2::CENTER_CENTER, app.tr("ui.workspace"), FontId::proportional(10.0), t.text_dim);
+        painter.text(
+            pos2(ws.center().x, ws.top() + 69.0),
+            Align2::CENTER_CENTER,
+            app.tr("ui.workspace"),
+            FontId::proportional(t.font_micro),
+            t.text_dim,
+        );
         if wresp.on_hover_text(app.tr("ui.change_workspace")).clicked() {
             crate::context_menu::toggle_for(app, ws, ws.left_bottom(), crate::context_menu::Target::Workspace);
         }
@@ -602,16 +627,16 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
         for tab in tabs {
             let display_tab = app.tr_label(tab);
-            let text_width = painter.layout_no_wrap(display_tab.to_string(), FontId::proportional(12.0), t.text).size().x;
+            let text_width = painter.layout_no_wrap(display_tab.to_string(), FontId::proportional(t.font_body), t.text).size().x;
             let w = 12.0 + text_width.max(28.0);
             let tr = Rect::from_min_size(pos2(x, tabs_y), vec2(w, 22.0));
             let active = app.ui.tab == tab;
             let resp = ui.interact(tr, ui.id().with(("tab", tab)), Sense::click());
             if active {
-                let c = if tab == "SKETCH" { t.sketch_accent } else { t.accent };
+                let c = panel_accent(&t, tab, "");
                 painter.line_segment([pos2(tr.left() + 4.0, tr.bottom() - 1.0), pos2(tr.right() - 4.0, tr.bottom() - 1.0)], Stroke::new(2.0, c));
             } else if resp.hovered() {
-                painter.rect_filled(tr, 4.0, t.hover);
+                painter.rect_filled(tr, t.radius_sm, t.hover);
             }
             let col = if tab == "SKETCH" {
                 t.sketch_accent
@@ -620,7 +645,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             } else {
                 t.text_dim
             };
-            painter.text(tr.center(), Align2::CENTER_CENTER, display_tab, FontId::proportional(12.0), col);
+            painter.text(tr.center(), Align2::CENTER_CENTER, display_tab, FontId::proportional(t.font_body), col);
             if resp.clicked() {
                 app.ui.tab = tab.to_string();
             }
@@ -694,7 +719,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 let br = Rect::from_center_size(free.center(), vec2(38.0, 38.0));
                 crate::scenario::publish_handle(&format!("collapsed:{tab}:{panel}"), br.center());
                 if fresp.hovered() && enabled_panel {
-                    painter.rect_filled(br, 4.0, t.hover);
+                    painter.rect_filled(br, t.radius_sm, t.hover);
                 }
                 if let Some(c) = shown.first().or(cmds.first()) {
                     let acc = command_accent(c.icon);
@@ -743,9 +768,9 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     menu = Some((resp.interact_pointer_pos().unwrap_or(br.left_bottom()), c.id));
                 }
                 if running.as_deref() == Some(selected.id) {
-                    painter.rect_filled(br, 4.0, t.border.gamma_multiply(0.7));
+                    painter.rect_filled(br, t.radius_sm, t.border.gamma_multiply(0.7));
                 } else if resp.hovered() && info.enabled {
-                    painter.rect_filled(br, 4.0, t.hover);
+                    painter.rect_filled(br, t.radius_sm, t.hover);
                 }
                 let (ink, fill, acc) =
                     if info.enabled { (t.icon, t.icon_fill, command_accent(selected.icon)) } else { (t.border, t.panel_header, t.border) };
@@ -778,7 +803,13 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     if arrow.hovered() {
                         painter.rect_filled(ar, 3.0, t.hover);
                     }
-                    painter.text(ar.center() - vec2(4.0, 0.0), Align2::CENTER_CENTER, app.tr_label(f.label), FontId::proportional(10.0), t.text);
+                    painter.text(
+                        ar.center() - vec2(4.0, 0.0),
+                        Align2::CENTER_CENTER,
+                        app.tr_label(f.label),
+                        FontId::proportional(t.font_micro),
+                        t.text,
+                    );
                     caret(&painter, pos2(ar.right() - 5.0, ar.center().y), t.text);
                     arrow.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{} variants", f.label)));
                     egui::Popup::menu(&arrow).show(|ui| {
@@ -791,14 +822,14 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         pos2(br.center().x, br.bottom() - 5.0),
                         Align2::CENTER_CENTER,
                         app.tr_label(c.label),
-                        FontId::proportional(10.0),
+                        FontId::proportional(t.font_micro),
                         t.text,
                     );
                 }
             }
             if shown.is_empty() && !collapsed {
                 let br = Rect::from_min_size(pos2(px + 4.0, top + 2.0), vec2(width - 8.0, 38.0));
-                painter.text(br.center(), Align2::CENTER_CENTER, "—", FontId::proportional(14.0), t.border);
+                painter.text(br.center(), Align2::CENTER_CENTER, "—", FontId::proportional(t.font_heading), t.border);
             }
             // Panel label with drop-down.
             let label = app.tr_label(panel).to_string();
@@ -812,7 +843,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             // A label too wide for its panel (beside the caret) wraps between words onto a
             // second line; a single word wider than the panel stays whole. Each line is
             // centred, and the hover area grows to hold them.
-            let font = FontId::proportional(10.5);
+            let font = FontId::proportional(t.font_panel);
             let widest_word = label.split_whitespace().map(|w| painter.layout_no_wrap(w.to_string(), font.clone(), lc).size().x).fold(0.0, f32::max);
             let mut job = egui::text::LayoutJob::simple(label, font, lc, (width - 14.0).max(widest_word + 1.0));
             job.wrap.max_rows = 2;
@@ -997,7 +1028,7 @@ fn ai_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
     let painter = ui.painter();
     painter.line_segment([pos2(at.left() - 4.0, at.top() + 4.0), pos2(at.left() - 4.0, at.bottom() - 4.0)], Stroke::new(1.0, t.border));
     if open || resp.hovered() {
-        painter.rect_filled(at, 4.0, if open { t.accent_soft } else { t.hover });
+        painter.rect_filled(at, t.radius_sm, if open { t.accent_soft } else { t.hover });
     }
     icons::paint(
         painter,
@@ -1007,12 +1038,18 @@ fn ai_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
         t.icon_fill,
         t.accent,
     );
-    painter.text(pos2(at.center().x, at.top() + 52.0), Align2::CENTER_CENTER, crate::i18n::tr("ui.ai_button"), FontId::proportional(11.0), t.text);
+    painter.text(
+        pos2(at.center().x, at.top() + 52.0),
+        Align2::CENTER_CENTER,
+        crate::i18n::tr("ui.ai_button"),
+        FontId::proportional(t.font_small),
+        t.text,
+    );
     let waiting = app.agent_chat.waiting();
     if waiting > 0 {
         let c = pos2(at.right() - 6.0, at.top() + 9.0);
         painter.circle_filled(c, 6.0, t.warning);
-        painter.text(c, Align2::CENTER_CENTER, waiting.min(9).to_string(), FontId::proportional(9.5), t.toolbar);
+        painter.text(c, Align2::CENTER_CENTER, waiting.min(9).to_string(), FontId::proportional(t.font_badge), t.toolbar);
     }
     if resp.on_hover_text(crate::agent_chat::panel_tip()).clicked() {
         crate::agent_chat::toggle(app);
@@ -1039,7 +1076,7 @@ fn dropdown_row_id(id: &str) -> egui::Id {
 /// How wide a panel drop-down's rows are: the widest label and shortcut, at least 200.
 fn dropdown_width(app: &SolveApp, ui: &egui::Ui, cmds: &[&'static solidcraft_engine::CommandSpec]) -> f32 {
     let t = Tokens::get();
-    let font = FontId::proportional(13.0);
+    let font = FontId::proportional(t.font_button);
     cmds.iter()
         .map(|c| {
             let label = ui.painter().layout_no_wrap(app.tr_label(c.label).to_string(), font.clone(), t.text).size().x;
@@ -1088,9 +1125,9 @@ fn dropdown_row(app: &SolveApp, ui: &mut egui::Ui, c: &'static solidcraft_engine
     };
     let ir = Rect::from_center_size(pos2(rect.left() + 6.0 + 9.0, rect.center().y), vec2(18.0, 18.0));
     icons::paint(p, ir, c.icon, ink, fill, acc);
-    p.text(pos2(ir.right() + 8.0, rect.center().y), Align2::LEFT_CENTER, &label, FontId::proportional(13.0), text);
+    p.text(pos2(ir.right() + 8.0, rect.center().y), Align2::LEFT_CENTER, &label, FontId::proportional(t.font_button), text);
     if let Some(k) = c.shortcut {
-        p.text(pos2(pr.left() - 4.0, rect.center().y), Align2::RIGHT_CENTER, k, FontId::proportional(13.0), t.text_dim);
+        p.text(pos2(pr.left() - 4.0, rect.center().y), Align2::RIGHT_CENTER, k, FontId::proportional(t.font_button), t.text_dim);
     }
     if pointer_on || resp.has_focus() {
         if pin.hovered() {
@@ -1214,7 +1251,7 @@ fn drag_ghost(ctx: &egui::Context, id: &str, at: egui::Pos2, removing: bool) {
     let Some(c) = solidcraft_engine::find_command(id) else { return };
     let p = ctx.layer_painter(egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("sc_toolbar_drag")));
     let r = Rect::from_center_size(at + vec2(14.0, 16.0), vec2(30.0, 30.0));
-    p.rect(r, 4.0, t.toolbar.gamma_multiply(0.92), Stroke::new(1.0, if removing { t.error } else { t.accent }), egui::StrokeKind::Inside);
+    p.rect(r, t.radius_sm, t.toolbar.gamma_multiply(0.92), Stroke::new(1.0, if removing { t.error } else { t.accent }), egui::StrokeKind::Inside);
     icons::paint(&p, r.shrink(5.0), c.icon, t.icon, t.icon_fill, command_accent(c.icon));
     if removing {
         let s = Stroke::new(2.0, t.error);
@@ -1228,7 +1265,7 @@ fn drag_ghost(ctx: &egui::Context, id: &str, at: egui::Pos2, removing: bool) {
 /// The SELECT panel: what a click in the view picks.
 fn selection_filter(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    ui.label(egui::RichText::new(crate::i18n::tr_label("Selection filter")).color(t.text_dim).size(11.0));
+    ui.label(egui::RichText::new(crate::i18n::tr_label("Selection filter")).color(t.text_dim).size(t.font_small));
     ui.checkbox(&mut app.ui.pick_bodies, crate::i18n::tr_label("Select bodies (a face picks its body)"));
     for (k, label) in [
         ("faces", "Faces"),

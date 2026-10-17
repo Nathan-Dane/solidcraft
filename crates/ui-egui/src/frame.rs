@@ -53,8 +53,8 @@ impl Side {
 pub fn dock_frame(ctx: &egui::Context, side: Side) -> egui::Frame {
     let t = crate::theme::Tokens::get();
     let (corner_radius, shadow_x) = match side {
-        Side::Right => (egui::CornerRadius { nw: 4, sw: 4, ne: 0, se: 0 }, -2),
-        Side::Left => (egui::CornerRadius { nw: 0, sw: 0, ne: 4, se: 4 }, 2),
+        Side::Right => (egui::CornerRadius { nw: t.radius_sm, sw: t.radius_sm, ne: 0, se: 0 }, -2),
+        Side::Left => (egui::CornerRadius { nw: 0, sw: 0, ne: t.radius_sm, se: t.radius_sm }, 2),
     };
     egui::Frame::window(&ctx.global_style())
         .fill(t.dialog_bg)
