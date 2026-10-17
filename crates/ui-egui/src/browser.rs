@@ -49,6 +49,8 @@ pub fn drawn_occurrences() -> Vec<(Vec<u64>, String, Rect, bool)> {
 /// Browser state kept between frames.
 #[derive(Default)]
 pub struct TreeState {
+    /// The floating browser card is folded to its header.
+    pub panel_collapsed: bool,
     /// Geometry and assembly queries, independent of the camera, selection and row visibility.
     model: Option<model::Model>,
     /// Folders closed by the user (keys like `c0/bodies`).
@@ -585,9 +587,52 @@ fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui, timeline_above: bool) {
 
 fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     let t = Tokens::get();
-    ui.label(RichText::new(crate::i18n::tr_label("BROWSER")).size(t.font_small).strong().color(t.text_dim));
+    // Only the floating card folds; the docked column keeps its full height.
+    let collapsible = app.ui.layout == crate::shell::LayoutMode::Floating && !app.preferences.timeline_left;
+    browser_header(app, ui, collapsible);
+    if collapsible && app.tree.panel_collapsed {
+        return;
+    }
+    ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), egui::Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)));
     ui.add_space(t.space_4);
     browser_rows(app, ui, acts);
+}
+
+/// The header: the title, the body count and (on the floating card) a chevron that folds the
+/// card to just this row. The whole row is the button.
+fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
+    let t = Tokens::get();
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::hover());
+    let response = ui.interact(rect, ui.id().with("browser_header"), if collapsible { Sense::click() } else { Sense::hover() });
+    crate::scenario::publish_handle("browser:header", rect.center());
+    crate::scenario::publish_rect("browser:header", rect);
+    let collapsed = collapsible && app.tree.panel_collapsed;
+    if collapsible && (response.hovered() || response.has_focus()) {
+        ui.painter().rect_filled(rect.shrink2(vec2(0.0, 2.0)), t.radius_sm, t.hover);
+    }
+    let galley = ui.painter().layout_no_wrap(crate::i18n::tr("ui.browser_title").to_string(), FontId::proportional(t.font_heading), t.text);
+    ui.painter().galley(pos2(rect.left() + t.space_8, rect.center().y - galley.size().y / 2.0), galley, t.text);
+    let mut right = rect.right() - t.space_8;
+    if collapsible {
+        let chevron = Rect::from_center_size(pos2(right - 5.0, rect.center().y), vec2(12.0, 12.0));
+        if collapsed {
+            crate::icons::paint_ink(ui.painter(), chevron, "chevron", t.text_dim);
+        } else {
+            crate::icons::paint_ink_flipped(ui.painter(), chevron, "chevron", t.text_dim);
+        }
+        right -= 18.0;
+    }
+    let bodies = app.session.model.state().bodies.len();
+    let key = if bodies == 1 { "ui.browser_bodies_one" } else { "ui.browser_bodies_other" };
+    let count = crate::i18n::format(key, &[("count", &bodies.to_string())]);
+    let galley = ui.painter().layout_no_wrap(count, FontId::proportional(t.font_body), t.text_dim);
+    ui.painter().galley(pos2(right - galley.size().x, rect.center().y - galley.size().y / 2.0), galley, t.text_dim);
+    if collapsible {
+        let tip = crate::i18n::tr(if collapsed { "ui.browser_expand" } else { "ui.browser_collapse" });
+        if response.on_hover_text(tip).clicked() {
+            app.tree.panel_collapsed = !app.tree.panel_collapsed;
+        }
+    }
 }
 
 fn prepare_model(app: &mut SolveApp) {

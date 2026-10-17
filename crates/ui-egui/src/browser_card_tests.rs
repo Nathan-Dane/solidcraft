@@ -94,3 +94,24 @@ fn card_and_column_keep_body_eyes_menus_and_group_drops() {
         assert!(group.items.iter().any(|name| name == "Two"), "body drop into the folder failed in {mode:?}");
     }
 }
+
+#[test]
+fn browser_header_folds_the_floating_card_to_its_header_and_back() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1400,"height":900}));
+    h.settle();
+    let open = rect_of("browser:card").unwrap();
+    assert!(!h.app.tree.panel_collapsed);
+    let at = handle_at("browser:header").unwrap();
+    h.call("ui.click", json!({"x":at.x,"y":at.y}));
+    h.settle();
+    let folded = rect_of("browser:card").unwrap();
+    assert!(h.app.tree.panel_collapsed);
+    assert!(folded.height() < 60.0 && folded.height() < open.height(), "{folded:?} {open:?}");
+    assert_eq!(folded.top(), open.top());
+    assert!(drawn_rows().is_empty() || handle_at("row:Plate").is_none());
+    h.call("ui.click", json!({"x":at.x,"y":at.y}));
+    h.settle();
+    assert!(!h.app.tree.panel_collapsed);
+    assert!((rect_of("browser:card").unwrap().height() - open.height()).abs() < 1.0);
+}
