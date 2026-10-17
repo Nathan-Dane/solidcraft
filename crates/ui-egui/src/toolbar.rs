@@ -31,21 +31,62 @@ pub fn panels(tab: &str) -> Vec<&'static str> {
 /// How a panel is drawn on a toolbar that may be too narrow for every button.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Fit {
-    /// Every button of the panel.
-    Full,
+    /// Its first buttons (all of them, or the ones that fit); the panel's drop-down lists every
+    /// command.
+    Buttons,
     /// One button that opens the panel's drop-down (which lists every command, pinned or not).
     Collapsed,
     /// In the » menu at the end of the toolbar.
     More,
 }
 
-/// A panel's width with `buttons` buttons.
-#[cfg(test)]
-pub fn panel_width(buttons: usize) -> f32 {
-    (buttons.max(1) as f32 * BUTTON_STRIDE - BUTTON_GAP + 8.0).max(COLLAPSED_WIDTH)
+/// A ribbon button's preferred and minimum widths. The constraint gallery is a fixed-width
+/// block; ordinary buttons narrow as their labels wrap and truncate.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ButtonSize {
+    pub width: f32,
+    pub min_width: f32,
 }
 
-/// A collapsed panel's width.
+/// One panel as [`fit`] sees it, in button order (the gallery, if present, is last).
+#[derive(Clone, Debug, PartialEq)]
+pub struct PanelSize {
+    pub buttons: Vec<ButtonSize>,
+}
+
+/// Where [`fit`] put a panel: its first buttons and their individual fitted widths.
+#[derive(Clone, Debug, PartialEq)]
+pub struct Plan {
+    pub fit: Fit,
+    pub shown: usize,
+    pub widths: Vec<f32>,
+}
+
+impl Plan {
+    fn full(panel: &PanelSize) -> Self {
+        Self { fit: Fit::Buttons, shown: panel.buttons.len(), widths: panel.buttons.iter().map(|b| b.width).collect() }
+    }
+
+    fn more() -> Self {
+        Self { fit: Fit::More, shown: 0, widths: Vec::new() }
+    }
+
+    /// The panel's width on the toolbar (0 in the » menu).
+    pub fn width(&self) -> f32 {
+        match self.fit {
+            Fit::More => 0.0,
+            Fit::Collapsed => COLLAPSED_WIDTH,
+            Fit::Buttons => panel_width(self.widths.get(..self.shown).unwrap_or_default()),
+        }
+    }
+}
+
+/// A panel's width with these individual button widths.
+pub fn panel_width(buttons: &[f32]) -> f32 {
+    (buttons.iter().sum::<f32>() + buttons.len().saturating_sub(1) as f32 * BUTTON_GAP + 8.0).max(COLLAPSED_WIDTH)
+}
+
+/// A collapsed panel's width: one button's panel.
 pub const COLLAPSED_WIDTH: f32 = 72.0;
 
 /// The gap after each panel (its separator).
@@ -59,43 +100,77 @@ const BUTTON_GAP: f32 = 3.0;
 const BUTTON_MIN_WIDTH: f32 = 54.0;
 const BUTTON_MAX_WIDTH: f32 = 76.0;
 const BUTTON_LABEL_PADDING: f32 = 10.0;
-#[cfg(test)]
-const BUTTON_STRIDE: f32 = BUTTON_MIN_WIDTH + BUTTON_GAP;
 const SECTION_HEIGHT: f32 = 20.0;
 
-/// Fit panels of these full widths into `room`: all of them in full when they fit; otherwise
-/// panels collapse into their drop-down from the right, then (all collapsed and still too wide)
-/// the last ones go into the » menu. Nothing is dropped.
-pub fn fit(widths: &[f32], room: f32) -> Vec<Fit> {
-    let mut fits = vec![Fit::Full; widths.len()];
-    let total = |fits: &[Fit]| -> f32 {
-        widths
+/// The » button's room at the end of the panels, kept only while some panel is in it.
+pub const MORE_ROOM: f32 = 40.0;
+
+/// Fit panels into `room`, giving up as little as it takes, one small step at a time:
+/// 1. buttons narrow from their measured label widths to their minimum, wrapping and truncating;
+/// 2. panels hand their last buttons to their drop-down one at a time, the panel showing the
+///    most buttons first (the rightmost of equals), down to one button (collapsed);
+/// 3. the last panels go into the » menu, and any room that frees goes back to buttons.
+///
+/// Each removal frees at most one button (or the fixed-width constraint gallery), so the toolbar
+/// never leaves a larger gap while something is hidden. The result depends only on `room`
+/// (no state from earlier frames), so it never flickers. Nothing is dropped.
+pub fn fit(panels: &[PanelSize], room: f32) -> Vec<Plan> {
+    let room = if room.is_finite() { room } else { 0.0 };
+    if let Some(plans) = shrink(panels, room) {
+        return plans;
+    }
+    // 3. The last panels into the » menu (which takes its own room), as few as it takes; the
+    // ones left keep as many buttons as fit.
+    for kept in (0..panels.len()).rev() {
+        if let Some(mut plans) = shrink(panels.get(..kept).unwrap_or_default(), room - MORE_ROOM) {
+            plans.extend(panels.iter().skip(kept).map(|_| Plan::more()));
+            return plans;
+        }
+    }
+    panels.iter().map(|_| Plan::more()).collect()
+}
+
+/// The room plans take on the toolbar (each panel and its separator).
+fn used(plans: &[Plan]) -> f32 {
+    plans.iter().filter(|p| p.fit != Fit::More).map(|p| p.width() + PANEL_GAP).sum()
+}
+
+/// Steps 1 and 2 of [`fit`]: every panel on the toolbar, or None when even one button each
+/// doesn't fit.
+fn shrink(panels: &[PanelSize], room: f32) -> Option<Vec<Plan>> {
+    let mut plans: Vec<Plan> = panels.iter().map(Plan::full).collect();
+    if used(&plans) <= room {
+        return Some(plans);
+    }
+    // 1. Narrow together in one-pixel steps, keeping each button's measured width until it
+    // reaches its minimum. The gallery's minimum equals its full width.
+    for reduction in 1..=((BUTTON_MAX_WIDTH - BUTTON_MIN_WIDTH) as usize) {
+        for (plan, panel) in plans.iter_mut().zip(panels) {
+            for (width, button) in plan.widths.iter_mut().zip(&panel.buttons) {
+                *width = (button.width - reduction as f32).max(button.min_width);
+            }
+        }
+        if used(&plans) <= room {
+            return Some(plans);
+        }
+    }
+    // 2. One button at a time into the drop-downs: from the panel showing the most (the
+    // rightmost of equals), down to one button each.
+    while used(&plans) > room {
+        let pick = plans
             .iter()
-            .zip(fits)
-            .map(|(w, f)| match f {
-                Fit::Full => w + PANEL_GAP,
-                Fit::Collapsed => COLLAPSED_WIDTH.min(*w) + PANEL_GAP,
-                Fit::More => 0.0,
-            })
-            .sum()
-    };
-    for i in (0..widths.len()).rev() {
-        if total(&fits) <= room {
-            return fits;
-        }
-        if let Some(f) = fits.get_mut(i) {
-            *f = Fit::Collapsed;
+            .enumerate()
+            .filter(|(_, p)| p.fit == Fit::Buttons && (p.shown > 1 || p.width() > COLLAPSED_WIDTH))
+            .max_by(|(i, a), (j, b)| a.shown.cmp(&b.shown).then(i.cmp(j)));
+        let (i, _) = pick?;
+        if let Some(p) = plans.get_mut(i) {
+            p.shown = p.shown.saturating_sub(1).max(1);
+            if p.shown == 1 {
+                p.fit = Fit::Collapsed;
+            }
         }
     }
-    for i in (0..widths.len()).rev() {
-        if total(&fits) <= room {
-            return fits;
-        }
-        if let Some(f) = fits.get_mut(i) {
-            *f = Fit::More;
-        }
-    }
-    fits
+    Some(plans)
 }
 
 /// The commands a panel's drop-down (or its » submenu) lists: its own, then any button moved
@@ -762,6 +837,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
                     if ui.clip_rect().contains(tr.center()) {
                         crate::scenario::publish_handle(&format!("tab:{tab}"), tr.center());
                         crate::scenario::publish_rect(&format!("tab:{tab}"), tr);
+                        crate::scenario::publish_rect(&format!("toolbar_tab:{tab}"), tr);
                         let aliases: &[&str] = match tab {
                             "MODEL" => &["SOLID", "PLASTIC"],
                             "SURFACE" => &["MESH"],
@@ -856,7 +932,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let mut popup_rect: Option<Rect> = None;
         let mut overflow = Vec::new();
         // Every panel with all its buttons (the user's pins have no cap); a toolbar too narrow
-        // for them collapses panels into their drop-down, then into the » menu.
+        // for them narrows the buttons, then trims panels into their drop-down and the » menu.
         let lists: Vec<_> = crate::toolbar_custom::panel_lists(&tab)
             .into_iter()
             .map(|(panel, cmds, promote)| {
@@ -868,7 +944,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 (panel, cmds, shown)
             })
             .collect();
-        let button_widths: Vec<Vec<f32>> = lists
+        let sizes: Vec<PanelSize> = lists
             .iter()
             .map(|(panel, _, shown)| {
                 let mut widths: Vec<_> = shown
@@ -878,48 +954,43 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         let family = crate::sketch_families::family(c.id)
                             .filter(|f| tab == "SKETCH" && *panel == "CREATE" && f.commands.first().copied() == Some(c.id));
                         let label = family.map_or_else(|| crate::workspace::ribbon_button_label(c), |f| f.label);
-                        ribbon_button_width(&painter, app.tr_label(label))
+                        ButtonSize { width: ribbon_button_width(&painter, app.tr_label(label)), min_width: BUTTON_MIN_WIDTH }
                     })
                     .collect();
                 if tab == "SKETCH" && *panel == "CONSTRAIN" && shown.iter().any(|c| crate::workspace::CONSTRAINT_GALLERY.contains(&c.id)) {
-                    widths.push(CONSTRAINT_GRID_WIDTH);
+                    widths.push(ButtonSize { width: CONSTRAINT_GRID_WIDTH, min_width: CONSTRAINT_GRID_WIDTH });
                 }
-                widths
+                PanelSize { buttons: widths }
             })
-            .collect();
-        let widths: Vec<f32> = button_widths
-            .iter()
-            .map(|buttons| (buttons.iter().sum::<f32>() + buttons.len().saturating_sub(1) as f32 * BUTTON_GAP + 8.0).max(COLLAPSED_WIDTH))
             .collect();
         let right = r.right();
         // Keep the Sketch exit group at the far right and reachable at every width.
-        let finish_width = if tab == "SKETCH" { widths.last().copied().unwrap_or(0.0).max(80.0) } else { 0.0 };
-        let normal_count = widths.len().saturating_sub(usize::from(tab == "SKETCH"));
-        let mut fits = fit(widths.get(..normal_count).unwrap_or_default(), right - 40.0 - px - finish_width);
-        if tab == "SKETCH" {
-            fits.push(Fit::Full);
-        }
-        crate::scenario::publish_count("toolbar_collapsed", fits.iter().filter(|f| **f == Fit::Collapsed).count() as f64);
-        crate::scenario::publish_count("toolbar_more", fits.iter().filter(|f| **f == Fit::More).count() as f64);
-        for (((panel, cmds, shown), fit), (button_widths, full_width)) in lists.into_iter().zip(fits).zip(button_widths.into_iter().zip(widths)) {
+        let finish_plan = sizes.last().filter(|_| tab == "SKETCH").map(Plan::full);
+        let finish_width = finish_plan.as_ref().map_or(0.0, |p| p.width().max(80.0));
+        let normal_count = sizes.len().saturating_sub(usize::from(finish_plan.is_some()));
+        let mut plans = fit(sizes.get(..normal_count).unwrap_or_default(), right - 4.0 - px - finish_width);
+        plans.extend(finish_plan);
+        crate::scenario::publish_count("toolbar_collapsed", plans.iter().filter(|p| p.fit == Fit::Collapsed).count() as f64);
+        crate::scenario::publish_count("toolbar_more", plans.iter().filter(|p| p.fit == Fit::More).count() as f64);
+        crate::scenario::publish_count(
+            "toolbar_trimmed",
+            plans.iter().zip(&sizes).filter(|(p, s)| p.fit == Fit::Buttons && p.shown < s.buttons.len()).count() as f64,
+        );
+        for ((panel, cmds, shown), plan) in lists.into_iter().zip(plans) {
             let panel: &&str = &panel;
-            if fit == Fit::More {
+            if plan.fit == Fit::More {
                 overflow.push((*panel, menu_commands(&cmds, &shown)));
                 continue;
             }
-            let collapsed = fit == Fit::Collapsed;
+            let collapsed = plan.fit == Fit::Collapsed;
+            let trimmed = plan.shown < plan.widths.len();
             let finish = tab == "SKETCH" && *panel == "FINISH SKETCH";
-            let width = if finish {
-                finish_width
-            } else if collapsed {
-                COLLAPSED_WIDTH.min(full_width)
-            } else {
-                full_width
-            };
+            let width = if finish { finish_width } else { plan.width() };
             if finish {
                 px = right - finish_width;
                 painter.line_segment([pos2(px, top), pos2(px, r.bottom() - 1.0)], Stroke::new(1.0, t.border));
             }
+            let button_widths = &plan.widths;
             let sketch_create = tab == "SKETCH" && *panel == "CREATE";
             let enabled_panel = !cmds.is_empty() || *panel == "SELECT";
             // Per tab: panels of the same name on other tabs (MODIFY, CREATE…) list other commands,
@@ -933,7 +1004,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 .filter(|c| tab == "SKETCH" && *panel == "CONSTRAIN" && crate::workspace::CONSTRAINT_GALLERY.contains(&c.id))
                 .collect();
             let large: Vec<_> = shown.iter().copied().filter(|c| !gallery.iter().any(|g| g.id == c.id)).collect();
-            let drawn = if collapsed { 0 } else { button_widths.len() };
+            let drawn = if collapsed { 0 } else { plan.shown.min(button_widths.len()) };
             // Buttons narrower than the panel's minimum width (a one-button panel) are centred.
             let buttons_width = button_widths.iter().take(drawn).sum::<f32>() + drawn.saturating_sub(1) as f32 * BUTTON_GAP;
             let inset = if drawn == 0 { 0.0 } else { ((width - 8.0 - buttons_width) / 2.0).max(0.0).floor() };
@@ -1025,7 +1096,8 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     }
                     // The title sits on the same line as the other buttons' labels.
                     let title_y = whole.top() + 39.0;
-                    ribbon_text(ui, pos2(ar.center().x - 4.0, title_y), app.tr_label(f.label), 12.0, t.text, false);
+                    let galley = ribbon_button_galley(&painter, app.tr_label(f.label), ar.width() - 16.0, t.text);
+                    painter.galley(pos2(ar.center().x - 4.0, title_y - galley.size().y / 2.0), galley, t.text);
                     chevron(&painter, pos2(ar.right() - 6.0, title_y + 0.5), t.text_dim);
                     arrow.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, app.tr_label(f.label)));
                     egui::Popup::menu(&arrow).show(|ui| {
@@ -1040,7 +1112,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     painter.galley(pos2(whole.center().x, whole.top() + 32.0), galley, t.text);
                 }
             }
-            if !collapsed {
+            if !collapsed && drawn > large.len() {
                 if !gallery.is_empty() {
                     // A quiet rule sets the grid apart from the large button before it.
                     painter.line_segment(
@@ -1127,6 +1199,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             // Labels, gaps and margins append; actual buttons keep their insert-before target.
             // Respect the current layer so a dropdown covering the panel is not a drop target.
             let panel_rect = Rect::from_min_max(pos2(px, top + 2.0), pos2(px + width, r.bottom()));
+            crate::scenario::publish_rect(&format!("panel:{tab}:{panel}"), panel_rect);
             let over_button = ui.input(|input| input.pointer.hover_pos()).is_some_and(|p| {
                 let mut x = bx;
                 button_widths.iter().take(drawn).any(|width| {
@@ -1145,7 +1218,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
             let open = ui.ctx().data(|d| d.get_temp::<egui::Id>(egui::Id::new("sc_panel_open"))) == Some(popup_id);
             if open {
-                let cmds = if collapsed { menu_commands(&cmds, &shown) } else { cmds.clone() };
+                let cmds = if collapsed || trimmed { menu_commands(&cmds, &shown) } else { cmds.clone() };
                 let area = crate::frame::area(popup_id).fixed_pos(lr.left_bottom()).order(egui::Order::Foreground).show(ui.ctx(), |ui| {
                     section_frame(ui).show(ui, |ui| {
                         ui.spacing_mut().item_spacing.y = 0.0;
@@ -1247,6 +1320,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     }
                 });
                 crate::scenario::publish_handle("toolbar:overflow", response.response.rect.center());
+                crate::scenario::publish_rect("toolbar:overflow", response.response.rect);
                 response.response.on_hover_text(crate::i18n::tr_label("More toolbar panels"));
             });
         }
@@ -1773,23 +1847,135 @@ mod header_report_tests {
         assert!(!solidcraft_engine::io::is_design_container(&std::fs::read(saved).unwrap()), "subsequent Save keeps a .json choice");
     }
 
+    fn sizes(buttons: &[usize]) -> Vec<PanelSize> {
+        buttons.iter().map(|&b| PanelSize { buttons: vec![ButtonSize { width: BUTTON_MIN_WIDTH, min_width: BUTTON_MIN_WIDTH }; b] }).collect()
+    }
+
+    fn used_with_more(plans: &[Plan]) -> f32 {
+        used(plans) + if plans.iter().any(|p| p.fit == Fit::More) { MORE_ROOM } else { 0.0 }
+    }
+
     #[test]
-    fn panels_fit_collapse_then_move_to_more_and_none_is_dropped() {
+    fn panels_give_up_one_button_at_a_time_then_move_to_more_and_none_is_dropped() {
         // A panel with 14 buttons and three default ones.
-        let widths = [panel_width(14), panel_width(4), panel_width(2), panel_width(2)];
-        let full: f32 = widths.iter().map(|w| w + PANEL_GAP).sum();
-        assert_eq!(fit(&widths, full), vec![Fit::Full; 4]);
-        // A little short: the last panel collapses first.
-        assert_eq!(fit(&widths, full - 10.0), vec![Fit::Full, Fit::Full, Fit::Full, Fit::Collapsed]);
-        // Every panel collapsed fits.
+        let panels = sizes(&[14, 4, 2, 2]);
+        let full: f32 = [14, 4, 2, 2].iter().map(|&b| panel_width(&vec![BUTTON_MIN_WIDTH; b]) + PANEL_GAP).sum();
+        let all = |plans: &[Plan]| plans.iter().map(|p| (p.fit, p.shown)).collect::<Vec<_>>();
+        assert_eq!(all(&fit(&panels, full)), [(Fit::Buttons, 14), (Fit::Buttons, 4), (Fit::Buttons, 2), (Fit::Buttons, 2)]);
+        // A little short: the widest panel hands one button to its drop-down; the others keep all theirs.
+        assert_eq!(all(&fit(&panels, full - 10.0)), [(Fit::Buttons, 13), (Fit::Buttons, 4), (Fit::Buttons, 2), (Fit::Buttons, 2)]);
+        // Every panel down to one button (collapsed) fits.
         let collapsed = 4.0 * (COLLAPSED_WIDTH + PANEL_GAP);
-        assert_eq!(fit(&widths, collapsed), vec![Fit::Collapsed; 4]);
-        // Narrower: the last ones go into the » menu; then all of them.
-        assert_eq!(fit(&widths, collapsed - 1.0), vec![Fit::Collapsed, Fit::Collapsed, Fit::Collapsed, Fit::More]);
-        assert_eq!(fit(&widths, 0.0), vec![Fit::More; 4]);
-        assert_eq!(fit(&widths, f32::NAN).len(), 4);
-        // No cap: each added button keeps its width and gap.
-        assert_eq!(panel_width(30) - panel_width(20), 10.0 * BUTTON_STRIDE);
+        assert_eq!(all(&fit(&panels, collapsed)), [(Fit::Collapsed, 1); 4]);
+        // Narrower: the last one goes into the » menu, and the room it frees goes back to buttons.
+        let more = fit(&panels, collapsed - 1.0);
+        assert_eq!(more.iter().map(|p| p.fit).collect::<Vec<_>>(), [Fit::Collapsed, Fit::Collapsed, Fit::Collapsed, Fit::More]);
+        assert!(more.iter().take(3).all(|p| p.shown >= 1));
+        let more = fit(&sizes(&[14, 4, 2, 2, 2, 2]), 5.0 * (COLLAPSED_WIDTH + PANEL_GAP) + MORE_ROOM - 1.0);
+        assert_eq!(more.last().unwrap().fit, Fit::More);
+        assert!(more.iter().any(|p| p.fit == Fit::Buttons && p.shown > 1), "overflow room restores buttons");
+        // Then all of them.
+        assert!(fit(&panels, 0.0).iter().all(|p| p.fit == Fit::More));
+        assert_eq!(fit(&panels, f32::NAN).len(), 4);
+        // No cap: every additional button keeps its width and gap.
+        assert_eq!(panel_width(&[BUTTON_MIN_WIDTH; 30]) - panel_width(&[BUTTON_MIN_WIDTH; 20]), 10.0 * (BUTTON_MIN_WIDTH + BUTTON_GAP));
+    }
+
+    /// #2108: whatever the room, the toolbar uses it. It never leaves more than one button's width
+    /// blank while something is hidden, never runs past the room, and shrinks steadily as the
+    /// room does (so a few pixels never flip it back and forth).
+    #[test]
+    fn panels_fill_the_room_they_have_at_every_width() {
+        let layouts = [
+            // SOLID: CREATE, MODIFY, ASSEMBLE, CONFIGURE, CONSTRUCT, INSPECT, INSERT, SELECT.
+            vec![(4, false), (4, false), (3, false), (2, false), (2, false), (2, false), (2, false), (0, false)],
+            // SKETCH: labelled CREATE, then MODIFY … FINISH SKETCH.
+            vec![(8, true), (2, false), (3, false), (6, false), (2, false), (2, false), (0, false), (1, false)],
+            // Many pins on one panel.
+            vec![(14, false), (4, false), (2, false), (2, false)],
+        ];
+        for layout in layouts {
+            let panels: Vec<PanelSize> = layout
+                .iter()
+                .map(|&(buttons, labelled)| PanelSize {
+                    buttons: (0..buttons)
+                        .map(|i| ButtonSize {
+                            width: if labelled { BUTTON_MAX_WIDTH - (i % 3) as f32 * 5.0 } else { BUTTON_MIN_WIDTH },
+                            min_width: BUTTON_MIN_WIDTH,
+                        })
+                        .collect(),
+                })
+                .collect();
+            let mut last: Option<(f32, usize)> = None;
+            for room in (0..=2000).rev().map(|r| r as f32) {
+                let plans = fit(&panels, room);
+                let width = used_with_more(&plans);
+                let hidden = plans
+                    .iter()
+                    .zip(&panels)
+                    .any(|(p, s)| p.fit != Fit::Buttons || p.shown < s.buttons.len() || p.widths.iter().zip(&s.buttons).any(|(w, b)| *w < b.width));
+                let more = plans.iter().filter(|p| p.fit == Fit::More).count();
+                if more < panels.len() {
+                    assert!(width <= room + 0.01, "{layout:?} at {room}: {width} overruns");
+                }
+                // One button: an icon's stride, or a collapsed panel's when the next panel waits in the » menu.
+                let button = if more > 0 { COLLAPSED_WIDTH + PANEL_GAP } else { BUTTON_MIN_WIDTH + BUTTON_GAP };
+                if hidden && more < panels.len() {
+                    assert!(room - width < button, "{layout:?} at {room}: {} px blank while something is hidden", room - width);
+                }
+                // Fewer pixels never bring a panel back out of the » menu.
+                if let Some((_, prev_more)) = last {
+                    assert!(more >= prev_more, "{layout:?} at {room}: a panel came back out of the » menu");
+                }
+                last = Some((width, more));
+                // A panel shows its icons: one at the very least.
+                for (p, s) in plans.iter().zip(&panels) {
+                    if p.fit != Fit::More && !s.buttons.is_empty() {
+                        assert!(p.shown >= 1, "{layout:?} at {room}: a panel without icons");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn variable_width_buttons_narrow_before_rightmost_equal_panels_lose_buttons() {
+        let panels = vec![PanelSize {
+            buttons: vec![
+                ButtonSize { width: 76.0, min_width: BUTTON_MIN_WIDTH },
+                ButtonSize { width: 63.0, min_width: BUTTON_MIN_WIDTH },
+                ButtonSize { width: 54.0, min_width: BUTTON_MIN_WIDTH },
+            ],
+        }];
+        let full = used(&panels.iter().map(Plan::full).collect::<Vec<_>>());
+        let narrow = fit(&panels, full - 1.0);
+        assert_eq!(narrow[0].shown, 3);
+        assert_eq!(narrow[0].widths, [75.0, 62.0, 54.0]);
+        let minimum = panel_width(&[BUTTON_MIN_WIDTH; 3]) + PANEL_GAP;
+        let narrow = fit(&panels, minimum);
+        assert_eq!(narrow[0].shown, 3);
+        assert_eq!(narrow[0].widths, [BUTTON_MIN_WIDTH; 3]);
+        assert_eq!(fit(&panels, minimum - 1.0)[0].shown, 2);
+
+        let equal = sizes(&[3, 3]);
+        let full = used(&equal.iter().map(Plan::full).collect::<Vec<_>>());
+        assert_eq!(fit(&equal, full - 1.0).iter().map(|p| p.shown).collect::<Vec<_>>(), [3, 2]);
+    }
+
+    #[test]
+    fn constraint_gallery_stays_fixed_and_hands_all_cells_to_the_menu_together() {
+        let panels = vec![PanelSize {
+            buttons: vec![
+                ButtonSize { width: BUTTON_MAX_WIDTH, min_width: BUTTON_MIN_WIDTH },
+                ButtonSize { width: CONSTRAINT_GRID_WIDTH, min_width: CONSTRAINT_GRID_WIDTH },
+            ],
+        }];
+        let minimum = panel_width(&[BUTTON_MIN_WIDTH, CONSTRAINT_GRID_WIDTH]) + PANEL_GAP;
+        let narrow = fit(&panels, minimum);
+        assert_eq!(narrow[0].shown, 2);
+        assert_eq!(narrow[0].widths, [BUTTON_MIN_WIDTH, CONSTRAINT_GRID_WIDTH]);
+        let collapsed = fit(&panels, minimum - 1.0);
+        assert_eq!((collapsed[0].fit, collapsed[0].shown), (Fit::Collapsed, 1));
     }
 
     fn captured_frame(h: &mut crate::scenario::Harness) {
@@ -2161,10 +2347,11 @@ mod panel_drop_tests {
             let mut h = crate::scenario::Harness::new();
             h.step(&json!({"click":{"handle":"panel:MODEL:CREATE"}})).unwrap();
             let label = crate::scenario::handle_at("panel:MODEL:CREATE").unwrap();
+            let panel = crate::scenario::rect_of("panel:MODEL:CREATE").unwrap();
             let destination = match target {
                 "gap" => label - vec2(0.0, 10.0),
-                "left margin" => pos2(label.x - panel_width(3) / 2.0 + 1.0, label.y - 30.0),
-                "right margin" => pos2(label.x + panel_width(3) / 2.0 - 1.0, label.y - 30.0),
+                "left margin" => pos2(panel.left() + 1.0, label.y - 30.0),
+                "right margin" => pos2(panel.right() - 1.0, label.y - 30.0),
                 "button" => crate::scenario::handle_at("button:solid.extrude").unwrap(),
                 _ => label,
             };
@@ -2378,5 +2565,105 @@ mod ribbon_gallery_tests {
         crate::toolbar_custom::pin(&mut h.app, "SKETCH", "sketch.constraint.equal").unwrap();
         h.frames(2);
         assert!(rect_of("ribbon:constraint:sketch.constraint.equal").is_some());
+    }
+}
+
+#[cfg(test)]
+mod fill_width_tests {
+    use super::*;
+
+    /// #2108: at every common window width, in the Solid and the Sketch tab, the toolbar uses the
+    /// width it has. No blank run wider than one button while something is hidden, every panel
+    /// on the toolbar shows its icons, the » menu only when even one button a panel won't fit,
+    /// and neither the tab row nor the title bar's own controls run into each other.
+    #[test]
+    fn toolbar_fills_its_width_from_wide_to_narrow_windows() {
+        for sketch in [false, true] {
+            let mut h = crate::scenario::Harness::new();
+            h.app.home.open = false;
+            h.app.custom_titlebar = true;
+            h.app.run("solid.box", json!({"length":10,"width":10,"height":10})).unwrap();
+            if sketch {
+                h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
+            }
+            let tab = if sketch { "SKETCH" } else { "MODEL" };
+            h.app.ui.tab = tab.into();
+            for w in [1920.0, 1600.0, 1440.0, 1366.0, 1280.0, 1100.0, 900.0, 700.0] {
+                h.call("ui.resize", json!({"width":w,"height":900}));
+                h.frames(3);
+                let at = format!("{tab} at {w}");
+                let bar = crate::scenario::rect_of("toolbar").unwrap();
+                let finish = crate::scenario::rect_of("panel:SKETCH:FINISH SKETCH");
+                let right = finish.map_or(bar.right() - 4.0, |f| f.left() - 4.0);
+                let count = |name: &str| crate::scenario::count_of(name).unwrap_or(-1.0);
+                let (collapsed, trimmed, more) = (count("toolbar_collapsed"), count("toolbar_trimmed"), count("toolbar_more"));
+                let lists = crate::toolbar_custom::panel_lists(tab);
+                let mut end = bar.left();
+                let mut on_bar = 0;
+                for (panel, cmds, promote) in &lists {
+                    let Some(rect) = crate::scenario::rect_of(&format!("panel:{tab}:{panel}")) else { continue };
+                    on_bar += 1;
+                    if *panel != "FINISH SKETCH" {
+                        end = end.max(rect.right() + PANEL_GAP);
+                    }
+                    if crate::toolbar_custom::buttons(&h.app, tab, panel, cmds, *promote).is_empty() {
+                        continue;
+                    }
+                    let icons = crate::scenario::handles("button:").iter().filter(|(_, p)| rect.contains(*p)).count()
+                        + usize::from(crate::scenario::handle_at(&format!("collapsed:{tab}:{panel}")).is_some());
+                    assert!(icons >= 1, "{at}: {panel} shows no icons");
+                }
+                assert_eq!(on_bar + more as usize, lists.len(), "{at}: every panel is on the toolbar or in the » menu");
+                let overflow = crate::scenario::rect_of("toolbar:overflow");
+                assert_eq!(overflow.is_some(), more > 0.0, "{at}: the » menu shows exactly when a panel is in it");
+                let gap = right - end - if more > 0.0 { MORE_ROOM } else { 0.0 };
+                assert!(gap >= -0.5, "{at}: the panels run {} px past the room", -gap);
+                let hidden = collapsed + trimmed + more > 0.0;
+                let button = if more > 0.0 {
+                    COLLAPSED_WIDTH + PANEL_GAP
+                } else if sketch {
+                    CONSTRAINT_GRID_WIDTH + BUTTON_GAP
+                } else {
+                    BUTTON_MIN_WIDTH + BUTTON_GAP
+                };
+                if hidden {
+                    assert!(gap < button, "{at}: {gap} px left blank while buttons are hidden");
+                }
+                // The » menu only when one button a panel can't fit.
+                if w >= 900.0 {
+                    assert_eq!(more, 0.0, "{at}: the » menu while there is room");
+                }
+                if w >= 1600.0 {
+                    assert!(!hidden, "{at}: buttons hidden on a wide window");
+                }
+                if let Some(o) = overflow {
+                    assert!(o.right() <= right + 4.0, "{at}: the » button overlaps Finish or the right edge");
+                }
+                if sketch {
+                    let finish = finish.expect("Finish group stays visible");
+                    assert_eq!(finish.right(), bar.right(), "{at}: Finish stays anchored right");
+                    assert!(crate::scenario::handle_at("button:sketch.finish").is_some(), "{at}: Finish stays reachable");
+                }
+                // The assistant lives in the title bar; visible ribbon tabs fit before search.
+                let search = crate::scenario::rect_of("ribbon:search").unwrap();
+                for t in TABS.iter().chain(["SKETCH"].iter()) {
+                    if let Some(r) = crate::scenario::rect_of(&format!("toolbar_tab:{t}")) {
+                        assert!(r.right() < search.left(), "{at}: the {t} tab runs into search");
+                    }
+                }
+                // The title bar keeps document tabs before Assistant, Preferences, Help and Report.
+                let report = crate::scenario::rect_of("titlebar:report").unwrap();
+                let tabs_end = crate::scenario::handles("tab:design:").iter().map(|(_, p)| p.x).fold(0.0, f32::max);
+                assert!(tabs_end < report.left(), "{at}: the document tabs run into Report a bug");
+                let assistant = crate::scenario::rect_of("titlebar:assistant").unwrap();
+                let help = crate::scenario::rect_of("appbar:help").unwrap();
+                let prefs = crate::scenario::rect_of("titlebar:preferences").unwrap();
+                assert!(tabs_end < assistant.left(), "{at}: the document tabs run into Assistant");
+                assert!(
+                    assistant.right() <= prefs.left() && prefs.right() <= help.left() && help.right() <= report.left(),
+                    "{at}: the title bar's right-hand controls overlap"
+                );
+            }
+        }
     }
 }
