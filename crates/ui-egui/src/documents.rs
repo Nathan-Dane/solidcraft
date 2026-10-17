@@ -373,7 +373,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let mut pick: Option<usize> = None;
     let mut shut: Option<usize> = None;
     for (i, (name, dirty)) in info.iter().enumerate().skip(first).take(shown) {
-        let tr = Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(w - 2.0, r.height() - 5.0));
+        let tr = Rect::from_min_size(pos2(x, r.top() + 4.0), vec2(w - 2.0, r.height() - 8.0));
         let active = !app.home.open && (i == app.docs.active || app.docs.slots.is_empty());
         let resp = ui.interact(tr, ui.id().with(("doc_tab", i)), Sense::click_and_drag());
         crate::scenario::publish_handle(&format!("tab:design:{i}"), tr.center());
@@ -388,7 +388,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
             }
         }
         tab_shape(ui.painter(), &t, tr, active, resp.hovered() || resp.has_focus());
-        let ink = t.app_bar_text;
+        let ink = if active || resp.hovered() { t.app_bar_text } else { t.app_bar_text.gamma_multiply(0.7) };
         let name_display = if name == "Untitled" { app.tr("ui.untitled") } else { name };
         let label = format!("{name_display}{}", if *dirty { " •" } else { "" });
         let g = ui.painter().layout_no_wrap(label, FontId::proportional(13.0), ink);
@@ -472,20 +472,16 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     }
 }
 
-/// Tabs stay on the dark bar; a stronger fill and bottom rule mark the active design.
+/// Tabs are rounded chips on the bar; the active design has the stronger fill.
 fn tab_shape(painter: &egui::Painter, t: &Tokens, r: Rect, active: bool, hovered: bool) {
-    let corners = egui::CornerRadius { nw: 5, ne: 5, sw: 0, se: 0 };
     let fill = if active {
         t.app_bar_hover_strong
     } else if hovered {
         t.app_bar_hover
     } else {
-        t.app_bar
+        egui::Color32::TRANSPARENT
     };
-    painter.rect_filled(r, corners, fill);
-    if active {
-        painter.line_segment([r.left_bottom(), r.right_bottom()], Stroke::new(2.0, t.app_bar_text));
-    }
+    painter.rect_filled(r, t.radius_md, fill);
 }
 
 /// Which tabs the strip shows in `room` points: (first, how many, tab width). Tabs shrink to
