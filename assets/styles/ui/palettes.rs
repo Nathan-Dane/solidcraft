@@ -116,6 +116,7 @@ impl Tokens {
             app_bar_hover_subtle: Color32::from_rgba_unmultiplied_const(255, 255, 255, 18),
             app_bar_hover_button: Color32::from_rgba_unmultiplied_const(255, 255, 255, 30),
             app_bar_hover_strong: Color32::from_rgba_unmultiplied_const(255, 255, 255, 40),
+            app_bar_tab_active: Color32::from_rgb(53, 59, 71),
             timeline_item: Color32::WHITE,
             timeline_item_error: Color32::from_rgb(250, 220, 220),
             timeline_marker: Color32::from_rgb(70, 76, 88),

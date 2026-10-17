@@ -318,12 +318,12 @@ mod tests {
                     .shapes
                     .iter()
                     .filter_map(|s| match &s.shape {
-                        egui::Shape::Rect(shape) if shape.rect == rect => Some(shape.fill),
+                        egui::Shape::Rect(shape) if shape.rect == rect || shape.rect == rect.shrink(3.0) => Some(shape.fill),
                         _ => None,
                     })
                     .collect();
                 assert!(
-                    fills.iter().any(|fill| [t.app_bar_hover, t.app_bar_hover_button, t.app_bar_hover_strong].contains(fill)),
+                    fills.iter().any(|fill| [t.app_bar_hover, t.app_bar_hover_button, t.app_bar_hover_strong, t.app_bar_tab_active].contains(fill)),
                     "dark={dark}: {rect:?} has no application bar hover fill: {fills:?}"
                 );
             }

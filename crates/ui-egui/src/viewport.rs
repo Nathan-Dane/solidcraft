@@ -2461,7 +2461,11 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::tools::on_click(app, &proj, a);
             app.viewport.draw_drag = app.tool.as_ref().is_some_and(|t| t.pts.len() == 1);
         }
-        if resp.clicked() && !held {
+        let reference_pick = (resp.clicked() || resp.double_clicked())
+            && !held
+            && app.dialog.is_none()
+            && crate::dim_view::pick_reference(ui.ctx(), p, resp.double_clicked());
+        if resp.clicked() && !held && !reference_pick {
             if app.tool.is_some() {
                 crate::tools::on_click(app, &proj, p);
             } else if app.dialog.as_ref().is_some_and(|d| d.wants_picks()) {
@@ -2508,6 +2512,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         // Double-click a dimension: edit its value in place.
         let dim_edit = resp.double_clicked()
             && !held
+            && !crate::dim_view::editing()
             && app.tool.is_none()
             && app.dialog.is_none()
             && (crate::sketch_modify_ui::double_click_pattern(app, p) || crate::dim_view::double_click(app, p));
@@ -5522,8 +5527,14 @@ mod tests {
             h.frames(20);
             h.app.cam != before
         };
-        for smooth in [true, false] {
+        for (layout, smooth) in [
+            (crate::shell::LayoutMode::Floating, true),
+            (crate::shell::LayoutMode::Floating, false),
+            (crate::shell::LayoutMode::Docked, true),
+            (crate::shell::LayoutMode::Docked, false),
+        ] {
             let mut h = Harness::new();
+            h.call("ui.set", json!({"layout":layout}));
             h.app.preferences.smooth_wheel_zoom = smooth;
             h.app.preferences.zoom_to_cursor = false;
             h.call("engine.execute", json!({"command": "solid.box", "params": {"length": 40, "width": 30, "height": 20}}));
@@ -5561,18 +5572,21 @@ mod tests {
             h.call("ui.move", field.clone());
             h.call("ui.click", field);
             assert!(handle_at(item).is_none(), "the list must close");
-            let (mid, x) = (vp.center().y, vp.left() + vp.width() * 0.25);
+            // The full floating viewport extends under the browser; its exposed content
+            // edge is the boundary between the panel and navigable model in either layout.
+            let content = crate::shell::content_rect(&h.app, vp);
+            let (mid, x) = (content.center().y, content.left() + content.width() * 0.25);
             for p in [
                 pos2(dialog.left() + 2.0, dialog.center().y),
                 pos2(dialog.center().x, dialog.bottom() - 2.0),
-                pos2(vp.left() - 2.0, mid),
+                pos2(content.left() - 2.0, mid),
                 pos2(x, vp.bottom() + 2.0),
             ] {
                 assert!(!wheel(&mut h, p, 60.0), "smooth {smooth}: the wheel at {p:?} off the model ({vp:?}, dialog {dialog:?}) zoomed it");
                 assert!(h.app.viewport.mouse.is_none(), "the model must not see the pointer at {p:?}");
             }
             // The model itself still zooms right next to them.
-            for p in [pos2(dialog.left() - 2.0, dialog.center().y), pos2(vp.left() + 2.0, mid), pos2(x, vp.bottom() - 2.0)] {
+            for p in [pos2(dialog.left() - 2.0, dialog.center().y), pos2(content.left() + 2.0, mid), pos2(x, vp.bottom() - 2.0)] {
                 assert!(wheel(&mut h, p, 60.0), "smooth {smooth}: the wheel at {p:?} on the model ({vp:?}) must zoom it");
                 assert_eq!(h.app.viewport.mouse, Some(p));
                 assert!(gestures(&mut h, p), "a pinch and a two-finger scroll at {p:?} on the model must move it");
