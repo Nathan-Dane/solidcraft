@@ -239,6 +239,7 @@ pub struct Tokens {
     pub surface_accent: Color32,
     pub mesh_accent: Color32,
     pub form_accent: Color32,
+    pub render_accent: Color32,
     /// Ink on accent-filled buttons and selection chips.
     pub on_accent: Color32,
     /// Agent status on the dark application bar, in either theme.

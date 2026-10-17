@@ -6,6 +6,53 @@ use solidcraft_engine::doc::FeatureKind;
 
 pub const TABS: &[&str] = &["MODEL", "SURFACE", "ASSEMBLE", "INSERT", "INSPECT", "MANAGE", "VIEW"];
 
+/// Reading order of the compact, three-column constraint gallery. Icons come from each spec.
+pub const CONSTRAINT_GALLERY: &[&str] = &[
+    "sketch.constraint.horizontal_vertical",
+    "sketch.constraint.coincident",
+    "sketch.constraint.tangent",
+    "sketch.constraint.equal",
+    "sketch.constraint.parallel",
+    "sketch.constraint.perpendicular",
+];
+
+pub struct CommandGroup {
+    pub label: &'static str,
+    pub ids: &'static [&'static str],
+}
+
+/// Optional headings for section lists. Unlisted commands retain their order at the end.
+pub fn groups(tab: &str, panel: &str) -> &'static [CommandGroup] {
+    match (tab, panel) {
+        ("MODEL", "MODIFY") => &[
+            CommandGroup { label: "Edges", ids: &["solid.fillet", "solid.chamfer"] },
+            CommandGroup {
+                label: "Faces",
+                ids: &["solid.press_pull", "solid.draft", "solid.offset_face", "solid.replace_face", "solid.split_face", "face.delete"],
+            },
+            CommandGroup { label: "Bodies", ids: &["solid.shell", "solid.combine", "solid.split_body", "solid.scale", "solid.remove"] },
+            CommandGroup { label: "Specialise", ids: &["sheet.convert"] },
+        ],
+        _ => &[],
+    }
+}
+
+/// Menu order is independent of the ribbon's promoted-button order.
+pub fn grouped_commands<'a>(tab: &str, panel: &str, commands: &[&'a CommandSpec]) -> Vec<(Option<&'static str>, &'a CommandSpec)> {
+    let groups = groups(tab, panel);
+    let mut out = Vec::new();
+    for group in groups {
+        let mut heading = Some(group.label);
+        for id in group.ids {
+            if let Some(command) = commands.iter().find(|c| c.id == *id) {
+                out.push((heading.take(), *command));
+            }
+        }
+    }
+    out.extend(commands.iter().filter(|c| !groups.iter().any(|g| g.ids.contains(&c.id))).map(|c| (None, *c)));
+    out
+}
+
 pub struct Section {
     pub tab: &'static str,
     pub panel: &'static str,
@@ -154,7 +201,7 @@ pub const SECTIONS: &[Section] = &[
     Section {
         tab: "SKETCH",
         panel: "CONSTRAIN",
-        promoted: 4,
+        promoted: 7,
         ids: &[
             "sketch.dimension",
             "sketch.constraint.horizontal_vertical",
@@ -478,12 +525,48 @@ mod tests {
     use serde_json::json;
 
     #[test]
+    fn modify_groups_order_commands_and_keep_unlisted_commands_at_the_end() {
+        let specs = solidcraft_engine::command_specs();
+        let (commands, _) = layout("MODEL", "MODIFY", &specs).unwrap();
+        let grouped = grouped_commands("MODEL", "MODIFY", &commands);
+        assert_eq!(grouped.iter().filter_map(|(h, _)| *h).collect::<Vec<_>>(), ["Edges", "Faces", "Bodies", "Specialise"]);
+        assert_eq!(grouped.len(), commands.len());
+        assert_eq!(
+            grouped.iter().map(|(_, c)| c.id).collect::<Vec<_>>(),
+            [
+                "solid.fillet",
+                "solid.chamfer",
+                "solid.press_pull",
+                "solid.draft",
+                "solid.offset_face",
+                "solid.replace_face",
+                "solid.split_face",
+                "face.delete",
+                "solid.shell",
+                "solid.combine",
+                "solid.split_body",
+                "solid.scale",
+                "solid.remove",
+                "sheet.convert",
+                "timeline.delete",
+            ]
+        );
+        let plain = grouped_commands("SURFACE", "CREATE", &commands);
+        assert!(plain.iter().all(|(h, _)| h.is_none()));
+        assert_eq!(plain.iter().map(|(_, c)| c.id).collect::<Vec<_>>(), commands.iter().map(|c| c.id).collect::<Vec<_>>());
+    }
+
+    #[test]
     fn promoted_long_labels_have_compact_ribbon_names() {
         let specs = solidcraft_engine::command_specs();
         let english: std::collections::BTreeMap<String, String> = serde_json::from_str(include_str!("../../../assets/locales/en.json")).unwrap();
         for section in SECTIONS {
             let (commands, count) = layout(section.tab, section.panel, &specs).unwrap();
             for command in commands.iter().take(count) {
+                // Gallery cells are icon-only; they retain full names in their tooltips.
+                if section.tab == "SKETCH" && section.panel == "CONSTRAIN" && CONSTRAINT_GALLERY.contains(&command.id) {
+                    continue;
+                }
                 if command.label.chars().count() > 12 || command.label.split_whitespace().any(|word| word.chars().count() > 9) {
                     assert!(RIBBON_LABELS.iter().any(|(id, _)| *id == command.id), "missing compact label for {}", command.id);
                 }
@@ -506,7 +589,7 @@ mod tests {
             assert!(lists.iter().any(|(_, (cmds, _))| cmds.iter().any(|x| x.id == c.id)), "lost toolbar command {} ({}/{})", c.id, c.tab, c.panel);
         }
         for (s, (cmds, n)) in lists {
-            assert!(n <= 4, "{}/{} promotes {n} commands", s.tab, s.panel);
+            assert!(n <= 4 || (s.tab == "SKETCH" && s.panel == "CONSTRAIN" && n == 7), "{}/{} promotes {n} commands", s.tab, s.panel);
             for id in s.ids {
                 assert!(specs.iter().any(|c| c.id == *id), "unknown layout id {id}");
             }

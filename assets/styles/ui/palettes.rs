@@ -46,6 +46,7 @@ impl Tokens {
             surface_accent: Color32::from_rgb(164, 80, 0),
             mesh_accent: Color32::from_rgb(130, 103, 0),
             form_accent: Color32::from_rgb(115, 73, 205),
+            render_accent: Color32::from_rgb(174, 45, 113),
             on_accent: Color32::WHITE,
             agent_ok: Color32::from_rgb(76, 194, 122),
             agent_busy: Color32::from_rgb(108, 180, 240),
@@ -181,6 +182,7 @@ impl Tokens {
         t.surface_accent = Color32::from_rgb(149, 104, 45);
         t.mesh_accent = Color32::from_rgb(133, 113, 0);
         t.form_accent = Color32::from_rgb(123, 99, 166);
+        t.render_accent = Color32::from_rgb(224, 116, 174);
         t.construction_geom = icon_primary(crate::icon_svg::CONSTRUCTION_PRIMARY[1]);
         t.error = Color32::from_rgb(240, 100, 96);
         t.warning = Color32::from_rgb(236, 170, 70);

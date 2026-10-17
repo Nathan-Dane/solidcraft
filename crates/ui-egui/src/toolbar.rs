@@ -845,22 +845,31 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let lists: Vec<_> = crate::toolbar_custom::panel_lists(&tab)
             .into_iter()
             .map(|(panel, cmds, promote)| {
-                let shown = crate::toolbar_custom::buttons(app, &tab, panel, &cmds, promote);
+                let mut shown = crate::toolbar_custom::buttons(app, &tab, panel, &cmds, promote);
+                // Gallery cells are painted together after the large buttons, in reading order.
+                if tab == "SKETCH" && panel == "CONSTRAIN" {
+                    shown.sort_by_key(|c| crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).map(|i| i + 1).unwrap_or(0));
+                }
                 (panel, cmds, shown)
             })
             .collect();
         let button_widths: Vec<Vec<f32>> = lists
             .iter()
             .map(|(panel, _, shown)| {
-                shown
+                let mut widths: Vec<_> = shown
                     .iter()
+                    .filter(|c| !(tab == "SKETCH" && *panel == "CONSTRAIN" && crate::workspace::CONSTRAINT_GALLERY.contains(&c.id)))
                     .map(|c| {
                         let family = crate::sketch_families::family(c.id)
                             .filter(|f| tab == "SKETCH" && *panel == "CREATE" && f.commands.first().copied() == Some(c.id));
                         let label = family.map_or_else(|| crate::workspace::ribbon_button_label(c), |f| f.label);
                         ribbon_button_width(&painter, app.tr_label(label))
                     })
-                    .collect()
+                    .collect();
+                if tab == "SKETCH" && *panel == "CONSTRAIN" && shown.iter().any(|c| crate::workspace::CONSTRAINT_GALLERY.contains(&c.id)) {
+                    widths.push(CONSTRAINT_GRID_WIDTH);
+                }
+                widths
             })
             .collect();
         let widths: Vec<f32> = button_widths
@@ -903,7 +912,13 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             let popup_id = ui.id().with(("panel_menu", &tab, panel));
             // Dropped on the panel's free space (all of a collapsed panel): the button goes to
             // its end.
-            let drawn = if collapsed { 0 } else { shown.len() };
+            let gallery: Vec<_> = shown
+                .iter()
+                .copied()
+                .filter(|c| tab == "SKETCH" && *panel == "CONSTRAIN" && crate::workspace::CONSTRAINT_GALLERY.contains(&c.id))
+                .collect();
+            let large: Vec<_> = shown.iter().copied().filter(|c| !gallery.iter().any(|g| g.id == c.id)).collect();
+            let drawn = if collapsed { 0 } else { button_widths.len() };
             // Buttons narrower than the panel's minimum width (a one-button panel) are centred.
             let buttons_width = button_widths.iter().take(drawn).sum::<f32>() + drawn.saturating_sub(1) as f32 * BUTTON_GAP;
             let inset = if drawn == 0 { 0.0 } else { ((width - 8.0 - buttons_width) / 2.0).max(0.0).floor() };
@@ -932,7 +947,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 }
             }
             let mut button_x = bx;
-            for (c, button_width) in shown.iter().zip(button_widths.iter().copied()).take(drawn) {
+            for (c, button_width) in large.iter().zip(button_widths.iter().copied()).take(drawn) {
                 // Only the family's default pin follows the part's choice. Explicitly pinned
                 // variants remain exact commands, including in customised toolbars.
                 let family = crate::sketch_families::family(c.id).filter(|f| sketch_create && f.commands.first().copied() == Some(c.id));
@@ -982,11 +997,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 icons::paint_icon(&painter, icon_rect, icon, if info.enabled { 1.0 } else { 0.35 });
                 let tr_label = app.tr_label(selected.label).to_string();
                 resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled() && info.enabled, &tr_label));
-                let tip = match &info.disabled_reason {
-                    Some(why) => format!("{}\n{why}", tr_label),
-                    None => format!("{}{}", tr_label, selected.shortcut.map(|k| format!("  ({k})")).unwrap_or_default()),
-                };
-                if resp.on_hover_text(tip).clicked() && info.enabled {
+                if ribbon_tooltip(app, resp, selected, info.disabled_reason.as_deref()).clicked() && info.enabled {
                     let id = selected.id;
                     app.start(id);
                 }
@@ -1010,6 +1021,54 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     let color = if info.enabled { t.text } else { t.text_dim };
                     let galley = ribbon_button_galley(&painter, label, whole.width() - BUTTON_LABEL_PADDING, color);
                     painter.galley(pos2(whole.center().x, whole.top() + 32.0), galley, t.text);
+                }
+            }
+            if !collapsed {
+                for c in &gallery {
+                    let index = crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).unwrap_or(0);
+                    let cell =
+                        Rect::from_min_size(pos2(button_x + (index % 3) as f32 * 36.0, top + 2.0 + (index / 3) as f32 * 32.0), vec2(32.0, 28.0));
+                    let info = c.info(&app.session);
+                    let resp = ui.interact(cell, ui.id().with(("cmd", c.id)), Sense::click_and_drag());
+                    let active = running.as_deref() == Some(c.id);
+                    painter.rect(
+                        cell,
+                        4.0,
+                        if active {
+                            t.panel.lerp_to_gamma(command_accent(c.icon), 0.18)
+                        } else if resp.hovered() && info.enabled {
+                            t.hover
+                        } else {
+                            t.panel
+                        },
+                        Stroke::new(1.0, if active { command_accent(c.icon) } else { t.border }),
+                        egui::StrokeKind::Inside,
+                    );
+                    icons::paint_icon(
+                        &painter,
+                        Rect::from_center_size(cell.center(), vec2(22.0, 22.0)),
+                        c.icon,
+                        if info.enabled { 1.0 } else { 0.35 },
+                    );
+                    for prefix in ["toolbar", "button", "ribbon:constraint"] {
+                        crate::scenario::publish_handle(&format!("{prefix}:{}", c.id), cell.center());
+                        crate::scenario::publish_rect(&format!("{prefix}:{}", c.id), cell);
+                    }
+                    resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, info.enabled, app.tr_label(c.label)));
+                    if resp.drag_started() {
+                        resp.dnd_set_drag_payload(ToolbarDrag { id: c.id, from_menu: false });
+                    }
+                    if let Some(d) = resp.dnd_release_payload::<ToolbarDrag>()
+                        && d.id != c.id
+                    {
+                        drop = Some((d.id, *panel, Some(c.id)));
+                    }
+                    if resp.secondary_clicked() {
+                        menu = Some((resp.interact_pointer_pos().unwrap_or(cell.left_bottom()), c.id));
+                    }
+                    if ribbon_tooltip(app, resp, c, info.disabled_reason.as_deref()).clicked() && info.enabled {
+                        app.start(c.id);
+                    }
                 }
             }
             // A 20 px label row is also the section's existing command-list button.
@@ -1063,7 +1122,8 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             if open {
                 let cmds = if collapsed { menu_commands(&cmds, &shown) } else { cmds.clone() };
                 let area = crate::frame::area(popup_id).fixed_pos(lr.left_bottom()).order(egui::Order::Foreground).show(ui.ctx(), |ui| {
-                    egui::Frame::popup(ui.style()).show(ui, |ui| {
+                    section_frame(ui).show(ui, |ui| {
+                        ui.spacing_mut().item_spacing.y = 0.0;
                         ui.set_min_width(200.0);
                         if *panel == "SELECT" {
                             selection_filter(app, ui);
@@ -1072,9 +1132,13 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         }
                         if sketch_create {
                             sketch_create_menu(app, ui, &cmds, &mut menu, &mut toggle);
+                            section_footer(ui);
                             return;
                         }
+                        let grouped = crate::workspace::grouped_commands(&tab, panel, &cmds);
+                        let cmds: Vec<_> = grouped.iter().map(|(_, c)| *c).collect();
                         let row_w = dropdown_width(app, ui, &cmds);
+                        ui.set_width(row_w);
                         // Up and Down move the keyboard focus through the enabled rows (from none
                         // focused: the first or the last), instead of egui's own spatial move.
                         let (down, up) = ui.input(|i| (i.key_pressed(egui::Key::ArrowDown), i.key_pressed(egui::Key::ArrowUp)));
@@ -1099,9 +1163,12 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         // The rows scroll when the drop-down would run past the window's bottom.
                         // `min_scrolled_height` lets the rows grow past the size the area kept from
                         // an earlier, shorter list (#874); they still shrink to fit their content.
-                        let room = (ui.ctx().content_rect().bottom() - ui.cursor().top() - 12.0).max(ROW_H * 3.0);
+                        let room = (ui.ctx().content_rect().bottom() - ui.cursor().top() - 64.0).max(ROW_H * 3.0);
                         egui::ScrollArea::vertical().id_salt("panel_menu_rows").max_height(room).min_scrolled_height(room).show(ui, |ui| {
-                            for c in &cmds {
+                            for (heading, c) in &grouped {
+                                if let Some(heading) = heading {
+                                    section_heading(ui, heading, row_w);
+                                }
                                 let pinned = crate::toolbar_custom::pinned_on(app, &tab, c.id).is_some();
                                 match dropdown_row(app, ui, c, row_w, pinned) {
                                     RowAction::None => {}
@@ -1114,6 +1181,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                                 }
                             }
                         });
+                        section_footer(ui);
                     });
                 });
                 popup_rect = Some(area.response.rect);
@@ -1262,11 +1330,77 @@ enum RowAction {
     TogglePin,
 }
 
-const ROW_H: f32 = 24.0;
+const ROW_H: f32 = 30.0;
 
-/// The id of a drop-down row (for keyboard focus).
-/// A drop-down row's id, the same inside and outside the rows' scroll area (one drop-down is
-/// open at a time).
+const CONSTRAINT_GRID_WIDTH: f32 = 104.0;
+
+/// Registry parameter syntax is not a user-facing description. Reuse existing catalog prose
+/// where present; other commands intentionally show only their name and registered shortcut.
+fn ribbon_tooltip(app: &SolveApp, response: egui::Response, command: &solidcraft_engine::CommandSpec, disabled: Option<&str>) -> egui::Response {
+    response.on_hover_ui(|ui| {
+        let t = Tokens::get();
+        let name = app.tr_label(command.label);
+        let name_width = ui.painter().layout_no_wrap(name.to_string(), FontId::proportional(14.0), t.text).size().x;
+        let key_width = command
+            .shortcut
+            .map(|key| ui.painter().layout_no_wrap(key.to_string(), FontId::monospace(12.0), t.text_dim).size().x + 24.0)
+            .unwrap_or(0.0);
+        ui.set_width(280.0_f32.max(name_width + key_width + 12.0));
+        ui.horizontal(|ui| {
+            let (rect, _) = ui.allocate_exact_size(vec2(name_width, 20.0), Sense::hover());
+            ribbon_text(ui, rect.center(), name, 14.0, t.text, true);
+            if let Some(key) = command.shortcut {
+                ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                    egui::Frame::new()
+                        .fill(t.panel_header)
+                        .stroke(Stroke::new(1.0, t.border))
+                        .corner_radius(3.0)
+                        .inner_margin(egui::Margin::symmetric(5, 1))
+                        .show(ui, |ui| {
+                            ui.label(egui::RichText::new(key).monospace().color(t.text_dim));
+                        });
+                });
+            }
+        });
+        let description = match command.id {
+            "render.scene" => Some(app.tr("render.preview_help")),
+            "render.start" => Some(app.tr("render.image_help")),
+            _ => None,
+        };
+        if let Some(description) = description {
+            ui.add(egui::Label::new(description).wrap());
+        }
+        if let Some(reason) = disabled {
+            ui.add(egui::Label::new(egui::RichText::new(reason).color(t.text_dim)).wrap());
+        }
+    })
+}
+
+fn section_frame(ui: &egui::Ui) -> egui::Frame {
+    let t = Tokens::get();
+    egui::Frame::popup(ui.style()).fill(t.panel).stroke(Stroke::new(1.0, t.border)).corner_radius(8.0)
+}
+
+fn section_heading(ui: &mut egui::Ui, label: &str, width: f32) {
+    let t = Tokens::get();
+    let (rect, _) = ui.allocate_exact_size(vec2(width, 24.0), Sense::hover());
+    ui.painter().text(
+        rect.left_center() + vec2(6.0, 0.0),
+        Align2::LEFT_CENTER,
+        crate::i18n::tr_label(label).to_uppercase(),
+        FontId::proportional(11.0),
+        t.text_dim,
+    );
+}
+
+fn section_footer(ui: &mut egui::Ui) {
+    ui.separator();
+    ui.add_space(4.0);
+    ui.add(egui::Label::new(egui::RichText::new(crate::i18n::tr("ui.ribbon_pin_footer")).size(11.0).color(Tokens::get().text_dim)).wrap());
+    ui.add_space(4.0);
+}
+
+/// Stable row id inside and outside the scrolling list, for keyboard focus.
 fn dropdown_row_id(id: &str) -> egui::Id {
     egui::Id::new(("dropdown_row", id))
 }
@@ -1278,8 +1412,11 @@ fn dropdown_width(app: &SolveApp, ui: &egui::Ui, cmds: &[&'static solidcraft_eng
     cmds.iter()
         .map(|c| {
             let label = ui.painter().layout_no_wrap(app.tr_label(c.label).to_string(), font.clone(), t.text).size().x;
-            let key = c.shortcut.map(|k| ui.painter().layout_no_wrap(k.to_string(), font.clone(), t.text).size().x + 24.0).unwrap_or(0.0);
-            6.0 + 18.0 + 8.0 + label + key + 30.0
+            let key = c
+                .shortcut
+                .map(|k| ui.painter().layout_no_wrap(k.to_string(), FontId::monospace(t.font_button), t.text).size().x + 24.0)
+                .unwrap_or(0.0);
+            6.0 + 20.0 + 8.0 + label + key + 30.0
         })
         .fold(200.0, f32::max)
 }
@@ -1322,11 +1459,11 @@ fn dropdown_row(app: &SolveApp, ui: &mut egui::Ui, c: &'static solidcraft_engine
     } else {
         (t.border, t.panel_header, t.border, t.text_dim)
     };
-    let ir = Rect::from_center_size(pos2(rect.left() + 6.0 + 9.0, rect.center().y), vec2(18.0, 18.0));
+    let ir = Rect::from_center_size(pos2(rect.left() + 6.0 + 10.0, rect.center().y), vec2(20.0, 20.0));
     icons::paint(p, ir, c.icon, ink, fill, acc);
     p.text(pos2(ir.right() + 8.0, rect.center().y), Align2::LEFT_CENTER, &label, FontId::proportional(t.font_button), text);
     if let Some(k) = c.shortcut {
-        p.text(pos2(pr.left() - 4.0, rect.center().y), Align2::RIGHT_CENTER, k, FontId::proportional(t.font_button), t.text_dim);
+        p.text(pos2(pr.left() - 4.0, rect.center().y), Align2::RIGHT_CENTER, k, FontId::monospace(t.font_button), t.text_dim);
     }
     if pointer_on || resp.has_focus() {
         if pin.hovered() {
@@ -1360,7 +1497,7 @@ fn sketch_create_menu(
     menu: &mut Option<(egui::Pos2, &'static str)>,
     toggle: &mut Option<&'static str>,
 ) {
-    let room = (ui.ctx().content_rect().bottom() - ui.cursor().top() - 12.0).max(ROW_H * 3.0);
+    let room = (ui.ctx().content_rect().bottom() - ui.cursor().top() - 64.0).max(ROW_H * 3.0);
     egui::ScrollArea::vertical().id_salt("sketch_create_rows").max_height(room).show(ui, |ui| {
         for f in crate::sketch_families::FAMILIES {
             let variants: Vec<_> = f.commands.iter().filter_map(|id| cmds.iter().find(|c| c.id == *id).copied()).collect();
@@ -2174,5 +2311,44 @@ mod ribbon_label_tests {
             assert!(lines[0].ends_with('…'));
         });
         output.textures_delta.clear();
+    }
+}
+
+#[cfg(test)]
+mod ribbon_gallery_tests {
+    use super::*;
+    use crate::scenario::{Harness, rect_of};
+
+    #[test]
+    fn constraint_gallery_preserves_button_handles_order_and_pin_actions() {
+        let mut h = Harness::new();
+        h.call("ui.resize", json!({"width":1800,"height":900}));
+        h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
+        h.frames(3);
+        let dimension = rect_of("button:sketch.dimension").unwrap();
+        let mut cells = Vec::new();
+        for id in crate::workspace::CONSTRAINT_GALLERY {
+            let cell = rect_of(&format!("ribbon:constraint:{id}")).unwrap();
+            assert_eq!(cell.size(), vec2(32.0, 28.0));
+            assert_eq!(rect_of(&format!("button:{id}")), Some(cell));
+            assert!(cell.left() > dimension.right());
+            cells.push(cell);
+        }
+        for row in cells.chunks(3) {
+            assert!(row.windows(2).all(|pair| pair[0].right() < pair[1].left() && pair[0].top() == pair[1].top()));
+        }
+        for col in 0..3 {
+            assert_eq!(cells[col].left(), cells[col + 3].left());
+            assert!(cells[col].bottom() < cells[col + 3].top());
+        }
+        h.step(&json!({"click":{"handle":"ribbon:constraint:sketch.constraint.equal"}})).unwrap();
+        assert_eq!(h.app.tool.as_ref().map(|t| t.cmd), Some("sketch.constraint.equal"));
+        h.step(&json!({"key":"Escape"})).unwrap();
+        crate::toolbar_custom::remove(&mut h.app, "SKETCH", "sketch.constraint.equal");
+        h.frames(2);
+        assert!(rect_of("ribbon:constraint:sketch.constraint.equal").is_none());
+        crate::toolbar_custom::pin(&mut h.app, "SKETCH", "sketch.constraint.equal").unwrap();
+        h.frames(2);
+        assert!(rect_of("ribbon:constraint:sketch.constraint.equal").is_some());
     }
 }
