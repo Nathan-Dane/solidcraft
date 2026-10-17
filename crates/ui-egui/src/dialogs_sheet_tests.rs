@@ -11,7 +11,9 @@ fn plate() -> SolveApp {
     s.execute("sketch.create", &json!({"plane": "XY", "name": "Base"})).unwrap();
     s.execute("sketch.rectangle.two_point", &json!({"p0": [0, 0], "p1": [100, 60]})).unwrap();
     s.execute("sketch.finish", &json!({})).unwrap();
-    SolveApp::new(s, Services::default())
+    let mut app = SolveApp::new(s, Services::default());
+    app.ui.layout = crate::shell::LayoutMode::Docked;
+    app
 }
 
 fn run_all(app: &mut SolveApp, c: Vec<(String, Value)>) {
@@ -265,6 +267,7 @@ fn coincident_top_and_bottom_pocket_depths_share_a_readable_annotation() {
 #[test]
 fn pocket_export_button_uses_the_picker_and_preserves_depth_layers() {
     let mut h = crate::scenario::Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     for (command, params) in [
         ("sketch.create", json!({"plane":"XY","name":"Base"})),
         ("sketch.rectangle.two_point", json!({"p0":[0,0],"p1":[100,60]})),
@@ -325,6 +328,7 @@ fn bend_table_picker_writes_the_current_body() {
 #[test]
 fn rules_dialog_picks_the_corner_relief_shape() {
     let mut h = crate::scenario::Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app
         .run(
             "sheet.manage_rules",
@@ -375,6 +379,7 @@ fn rules_dialog_picks_the_corner_relief_shape() {
 #[test]
 fn flange_dialog_picks_a_corner_relief_of_its_own() {
     let mut h = crate::scenario::Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app
         .run(
             "sheet.manage_rules",

@@ -94,7 +94,7 @@ const PANEL_GAP: f32 = 1.0;
 pub const TAB_ROW_HEIGHT: f32 = 30.0;
 pub const GROUP_HEIGHT: f32 = 86.0;
 pub const RIBBON_HEIGHT: f32 = TAB_ROW_HEIGHT + GROUP_HEIGHT + 1.0;
-const WORKSPACE_WIDTH: f32 = 88.0;
+pub(crate) const WORKSPACE_WIDTH: f32 = 88.0;
 const BUTTON_HEIGHT: f32 = 60.0;
 const BUTTON_GAP: f32 = 3.0;
 const BUTTON_MIN_WIDTH: f32 = 54.0;
@@ -881,21 +881,43 @@ fn selected_ink(accent: &crate::theme::TabAccent) -> Color32 {
 pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     crate::workspace::sync_context(app);
-    egui::Panel::top("sc_toolbar").exact_size(RIBBON_HEIGHT).show_separator_line(false).frame(egui::Frame::NONE.fill(t.toolbar)).show(ui, |ui| {
-        let r = ui.max_rect();
+    let floating = app.ui.layout == crate::shell::LayoutMode::Floating;
+    let cards = crate::shell::Cards::new(ui.available_rect_before_wrap(), app.ui.layout);
+    let height = if floating { cards.bottom - ui.available_rect_before_wrap().top() } else { RIBBON_HEIGHT };
+    let fill = if floating { Color32::TRANSPARENT } else { t.toolbar };
+    egui::Panel::top("sc_toolbar").exact_size(height).show_separator_line(false).frame(egui::Frame::NONE.fill(fill)).show(ui, |ui| {
+        let r = if floating { Rect::from_min_max(cards.workspace.min, cards.ribbon.max) } else { ui.max_rect() };
+        let ws = if floating { cards.workspace } else { Rect::from_min_size(r.left_top(), vec2(WORKSPACE_WIDTH, RIBBON_HEIGHT - 1.0)) };
+        let ribbon_left = if floating { cards.ribbon.left() } else { ws.right() + 1.0 };
+        if floating {
+            for card in [ws, cards.ribbon] {
+                let frame = egui::Frame::NONE.fill(t.toolbar).stroke(Stroke::new(1.0, t.border)).corner_radius(t.radius_lg).shadow(t.shell_shadow());
+                ui.painter().add(frame.paint(card));
+                // Blank card space owns clicks as well as its buttons.
+                ui.interact(card, ui.id().with(("shell_card", card.left().to_bits())), Sense::click_and_drag());
+            }
+            crate::scenario::publish_rect("ribbon:card", cards.ribbon);
+        }
         let painter = ui.painter().clone();
-        let bg = ui.interact(r, ui.id().with("toolbar_bg"), Sense::click());
+        let bg = ui.interact(if floating { cards.ribbon } else { r }, ui.id().with("toolbar_bg"), Sense::click());
         if bg.secondary_clicked() {
             crate::context_menu::open_for(app, bg.interact_pointer_pos().unwrap_or(r.left_bottom()), crate::context_menu::Target::Toolbar);
         }
-        let ws = Rect::from_min_size(r.left_top(), vec2(WORKSPACE_WIDTH, RIBBON_HEIGHT - 1.0));
         let wresp = ui.interact(ws, ui.id().with("workspace_switcher"), Sense::click());
         let open = app.viewport.context_menu.is_some() && app.menu.target == crate::context_menu::Target::Workspace;
         if wresp.hovered() || open {
-            painter.rect_filled(ws, 0.0, t.hover);
+            painter.rect_filled(ws.shrink(if floating { 1.0 } else { 0.0 }), if floating { t.radius_lg } else { 0 }, t.hover);
         }
-        painter.rect_filled(Rect::from_min_size(ws.left_top(), vec2(WORKSPACE_WIDTH, 3.0)), 0.0, t.accent);
-        painter.line_segment([ws.right_top(), ws.right_bottom()], Stroke::new(1.0, t.border));
+        // Keep the accent straight while leaving the floating card's top corners round.
+        let accent_inset = if floating { f32::from(t.radius_lg) } else { 0.0 };
+        painter.rect_filled(
+            Rect::from_min_size(ws.left_top() + vec2(accent_inset, 0.0), vec2((ws.width() - 2.0 * accent_inset).max(0.0), t.space_3)),
+            0.0,
+            t.accent,
+        );
+        if !floating {
+            painter.line_segment([ws.right_top(), ws.right_bottom()], Stroke::new(1.0, t.border));
+        }
         let render = crate::render_workspace::active(app);
         let workspace_icon = if render { "ws_render" } else { "ws_design" };
         icons::paint_icon(&painter, Rect::from_center_size(pos2(ws.center().x, ws.top() + 39.0), vec2(30.0, 30.0)), workspace_icon, 1.0);
@@ -911,7 +933,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         crate::scenario::publish_rect("workspace_switcher", ws);
         crate::scenario::publish_rect("ribbon:workspace", ws);
         crate::scenario::publish_handle("ribbon:workspace", ws.center());
-        ribbon_tabs(app, ui, Rect::from_min_max(pos2(ws.right() + 1.0, r.top()), pos2(r.right(), r.top() + TAB_ROW_HEIGHT)));
+        ribbon_tabs(app, ui, Rect::from_min_max(pos2(ribbon_left, r.top()), pos2(r.right(), r.top() + TAB_ROW_HEIGHT)));
         // Panels.
         let tab = app.ui.tab.clone();
         // The command whose tool or dialog is open right now, shown pressed in the toolbar.
@@ -922,7 +944,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             (None, Some(_)) => app.last_command.as_ref().map(|(id, _)| id.clone()),
             _ => None,
         };
-        let mut px = r.left() + WORKSPACE_WIDTH + 1.0;
+        let mut px = ribbon_left;
         let top = r.top() + TAB_ROW_HEIGHT;
         let mut drop: Option<(&'static str, &'static str, Option<&'static str>)> = None;
         let mut menu: Option<(egui::Pos2, &'static str)> = None;
@@ -1324,7 +1346,9 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 response.response.on_hover_text(crate::i18n::tr_label("More toolbar panels"));
             });
         }
-        painter.line_segment([pos2(r.left(), r.bottom() - 0.5), pos2(r.right(), r.bottom() - 0.5)], Stroke::new(1.0, t.border));
+        if !floating {
+            painter.line_segment([pos2(r.left(), r.bottom() - 0.5), pos2(r.right(), r.bottom() - 0.5)], Stroke::new(1.0, t.border));
+        }
         // Dragging a command: its icon follows the pointer; a toolbar button dragged off the
         // toolbar (or into the open drop-down) shows it will be removed.
         let pointer = ui.input(|i| i.pointer.latest_pos());
@@ -2292,6 +2316,7 @@ mod dropdown_tests {
     fn a_tall_drop_down_scrolls_inside_a_short_window() {
         let mut h = crate::scenario::Harness::new();
         h.app.home.open = false;
+        h.call("ui.set", json!({"layout":"docked"}));
         h.call("ui.resize", json!({"width":1200,"height":320}));
         h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
         h.frames(4);

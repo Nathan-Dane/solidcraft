@@ -239,7 +239,7 @@ fn width(vp: egui::Rect) -> f32 {
 
 /// The viewport the palette docks into.
 fn viewport(app: &SolveApp, ctx: &egui::Context) -> egui::Rect {
-    app.viewport.rect.unwrap_or_else(|| ctx.content_rect())
+    crate::shell::content_rect(app, app.viewport.rect.unwrap_or_else(|| ctx.content_rect()))
 }
 
 /// Is a sketch being edited? That is the palette's own condition.
@@ -349,7 +349,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     let vp = viewport(app, ctx);
     let bottom = vp.bottom().min(ctx.content_rect().bottom()) - 8.0;
     // Prefer the space below Axis View, but reclaim it on short/HiDPI views.
-    let top = (vp.top() + crate::viewport::AXIS_VIEW_CLEARANCE).min((bottom - 360.0).max(vp.top()));
+    let top = crate::shell::panel_top(app, vp, bottom, crate::frame::Side::Right);
     let anchor = egui::pos2(vp.right(), top);
     let frame = crate::frame::dock_frame(ctx, crate::frame::Side::Right);
     let shown = |k: &str| match k {

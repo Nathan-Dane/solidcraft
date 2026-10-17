@@ -247,6 +247,7 @@ mod tests {
         use serde_json::json;
         for (width, height, scale) in [(1400.0, 900.0, 1.0), (1400.0, 950.0, 2.0)] {
             let mut h = Harness::new();
+            h.call("ui.set", json!({"layout":"docked"}));
             h.app.preferences.ui_scale = scale;
             h.call("ui.resize", json!({"width":width / scale,"height":height / scale}));
             h.app.run("sketch.create", json!({"plane":"XY","name":"Base"})).unwrap();
@@ -293,6 +294,7 @@ mod tests {
         use crate::scenario::Harness;
         use serde_json::json;
         let mut h = Harness::new();
+        h.call("ui.set", json!({"layout":"docked"}));
         h.call("ui.resize", json!({"width":1400.0,"height":900.0}));
         h.step(&json!({"start":"sketch.create"})).unwrap();
         h.frames(6);

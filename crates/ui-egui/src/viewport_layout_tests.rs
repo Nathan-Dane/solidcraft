@@ -42,6 +42,7 @@ fn thin_rotated_bounds_fit_using_the_original_full_projection() {
 #[test]
 fn measured_palette_fit_exposes_endpoints_and_layout_changes_preserve_manual_view() {
     let mut h = Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
     h.app.run("sketch.line", json!({"points":[[0,0],[20,0]]})).unwrap();
     h.call("ui.view", json!({"view":"top"}));
@@ -99,6 +100,7 @@ fn hostile_or_empty_fit_keeps_the_existing_camera_valid() {
 #[test]
 fn fit_home_animation_and_manual_takeover_use_one_layout_solution() {
     let mut h = Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
     h.app.run("sketch.circle.center", json!({"center":[0,0],"radius":1})).unwrap();
     h.settle();
@@ -126,6 +128,7 @@ fn measured_navigator_targets_home_and_drag_work_beside_the_palette_at_hidpi() {
     for style in crate::prefs::NavigatorStyle::ALL {
         for (scale, width, height) in [(1.0, 900.0, 720.0), (2.0, 700.0, 475.0), (2.0, 700.0, 385.0)] {
             let mut h = Harness::new();
+            h.call("ui.set", json!({"layout":"docked"}));
             h.call("ui.prefs", json!({"navigator_style":style}));
             h.app.preferences.look_at_anim = false;
             h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
@@ -202,6 +205,7 @@ fn measured_navigator_targets_home_and_drag_work_beside_the_palette_at_hidpi() {
 #[test]
 fn immediate_standard_view_cancels_fit_before_the_measured_frame() {
     let mut h = Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app.run("solid.box", json!({"length":40,"width":30,"height":20})).unwrap();
     let baseline = h.app.session.doc.to_json();
     let undo = h.app.session.undo.len();
@@ -246,6 +250,7 @@ fn navigation_anchors_ignore_positioned_resized_and_covering_dialogs() {
 #[test]
 fn opening_different_command_dialogs_keeps_published_navigation_positions() {
     let mut h = Harness::new();
+    h.call("ui.set", json!({"layout":"docked"}));
     h.app.run("solid.box", json!({"length":40,"width":30,"height":20})).unwrap();
     h.settle();
     let axis = crate::scenario::rect_of("axis_view:outer").unwrap();
