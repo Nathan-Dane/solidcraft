@@ -1200,7 +1200,13 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 }
             }
             // A 20 px label row is also the section's existing command-list button.
-            let lr = Rect::from_min_size(pos2(px + 3.0, top + GROUP_HEIGHT - SECTION_HEIGHT - 3.0), vec2((width - 6.0).max(0.0), SECTION_HEIGHT));
+            // The group area ends 1 px above the card's bottom edge, so the highlight is
+            // RIBBON_TAB_INSET from the card's bottom edge (and from its left edge in the first
+            // section): its corner is concentric with the card's.
+            let lr = Rect::from_min_size(
+                pos2(px + RIBBON_TAB_INSET, top + GROUP_HEIGHT - SECTION_HEIGHT - (RIBBON_TAB_INSET - 1.0)),
+                vec2((width - 2.0 * RIBBON_TAB_INSET).max(0.0), SECTION_HEIGHT),
+            );
             let lresp = ui.interact(lr, ui.id().with(("panel", panel)), Sense::click());
             crate::scenario::publish_handle(&format!("panel:{tab}:{panel}"), lr.center());
             crate::scenario::publish_handle(&format!("ribbon:section:{tab}:{panel}"), lr.center());
