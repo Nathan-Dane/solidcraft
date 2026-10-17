@@ -4,7 +4,7 @@
 //! Closing a design with unsaved changes asks first, and so does quitting: one "save changes?"
 //! per design with unsaved changes ([`request_quit`]).
 
-use egui::{Align2, FontId, Rect, Sense, Stroke, pos2, vec2};
+use egui::{Align2, FontId, Rect, Sense, pos2, vec2};
 use serde_json::{Value, json};
 use solidcraft_engine::Session;
 use solidcraft_engine::render::Camera;
@@ -417,11 +417,8 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         if show_close && (xresp.hovered() || xresp.has_focus()) {
             ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
-        let c = xr.center();
-        let s = Stroke::new(1.3, t.app_bar_text);
         if show_close {
-            ui.painter().line_segment([c - vec2(3.5, 3.5), c + vec2(3.5, 3.5)], s);
-            ui.painter().line_segment([c - vec2(3.5, -3.5), c + vec2(3.5, -3.5)], s);
+            crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(xr.center(), vec2(14.0, 14.0)), "close", 1.0);
         }
         if xresp.on_hover_text("Close").clicked() {
             shut = Some(i);
@@ -471,10 +468,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     if presp.hovered() {
         ui.painter().rect_filled(pr, 4.0, t.app_bar_hover_button);
     }
-    let c = pr.center();
-    let s = Stroke::new(1.6, t.app_bar_text);
-    ui.painter().line_segment([c - vec2(6.0, 0.0), c + vec2(6.0, 0.0)], s);
-    ui.painter().line_segment([c - vec2(0.0, 6.0), c + vec2(0.0, 6.0)], s);
+    crate::icons::paint_app_bar(ui.painter(), Rect::from_center_size(pr.center(), vec2(16.0, 16.0)), "plus", 1.0);
     // A file loading into the window keeps the tabs as they are (dragging still moves it).
     let idle = !app.file_load.busy();
     if presp.on_hover_text("New Design (Ctrl+N)").clicked() && idle {
