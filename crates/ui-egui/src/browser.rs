@@ -360,8 +360,8 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
     // Fold arrow.
     if let Some(open) = row.fold {
         let ar = Rect::from_center_size(pos2(x + 6.0, cy), vec2(12.0, 12.0));
-        let ink = if hover_on == 1 { t.text } else { t.text_dim };
-        crate::icons::glyphs::disclosure(ui.painter(), ar, open, ink);
+        let strength = if hover_on == 1 { 1.0 } else { 0.7 };
+        icons::paint_icon(ui.painter(), ar, if open { "disclosure_open" } else { "disclosure_closed" }, strength);
         out.fold = resp.clicked() && click_on == 1;
         crate::scenario::publish_handle(&format!("fold:{}", row.label), fold_r.center());
     }
@@ -369,10 +369,8 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
     // Eye.
     if let Some(vis) = row.eye {
         let er = Rect::from_center_size(pos2(x + 8.0, cy), vec2(15.0, 15.0));
-        icons::paint(ui.painter(), er, "eye", if vis { ink } else { t.border }, t.icon_fill, t.accent);
-        if !vis {
-            ui.painter().line_segment([er.left_bottom() + vec2(2.0, -2.0), er.right_top() + vec2(-2.0, 2.0)], Stroke::new(1.4, t.text_dim));
-        }
+        // The same monochrome eye, struck through with a punched-out outline when hidden.
+        icons::paint_icon(ui.painter(), er, if vis { "eye" } else { "suppress" }, if vis { 0.85 } else { 0.55 });
         out.eye = resp.clicked() && click_on == 2;
         crate::scenario::publish_handle(&format!("eye:{}", row.label), er.center());
     }
