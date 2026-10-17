@@ -1396,6 +1396,9 @@ impl SolveApp {
             let blocked = ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| shell::covered(self, p));
             let mut viewport_ui = ui.new_child(egui::UiBuilder::new().max_rect(full).id_salt("floating_viewport"));
             if blocked {
+                // Disabled only to shield the scene from input under a card or menu; it must
+                // not fade, or the whole viewport dims whenever the pointer is over the shell.
+                viewport_ui.visuals_mut().disabled_alpha = 1.0;
                 viewport_ui.disable();
             }
             self.show_workspace(&mut viewport_ui);
