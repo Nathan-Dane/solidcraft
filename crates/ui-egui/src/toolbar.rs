@@ -754,7 +754,8 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
                         if contextual {
                             t.on_accent
                         } else if active {
-                            accent.color
+                            // On the dark ribbon the selected label is a lighter tint of the accent.
+                            if crate::theme::is_dark() { accent.color.lerp_to_gamma(Color32::WHITE, 0.5) } else { accent.color }
                         } else {
                             t.text
                         },
@@ -1257,7 +1258,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
 /// A short divider between the brand, file actions and document tabs.
 fn app_bar_separator(ui: &egui::Ui, bar: Rect, x: f32, group: &str) {
     let rect = Rect::from_center_size(pos2(x, bar.center().y), vec2(1.0, 20.0));
-    ui.painter().line_segment([rect.center_top(), rect.center_bottom()], Stroke::new(1.0, Tokens::get().app_bar_separator));
+    ui.painter().line_segment([rect.center_top(), rect.center_bottom()], Stroke::new(1.0, Tokens::get().app_bar.lerp_to_gamma(Tokens::get().app_bar_separator, 0.4)));
     crate::scenario::publish_rect(&format!("titlebar:separator:{group}"), rect);
 }
 

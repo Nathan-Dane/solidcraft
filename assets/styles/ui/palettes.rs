@@ -170,7 +170,7 @@ impl Tokens {
     pub const fn dark() -> Tokens {
         let mut t = Tokens::light();
         t.app_bar = Color32::from_rgb(28, 31, 38);
-        t.toolbar = Color32::from_rgb(37, 41, 49);
+        t.toolbar = Color32::from_rgb(39, 43, 52);
         t.panel = Color32::from_rgb(39, 43, 52);
         t.panel_header = Color32::from_rgb(47, 52, 62);
         t.border = Color32::from_rgb(63, 69, 82);
