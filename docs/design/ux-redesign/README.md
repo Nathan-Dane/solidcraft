@@ -13,14 +13,14 @@ a ribbon whose tabs are ordered by task instead of by geometry type.
 Redo, the design tabs (each with a close button), then the agent status, Settings, Help and
 Report a bug. There is no search box here, no dark-mode toggle and no status bar.
 
-**Ribbon**: a workspace card at the left (Design, Animate, then Render and Drawing when they
-exist), tabs **Model, Surface, Assemble, Insert, Inspect, Manage, View**, and a small command
+**Ribbon**: a workspace card at the left (Design and Render now; Animation, Simulation,
+Manufacture and Drawing as they arrive), tabs **Model, Surface, Assemble, Insert, Inspect, Manage, View**, and a small command
 search at the right end of the tab row (also the S key). Each section shows one to four promoted
 commands. Its label (▾) opens a list of every command in the section, and hovering a row pins it
 to the ribbon, as in the current app. Tooltips show the shortcut and modifier keys.
 
 **Contextual tabs** appear when the design needs them and are selected automatically:
-**Sketch** while a sketch is open, **Sheet Metal** when the active body has a sheet-metal rule.
+**Sketch** while a sketch is open (Create, Modify, Pattern, Constrain, Reference), **Sheet Metal** when the active body has a sheet-metal rule.
 Nothing is greyed out, and the other tabs stay available. Plastic features live in
 Model › Create ▾ and plastic rules in Manage, so there is no Plastic tab.
 
@@ -36,7 +36,7 @@ the ribbon tabs. The geometry types (Solid, Surface, Mesh) are tabs, not workspa
 
 | Board | What it shows |
 |---|---|
-| [Command map](command-map.png) | All 336 commands regrouped by task, and where today's panels go |
+| [Command map](command-map.png) | All 389 commands regrouped by task, and where today's panels go |
 | [Floating](model-floating.png) | Model tab with the ribbon, browser and dialog floating over the viewport, Modify list open |
 | [Compact](model-compact.png) | The same tab docked to the window edges (see below) |
 | [Sketch](sketch.png) | Sketch tab with Finish Sketch as its own ribbon group |
