@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Assistant</title>
+  <defs>
+    <mask id="assistant-dots" maskUnits="userSpaceOnUse" x="-32" y="-32" width="128" height="128">
+      <path d="M-32 -32L96 -32L96 96L-32 96Z" fill="white"/>
+      <circle cx="21" cy="29" r="3.6" fill="black"/>
+      <circle cx="32" cy="29" r="3.6" fill="black"/>
+      <circle cx="43" cy="29" r="3.6" fill="black"/>
+    </mask>
+  </defs>
+  <path d="M15 11.5L49 11.5Q55 11.5 55 17.5L55 40.5Q55 46.5 49 46.5L30 46.5L18 55L18 46.5L15 46.5Q9 46.5 9 40.5L9 17.5Q9 11.5 15 11.5Z" fill="currentColor" stroke="currentColor" stroke-width="3" stroke-linejoin="round" stroke-linecap="round" mask="url(#assistant-dots)"/>
+</svg>
