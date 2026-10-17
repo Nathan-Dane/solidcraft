@@ -2330,24 +2330,26 @@ mod dropdown_tests {
     /// reached with the arrow keys and comes into view.
     #[test]
     fn a_tall_drop_down_scrolls_inside_a_short_window() {
-        let mut h = crate::scenario::Harness::new();
-        h.app.home.open = false;
-        h.call("ui.set", json!({"layout":"docked"}));
-        h.call("ui.resize", json!({"width":1200,"height":320}));
-        h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
-        h.frames(4);
-        h.step(&json!({"click":{"handle":"panel:SKETCH:CREATE"}})).unwrap();
-        h.frames(4);
-        let menu = crate::scenario::rect_of("toolbar_dropdown").expect("the drop-down is open");
-        assert!(menu.bottom() <= 320.0, "the drop-down runs past the window: {menu:?}");
-        assert!(crate::scenario::handle_at("dropdown:sketch.text").is_some_and(|p| !menu.contains(p)), "Text starts below the fold");
-        // Up from no focus goes to the last enabled row; it scrolls into view.
-        h.step(&json!({"key":"ArrowUp"})).unwrap();
-        h.frames(10);
-        let hot = crate::scenario::handles("dropdown_hot:");
-        let [(_, at)] = hot.as_slice() else { panic!("one highlighted row: {hot:?}") };
-        let menu = crate::scenario::rect_of("toolbar_dropdown").unwrap();
-        assert!(menu.contains(*at), "the focused last row is out of view: {at:?} in {menu:?}");
+        for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+            let mut h = crate::scenario::Harness::new();
+            h.app.home.open = false;
+            h.call("ui.set", json!({"layout":mode}));
+            h.call("ui.resize", json!({"width":1200,"height":320}));
+            h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
+            h.frames(4);
+            h.step(&json!({"click":{"handle":"panel:SKETCH:CREATE"}})).unwrap();
+            h.frames(4);
+            let menu = crate::scenario::rect_of("toolbar_dropdown").expect("the drop-down is open");
+            assert!(menu.bottom() <= 320.0, "the drop-down runs past the window: {menu:?}");
+            assert!(crate::scenario::handle_at("dropdown:sketch.text").is_some_and(|p| !menu.contains(p)), "Text starts below the fold");
+            // Up from no focus goes to the last enabled row; it scrolls into view.
+            h.step(&json!({"key":"ArrowUp"})).unwrap();
+            h.frames(10);
+            let hot = crate::scenario::handles("dropdown_hot:");
+            let [(_, at)] = hot.as_slice() else { panic!("one highlighted row: {hot:?}") };
+            let menu = crate::scenario::rect_of("toolbar_dropdown").unwrap();
+            assert!(menu.contains(*at), "the focused last row is out of view: {at:?} in {menu:?}");
+        }
     }
 
     /// Every row of a drop-down is shown when the window has room, even after a shorter list was
