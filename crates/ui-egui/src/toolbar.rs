@@ -1017,14 +1017,16 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     app.start(id);
                 }
                 if let Some(f) = family {
-                    let ar = Rect::from_min_max(pos2(whole.left(), whole.top() + 32.0), whole.right_bottom());
+                    let ar = Rect::from_min_max(pos2(whole.left(), whole.top() + 30.0), pos2(whole.right(), whole.top() + 48.0));
                     let arrow = ui.interact(ar, ui.id().with(("family", f.label)), Sense::click());
                     crate::scenario::publish_handle(&format!("family:{}", f.label), ar.center());
                     if arrow.hovered() {
                         painter.rect_filled(ar, t.radius_sm, t.hover);
                     }
-                    ribbon_text(ui, ar.center() - vec2(4.0, 0.0), app.tr_label(f.label), 12.0, t.text, false);
-                    chevron(&painter, pos2(ar.right() - 6.0, ar.center().y + 0.5), t.text_dim);
+                    // The title sits on the same line as the other buttons' labels.
+                    let title_y = whole.top() + 39.0;
+                    ribbon_text(ui, pos2(ar.center().x - 4.0, title_y), app.tr_label(f.label), 12.0, t.text, false);
+                    chevron(&painter, pos2(ar.right() - 6.0, title_y + 0.5), t.text_dim);
                     arrow.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, app.tr_label(f.label)));
                     egui::Popup::menu(&arrow).show(|ui| {
                         let variants: Vec<_> = f.commands.iter().filter_map(|id| solidcraft_engine::find_command(id)).collect();
