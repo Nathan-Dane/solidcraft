@@ -126,8 +126,8 @@ fn help_x(report: Rect) -> f32 {
 /// the current language), otherwise just the icon.
 fn report_rect(bar: Rect, captions: f32, tabs_start: f32, label_width: f32) -> (Rect, bool) {
     let right = bar.right() - captions - if bar.width() < 640.0 { 8.0 } else { RIGHT_GROUP };
-    // Icon, text and a margin; never narrower than the English button.
-    let full = (REPORT_TEXT_X + label_width + 10.0).max(124.0);
+    // Icon, text and a margin that mirrors the icon side.
+    let full = REPORT_TEXT_X + label_width + 11.0;
     let labeled = right - CLUSTER_BUTTONS - tabs_start >= 216.0 + full;
     let width = if labeled { full } else { 28.0 };
     (Rect::from_min_size(pos2(right - width, bar.center().y - 13.0), vec2(width, 26.0)), labeled)
@@ -1814,7 +1814,7 @@ mod header_report_tests {
                         let help = Rect::from_center_size(pos2(help_x(report), APP_BAR_HEIGHT / 2.0), vec2(32.0, 32.0));
                         assert!(!report.intersects(prefs) && !report.intersects(help) && !help.intersects(prefs));
                         assert!(prefs.right() < help.left() && help.right() < report.left());
-                        let full = (REPORT_TEXT_X + label_width + 10.0).max(124.0);
+                        let full = REPORT_TEXT_X + label_width + 11.0;
                         assert_eq!(
                             labeled,
                             width - captions - if width < 640.0 { 8.0 } else { RIGHT_GROUP } - CLUSTER_BUTTONS - 354.0 >= 216.0 + full
@@ -1891,9 +1891,9 @@ mod header_report_tests {
             2.0 * (1400.0 - crate::titlebar::WIDTH - RIGHT_GROUP - center.x)
         };
         let (en, ru) = (width_in("en"), width_in("ru"));
-        assert!((en - 124.0).abs() < 0.5, "{en}");
-        // "Сообщить об ошибке" needs more than the English button's 124 px.
-        assert!(ru > 124.0 + 10.0, "{ru}");
+        assert!((en - 115.2).abs() < 0.5, "{en}");
+        // "Сообщить об ошибке" needs more than the English button's 115 px.
+        assert!(ru > en + 10.0, "{ru}");
     }
 
     #[test]
