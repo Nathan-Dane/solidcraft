@@ -201,6 +201,7 @@ impl Tokens {
         t.icons.axes[0] = t.triad[0];
         t.icons.axes[1] = t.triad[1];
         t.icons.access = [good, Color32::from_rgb(217, 102, 13)];
+        t.construction_geom = icon_primary(crate::icon_svg::CONSTRUCTION_RED_GREEN[dark as usize]);
         t.icons.draft = [good, Color32::from_rgb(242, 230, 153)];
         if dark {
             t.bend_up = Color32::from_rgb(110, 165, 255);
@@ -223,6 +224,7 @@ impl Tokens {
         t.analysis.hatch = true;
         t.preview_sketch = Color32::from_rgb(125, 180, 105);
         t.glyph_text = icon_primary(crate::icon_svg::CONSTRAINT_BLUE_YELLOW[dark as usize]);
+        t.construction_geom = icon_primary(crate::icon_svg::CONSTRUCTION_BLUE_YELLOW[dark as usize]);
         if dark {
             t.sketch_locked = Color32::from_rgb(140, 225, 110);
             t.box_crossing = Color32::from_rgb(240, 110, 170);

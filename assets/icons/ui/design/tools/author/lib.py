@@ -63,6 +63,7 @@ class Icon:
     def fill(s,d,c,rule=None):
         s.els.append('<path d="%s" fill="%s"%s/>'%(d,c,' fill-rule="evenodd"' if rule else '')); return s
     def stroke(s,d,c=INK,w=OW,fill=None,rule=None,dash=None):
+        if dash and c not in (GAP,A1,A2,A3): c=GUIDE
         s.els.append('<path d="%s" fill="%s" stroke="%s" stroke-width="%s" stroke-linejoin="round" stroke-linecap="round"%s%s/>'%(d,fill or 'none',c,f(w),' stroke-dasharray="%s"'%dash if dash else '',' fill-rule="evenodd"' if rule else '')); return s
     def dot(s,x,y,r,c):
         s.els.append('<circle cx="%s" cy="%s" r="%s" fill="%s"/>'%(f(x),f(y),f(r),c)); return s

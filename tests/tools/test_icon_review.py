@@ -1,6 +1,7 @@
 """Long-term discovery and acceptance behavior of the repository-owned review app."""
 import contextlib
 import json
+import re
 from pathlib import Path
 import shutil
 import socket
@@ -12,6 +13,7 @@ import tomllib
 import unittest
 import urllib.error
 import urllib.request
+import xml.etree.ElementTree as ET
 
 TOOLS = Path(__file__).resolve().parents[2] / 'assets/icons/ui/design/tools'
 SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><circle cx="32" cy="32" r="20" fill="currentColor"/></svg>'
@@ -40,8 +42,9 @@ def review_fixture():
                 data = response.read().decode()
                 return json.loads(data) if path == '/api/review' else data
         def post(state, final=None, notes=None, endpoint='/api/review', rev=None):
-            payload = {'base': state, 'final': state['final'] if final is None else final,
-                       'notes': state['notes'] if notes is None else notes, 'rev': rev or state['rev']}
+            payload = state if endpoint == '/api/palette' else {
+                'base': state, 'final': state['final'] if final is None else final,
+                'notes': state['notes'] if notes is None else notes, 'rev': rev or state['rev']}
             try:
                 with urllib.request.urlopen(urllib.request.Request(url + endpoint, data=json.dumps(payload).encode()), timeout=3) as response:
                     return json.load(response)
@@ -62,6 +65,116 @@ def review_fixture():
 
 
 class IconReviewTest(unittest.TestCase):
+    def test_inline_clips_and_masks_are_scoped_to_each_preview_and_dashes_use_guides(self):
+        with review_fixture() as (root, design, get, post):
+            for name in ('environment_map', 'new', 'draft', 'bounding_solid', 'extend'):
+                shutil.copy2(TOOLS.parent / f'svg/model/{name}.svg', design / f'svg/model/{name}.svg')
+            with (design / 'aliases.toml').open('a') as aliases:
+                aliases.write('surface_env={master="environment_map",accent="surface"}\n')
+            page = get('/')
+            fragments = re.findall(r'<svg\b.*?</svg>', page, re.S)
+            seen = set()
+            for svg in fragments:
+                ids = re.findall(r'\bid="([^"]+)"', svg)
+                self.assertTrue(seen.isdisjoint(ids), 'all theme/vision/alias previews need unique ids')
+                seen.update(ids)
+                for ref in re.findall(r'url\(#([^)]+)\)', svg): self.assertIn(ref, ids, 'clip or mask must belong to this SVG')
+            self.assertGreater(len(seen), 10)
+            for svg in fragments:
+                tree = ET.fromstring(svg)
+                mask_nodes = {id(node) for mask in tree.iter('{http://www.w3.org/2000/svg}mask') for node in mask.iter()}
+                for node in tree.iter():
+                    if not node.get('stroke-dasharray'): continue
+                    stroke = node.get('stroke', 'none')
+                    if stroke == 'none': continue
+                    if id(node) in mask_nodes and stroke == 'black': continue
+                    self.assertTrue(any(role in stroke for role in ('roles-guide-', 'active-3-')), stroke)
+                self.assertNotIn('var(--icon-palette-roles-gap-', svg)
+            self.assertIn('review-environment_map-off-dark-full-disc-env', page)
+            def card(icon): return page.split('data-id="' + icon + '"', 1)[1].split('<div class="meta">', 1)[0]
+            self.assertIn('stroke="var(--icon-palette-roles-active-3-', card('bounding_solid'))
+            self.assertIn('stroke="var(--icon-palette-accents-sketch-active-3-', card('extend'))
+            self.assertIn('stroke="var(--icon-palette-roles-guide-', card('draft'))
+
+    def test_live_palette_tokens_save_only_display_colours_and_reject_stale_or_invalid_changes(self):
+        with review_fixture() as (root, design, get, post):
+            palette_path = design / 'palette.toml'
+            original = palette_path.read_text()
+            palette = tomllib.loads(original)
+            state = json.loads(get('/api/palette'))
+            tokens = {token['id']: token for token in state['tokens']}
+            self.assertIn('roles.ink', tokens)
+            self.assertIn('accents.surface.active-2', tokens)
+            self.assertIn('variants.red-green.sketch.active-3', tokens)
+            self.assertNotIn('accents.construction.guide', tokens, 'guides have one shared colour')
+            self.assertNotIn('roles.ink.source', tokens)
+            self.assertTrue(tokens['roles.gap']['knockout'])
+            accepted = (design / 'review.json').read_bytes()
+            artwork = (design / 'svg/model/box.svg').read_bytes()
+            def save(revision, changes):
+                return post({'revision': revision, 'changes': changes}, endpoint='/api/palette')
+            replacement = '#123456' if tokens['roles.ink']['dark'] != '#123456' else '#654321'
+            paints = {'light': tokens['roles.ink']['light'], 'dark': replacement}
+            changes = {'roles.ink': paints,
+                       'accents.surface.active-2': {'light': tokens['accents.surface.active-2']['light'], 'dark': '#bc789a'},
+                       'variants.red-green.sketch.active-3': {'light': tokens['variants.red-green.sketch.active-3']['light'], 'dark': '#778899'}}
+            saved = save(state['revision'], changes)
+            self.assertTrue(saved['ok'])
+            expected = tomllib.loads(original)
+            for key, colours in changes.items():
+                target = expected
+                for part in key.split('.'): target = target[part]
+                target.update(colours)
+            self.assertEqual(tomllib.loads(palette_path.read_text()), expected)
+            self.assertIn('# Icon colour roles.', palette_path.read_text(), 'comments remain intact')
+            self.assertEqual(tomllib.loads(palette_path.read_text())['roles']['ink']['source'], palette['roles']['ink']['source'])
+            for revision, changes in [
+                (state['revision'], {'roles.ink': paints}),
+                (saved['revision'], {'roles.ink.source': paints}),
+                (saved['revision'], {'accents.construction.guide': paints}),
+                (saved['revision'], {'roles.gap': paints}),
+                (saved['revision'], {'roles.ink': {'light': 'url(evil)', 'dark': replacement}}),
+            ]:
+                before = palette_path.read_bytes()
+                with self.assertRaises(urllib.error.HTTPError): save(revision, changes)
+                self.assertEqual(palette_path.read_bytes(), before)
+            page = get('/')
+            self.assertIn('var(--icon-palette-roles-line-light,', page)
+            self.assertIn('--icon-palette-roles-ink-dark:' + replacement, page)
+            self.assertIn('id="palette-tokens"', page)
+            self.assertIn('input.oninput', page)
+            self.assertIn('body.palette-preview .card.final .art{opacity:1}', page)
+            self.assertEqual((design / 'review.json').read_bytes(), accepted)
+            self.assertEqual((design / 'svg/model/box.svg').read_bytes(), artwork)
+            self.assertFalse(list(design.glob('*.tmp')))
+
+    def test_knockouts_mask_only_preceding_layers_and_preserve_later_foreground(self):
+        with review_fixture() as (root, design, get, post):
+            source = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><defs><clipPath id="left"><path d="M0 0L32 0L32 64L0 64Z"/></clipPath></defs><circle id="base" cx="32" cy="32" r="28" fill="#8e9faf"/><g clip-path="url(#left)"><circle cx="32" cy="32" r="12" fill="#ffffff"/></g><circle id="foreground" cx="32" cy="32" r="3" fill="#236ead"/></svg>'''
+            path = design / 'svg/model/cutout.svg'
+            path.write_text(source)
+            accepted = (design / 'review.json').read_bytes()
+            page = get('/')
+            fragments = [svg for svg in re.findall(r'<svg\b.*?</svg>', page, re.S) if '-base"' in svg]
+            self.assertGreater(len(fragments), 3)
+            ns = '{http://www.w3.org/2000/svg}'
+            for svg in fragments:
+                tree = ET.fromstring(svg)
+                mask = tree.find(ns + 'defs/' + ns + 'mask')
+                self.assertIsNotNone(mask)
+                self.assertEqual(mask.get('maskUnits'), 'userSpaceOnUse')
+                self.assertEqual(mask[0].get('fill'), 'white')
+                self.assertIn('-left)', mask[1].get('clip-path'))
+                self.assertEqual(mask[1][0].get('fill'), 'black')
+                preceding, foreground = list(tree)[-2:]
+                self.assertEqual(preceding.get('mask'), 'url(#' + mask.get('id') + ')')
+                self.assertTrue(preceding[0].get('id').endswith('-base'))
+                self.assertTrue(foreground.get('id').endswith('-foreground'))
+                self.assertIsNone(foreground.get('mask'))
+                self.assertNotIn('roles-gap-', svg)
+            self.assertEqual(path.read_text(), source)
+            self.assertEqual((design / 'review.json').read_bytes(), accepted)
+
     def test_semantic_colours_reload_from_one_palette_without_changing_acceptance(self):
         with review_fixture() as (root, design, get, post):
             palette = design / 'palette.toml'

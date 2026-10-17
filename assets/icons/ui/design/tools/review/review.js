@@ -95,6 +95,93 @@ function selectTab(value) {
   tab = value;
   document.querySelectorAll('.chip').forEach(button => button.classList.toggle('on', (button.dataset.tab || '') === value));
 }
+
+// Temporary palette editor: CSS variables recolour every rendered theme, size
+// and vision variant without touching SVGs, notes or acceptance hashes.
+const paletteDraftKey = 'icon-review-palette-draft';
+const paletteStatus = document.getElementById('palette-status');
+const paletteApply = document.getElementById('palette-apply');
+const paletteReset = document.getElementById('palette-reset');
+const palettePaints = Object.fromEntries(S.palette.tokens.filter(token => !token.linked && !token.knockout)
+  .map(token => [token.id, {light: token.light, dark: token.dark}]));
+const paletteInputs = [];
+let paletteDirty = false, paletteSaving = false;
+function paletteVariable(id, theme) { return '--icon-palette-' + id.replaceAll('.', '-') + '-' + theme; }
+function paletteChanges() {
+  return Object.fromEntries(S.palette.tokens.filter(token => !token.linked && !token.knockout &&
+    ['light', 'dark'].some(theme => palettePaints[token.id][theme] !== token[theme]))
+    .map(token => [token.id, {...palettePaints[token.id]}]));
+}
+function updatePalette() {
+  for (const [id, paints] of Object.entries(palettePaints)) {
+    for (const theme of ['light', 'dark']) document.documentElement.style.setProperty(paletteVariable(id, theme), paints[theme]);
+  }
+  for (const {input, token, theme} of paletteInputs) {
+    input.value = palettePaints[token.linked || token.id][theme];
+    input.title = `${token.name} · ${theme}: ${input.value}${token.linked ? ' (follows construction stroke)' : ''}`;
+  }
+  paletteDirty = Object.keys(paletteChanges()).length > 0;
+  paletteApply.disabled = !paletteDirty || paletteSaving;
+  paletteReset.disabled = !paletteDirty || paletteSaving;
+  try {
+    if (paletteDirty) sessionStorage.setItem(paletteDraftKey, JSON.stringify({revision: S.palette.revision, changes: paletteChanges()}));
+    else sessionStorage.removeItem(paletteDraftKey);
+  } catch {}
+}
+for (const token of S.palette.tokens) {
+  const row = document.createElement('div'); row.className = 'palette-token';
+  for (const theme of ['light', 'dark']) {
+    if (token.knockout) {
+      const swatch = document.createElement('span'); swatch.className = 'palette-knockout';
+      swatch.title = token.name + ' · ' + theme + ': transparent cutout';
+      swatch.setAttribute('aria-label', swatch.title); row.appendChild(swatch); continue;
+    }
+    const input = document.createElement('input'); input.type = 'color'; input.value = token[theme];
+    input.disabled = Boolean(token.linked);
+    input.setAttribute('aria-label', token.name + ' ' + theme + ' colour');
+    input.oninput = () => {
+      palettePaints[token.id][theme] = input.value;
+      updatePalette(); paletteStatus.textContent = 'Preview only · Apply saves both themes to palette.toml';
+      paletteStatus.classList.remove('error');
+    };
+    paletteInputs.push({input, token, theme}); row.appendChild(input);
+  }
+  const label = document.createElement('span'); label.textContent = token.name + (token.linked ? ' ↗' : '');
+  row.appendChild(label); document.getElementById('palette-tokens').appendChild(row);
+}
+document.body.classList.add('palette-preview');
+document.getElementById('palette-all').onclick = () => { selectFilter('all'); selectTab(''); query.value = ''; run(); };
+paletteReset.onclick = () => {
+  for (const token of S.palette.tokens.filter(token => !token.linked && !token.knockout)) palettePaints[token.id] = {light: token.light, dark: token.dark};
+  updatePalette(); paletteStatus.textContent = 'Preview reset · saved palette unchanged'; paletteStatus.classList.remove('error');
+};
+paletteApply.onclick = async () => {
+  if (!paletteDirty || paletteSaving) return;
+  if (dirty && !await flush()) return;
+  if (!S.serving) {
+    paletteStatus.textContent = 'Preview only · run the review server to apply colours to palette.toml'; return;
+  }
+  paletteSaving = true; updatePalette();
+  try {
+    const response = await fetch('/api/palette', {method: 'POST', body: JSON.stringify({revision: S.palette.revision, changes: paletteChanges()})});
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || 'Palette save failed');
+    S.palette = {revision: result.revision, tokens: result.tokens};
+    paletteStatus.textContent = 'Saved to palette.toml · rebuild the app to use these colours';
+    paletteStatus.classList.remove('error');
+  } catch (error) { paletteStatus.textContent = error.message; paletteStatus.classList.add('error'); }
+  finally { paletteSaving = false; updatePalette(); }
+};
+try {
+  const draft = JSON.parse(sessionStorage.getItem(paletteDraftKey) || 'null');
+  if (draft?.revision === S.palette.revision) {
+    for (const [id, paints] of Object.entries(draft.changes)) {
+      if (palettePaints[id] && ['light','dark'].every(theme => /^#[0-9a-f]{6}$/i.test(paints[theme] || ''))) palettePaints[id] = {...paints};
+    }
+    paletteStatus.textContent = 'Unsaved palette preview restored';
+  } else if (draft) { paletteStatus.textContent = 'Saved palette changed · older preview was not restored'; }
+} catch {}
+updatePalette();
 for (const card of cards) {
   const id = card.dataset.id;
   const pop = document.createElement('div');
@@ -179,7 +266,7 @@ try {
 } catch {}
 run();
 if (S.serving) setInterval(async () => {
-  if (dirty || document.activeElement?.tagName === 'TEXTAREA') return;
+  if (dirty || paletteDirty || paletteSaving || document.activeElement?.tagName === 'TEXTAREA') return;
   try {
     const response = await fetch('/api/review');
     const current = await response.json();

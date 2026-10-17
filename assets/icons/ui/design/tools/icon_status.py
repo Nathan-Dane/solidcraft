@@ -154,8 +154,12 @@ def group_of(r):
     if r['alias_target']: return (65, 0, 'SHARED MASTERS', 'used through aliases')
     return (70, 0, 'UNUSED', 'no app use yet')
 
-def themed(svg, theme, accent, pal, vision='off'):
-    return icon_palette.themed(svg, pal, theme, accent, vision)
+def themed(svg, theme, accent, pal, vision='off', live=False, namespace=''):
+    return icon_palette.themed(svg, pal, theme, accent, vision, live, namespace)
+
+def palette_state():
+    path = D + '/palette.toml'
+    return {'revision': icon_palette.revision(path), 'tokens': icon_palette.tokens(tomllib.load(open(path, 'rb')))}
 
 def build_page(serving):
     rows, masters, pal, summary = scan()
@@ -182,9 +186,10 @@ def build_page(serving):
         for vision in icon_palette.VISIONS:
             inner += '<span class="vision vision-' + vision + '">'
             for theme, cls in [('light', 'al'), ('dark', 'ad')]:
-                inner += '<span class="' + cls + '">' + themed(svg_f, theme, r['accent'], pal, vision) + '</span>'
+                scope = 'review-' + r['id'] + '-' + vision + '-' + theme
+                inner += '<span class="' + cls + '">' + themed(svg_f, theme, r['accent'], pal, vision, live=True, namespace=scope + '-full') + '</span>'
                 if small_svg:
-                    inner += '<span class="' + ('sl' if theme == 'light' else 'sd') + '">' + themed(small_svg, theme, r['accent'], pal, vision) + '</span>'
+                    inner += '<span class="' + ('sl' if theme == 'light' else 'sd') + '">' + themed(small_svg, theme, r['accent'], pal, vision, live=True, namespace=scope + '-small') + '</span>'
             inner += '</span>'
         src = ('= ' + r['master']) if r['master'] != r['id'] else ''
         tip = '; '.join('%s ▸ %s: %s' % w for w in r['where']) or ', '.join(r['ui']) or ('%d command(s)' % r['commands'])
@@ -197,8 +202,8 @@ def build_page(serving):
             html.escape(r['id']), html.escape(r['accent']), html.escape(g[2]), html.escape(r['id'] + ' ' + r['example'] + ' ' + r['accent'] + ' ' + g[3].lower()), html.escape(tip), 'true' if missing else 'false',
             ' hs' if small_svg else '', inner, html.escape(r['id']), ('<span class="src"> ' + html.escape(src) + '</span>') if src else '', extra, html.escape(r['example'] or ', '.join(r['ui']) or ''), html.escape(r['id']), 'disabled' if missing else ''))
     tabchips = ''.join('<button class="chip" data-tab="%s">%s</button>' % (html.escape(t), html.escape(t.title())) for t in tabs_seen)
-    state = json.dumps({'final': sorted(valid), 'notes': rv['notes'], 'serving': serving, 'rev': art_rev(), 'hashes': {r['id']: master_hash(r['master']) for r in shown if r['status'] != 'placeholder'}}).replace('<', r'\u003c')
-    return load_template().replace('@@PALETTE_CSS@@', icon_palette.review_css(pal)).replace('@@GUIDE@@', '/guide' if serving else os.path.basename(out_path) + '.guide.html').replace('@@WARNINGS@@', ('Unassigned commands: ' + html.escape(', '.join(unassigned))) if unassigned else '').replace('@@SUMMARY@@', html.escape(summary)).replace('@@CARDS@@', ''.join(cards)).replace('@@TABS@@', tabchips).replace('@@STATE@@', state)
+    state = json.dumps({'final': sorted(valid), 'notes': rv['notes'], 'serving': serving, 'rev': art_rev(), 'palette': palette_state(), 'hashes': {r['id']: master_hash(r['master']) for r in shown if r['status'] != 'placeholder'}}).replace('<', r'\u003c')
+    return load_template().replace('@@PALETTE_CSS@@', icon_palette.palette_css(pal) + '\n' + icon_palette.review_css(pal, live=True)).replace('@@GUIDE@@', '/guide' if serving else os.path.basename(out_path) + '.guide.html').replace('@@WARNINGS@@', ('Unassigned commands: ' + html.escape(', '.join(unassigned))) if unassigned else '').replace('@@SUMMARY@@', html.escape(summary)).replace('@@CARDS@@', ''.join(cards)).replace('@@TABS@@', tabchips).replace('@@STATE@@', state)
 
 WEB = os.path.join(HERE, 'review')
 def load_template():
@@ -220,7 +225,7 @@ def build_guide():
         sections += '<h2>' + html.escape(category['label']) + '</h2><p>' + html.escape(category['rule']) + '</p><div class="examples">'
         for name in category['icons']:
             row = by_id[name]; svg = open(masters[row['master']][1], encoding='utf-8').read()
-            sections += '<article><b>' + name + '</b><div class="light">' + themed(svg, 'light', row['accent'], pal) + '</div><div class="dark">' + themed(svg, 'dark', row['accent'], pal) + '</div></article>'
+            sections += '<article><b>' + name + '</b><div class="light">' + themed(svg, 'light', row['accent'], pal, namespace='guide-' + category['label'].replace(' ', '-') + '-' + name + '-light') + '</div><div class="dark">' + themed(svg, 'dark', row['accent'], pal, namespace='guide-' + category['label'].replace(' ', '-') + '-' + name + '-dark') + '</div></article>'
         sections += '</div>'
     template = open(os.path.join(WEB, 'guide.html'), encoding='utf-8').read()
     return template.replace('@@EXAMPLES@@', sections)
@@ -237,16 +242,20 @@ if '--serve' in args:
         def do_GET(self):
             if self.path.split('?')[0] in ('/', '/index.html'): self._send(200, build_page(True), 'text/html; charset=utf-8')
             elif self.path.split('?')[0] == '/api/review': self._send(200, json.dumps({'final': sorted(review_state.valid_final()), 'notes': load_review()['notes'], 'rev': art_rev()}), 'application/json')
+            elif self.path.split('?')[0] == '/api/palette': self._send(200, json.dumps(palette_state()), 'application/json')
             elif self.path.split('?')[0] == '/guide': self._send(200, build_guide(), 'text/html; charset=utf-8')
             else: self._send(404, 'not found', 'text/plain')
         def do_POST(self):
             with review_state.LOCK: self._post()
         def _post(self):
-            if self.path not in ('/api/review', '/api/export'): return self._send(404, 'not found', 'text/plain')
+            if self.path not in ('/api/review', '/api/export', '/api/palette'): return self._send(404, 'not found', 'text/plain')
             try:
                 n = int(self.headers.get('Content-Length', '0'))
                 if n <= 0 or n > 4_000_000: raise ValueError('invalid request size')
                 inc = json.loads(self.rfile.read(n))
+                if self.path == '/api/palette':
+                    icon_palette.save_colours(D + '/palette.toml', inc.get('revision'), inc.get('changes'))
+                    return self._send(200, json.dumps({'ok': True, **palette_state()}), 'application/json')
                 base = inc.get('base')
                 if not isinstance(base, dict): raise ValueError('stale page: reload it')
                 cur = load_review(); old = cur['final']

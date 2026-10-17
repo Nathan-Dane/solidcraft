@@ -2,13 +2,15 @@
 # for the `line` role); the generator maps each identifier to its role and the app resolves the role to the
 # value for the active theme. `source` is the stable SVG identifier; edit only light/dark
 # display values or accent ramps to recolour finished artwork without modifying SVGs.
-# Dark theme: outlines become light, faces darken (lightest face stays lightest), blues invert in
-# lightness so the active ramp keeps its order against the dark background.
+# Dark theme: outlines become light and passive faces keep their shading order.
+# Accent entries match the corresponding blue entry's OKLab lightness in both themes.
+# Non-blue dotted/dashed references use roles.guide, without workspace overrides.
+# Active blue source strokes retain their semantic accent, including dashed results.
 
 [roles.ink]        # outlines and details drawn over a face
 source = "#34465b"
 light = "#34465b"
-dark  = "#dbe4ee"
+dark  = "#d8dfeb"
 [roles.line]       # line art that sits directly on the UI background (SVG: currentColor)
 source = "#34465b"
 light = "#34465b"
@@ -16,35 +18,35 @@ dark  = "#dbe4ee"
 [roles.passive-1]  # passive geometry, lightest face
 source = "#e2e8ef"
 light = "#e2e8ef"
-dark  = "#566377"
+dark  = "#8da3c3"
 [roles.passive-2]
 source = "#b8c3cf"
 light = "#b8c3cf"
-dark  = "#455266"
+dark  = "#6d81a2"
 [roles.passive-3]  # darkest passive face
 source = "#8e9faf"
 light = "#8e9faf"
-dark  = "#354152"
-[roles.gap]        # knock-out gaps that separate overlapping parts: the surface behind the icon
+dark  = "#546782"
+[roles.gap]        # erases earlier artwork to transparency; light/dark retained for legacy schema only
 source = "#ffffff"
 light = "#ffffff"
 dark  = "#1e2530"
 [roles.guide]      # construction and guide dots
 source = "#6f879c"
 light = "#6f879c"
-dark  = "#8a9db0"
+dark  = "#8093a4"
 [roles.active-1]   # changed or result geometry, palest face
 source = "#b9ddf8"
 light = "#b9ddf8"
-dark  = "#244a70"
+dark  = "#4ea1dc"
 [roles.active-2]
 source = "#328bd3"
 light = "#328bd3"
-dark  = "#3f93de"
+dark  = "#3287d1"
 [roles.active-3]   # strongest blue: strokes and accents
 source = "#236ead"
 light = "#236ead"
-dark  = "#86c8f8"
+dark  = "#2976b8"
 
 [strokes]          # on the 64 grid
 geometry = 2.55
@@ -63,76 +65,81 @@ parameters = 4.2
 # above are stable role identifiers: change these accent ramps, not accepted artwork.
 
 [accents.surface.active-1]
-light = "#fbdcb9"
-dark  = "#5a3510"
+light = "#f1d2af"
+dark  = "#ba8f6a"
 [accents.surface.active-2]
-light = "#e08a2c"
-dark  = "#e69a45"
+light = "#c06f00"
+dark  = "#b86f04"
 [accents.surface.active-3]
-light = "#b45a0a"
-dark  = "#f7c58a"
+light = "#a45000"
+dark  = "#95682d"
 
 [accents.form.active-1]
-light = "#dccdf6"
-dark  = "#3b2a66"
+light = "#decff8"
+dark  = "#9c8dd2"
 [accents.form.active-2]
-light = "#8a5cd6"
-dark  = "#9b72e8"
+light = "#9567e2"
+dark  = "#9066db"
 [accents.form.active-3]
-light = "#6a3fc2"
-dark  = "#c6aef7"
+light = "#7349cd"
+dark  = "#7b63a6"
 
 [accents.mesh.active-1]
-light = "#fbefb0"
-dark  = "#5a4a0c"
+light = "#e5d99b"
+dark  = "#a9985f"
 [accents.mesh.active-2]
-light = "#e0b400"
-dark  = "#e8c52a"
+light = "#a28200"
+dark  = "#9a8100"
 [accents.mesh.active-3]
-light = "#a07f00"
-dark  = "#f6e07a"
+light = "#826700"
+dark  = "#857100"
 
 [accents.sketch.active-1]
-light = "#c7ead4"
-dark  = "#203e2d"
+light = "#bfe2cc"
+dark  = "#81a28e"
 [accents.sketch.active-2]
-light = "#55ab75"
-dark  = "#489968"
+light = "#439a65"
+dark  = "#459665"
 [accents.sketch.active-3]
-light = "#2e965a"
-dark  = "#6ec88c"
+light = "#057f45"
+dark  = "#27864e"
 
 [accents.constraint.active-1]
-light = "#f1d0cb"
-dark  = "#522d2a"
+light = "#f0cfca"
+dark  = "#b98c88"
 [accents.constraint.active-2]
-light = "#c26960"
-dark  = "#c97c72"
+light = "#c1685f"
+dark  = "#b66b61"
 [accents.constraint.active-3]
-light = "#962823"
-dark  = "#f0a59b"
+light = "#af4038"
+dark  = "#a05c54"
 
 [accents.construction.active-1]
-light = "#fae1c4"
-dark  = "#513719"
+light = "#ecd3b6"
+dark  = "#b19373"
 [accents.construction.active-2]
-light = "#d18b3c"
-dark  = "#cc8839"
+light = "#b8741f"
+dark  = "#b4711c"
 [accents.construction.active-3]
-light = "#e88c30"
-dark  = "#e88c30"
-# Only this semantic icon uses guide paint for its actual line. Other guides stay grey.
-[accents.construction.guide]
-use = "active-3"
+light = "#9c5600"
+dark  = "#a75d00"
 
 # Same accessibility adjustments as the application's semantic UI tokens.
 # Protan/Deutan share red-green; Tritan uses blue-yellow. Unlisted roles keep their ramp.
 [variants.red-green.sketch.active-3]
-light = "#3c9669"
-dark  = "#96e1c3"
+light = "#1d7d52"
+dark  = "#1d7f89"
+# A brighter orange keeps construction distinct from constraint red under both
+# red-green loss simulations; the approved normal-vision ramp stays unchanged.
+[variants.red-green.construction.active-3]
+light = "#b97300"
+dark  = "#a75d00"
+[variants.blue-yellow.construction.active-3]
+light = "#b97300"
+dark  = "#c37d00"
 [variants.blue-yellow.constraint.active-3]
-light = "#962823"
-dark  = "#f0b4a5"
+light = "#af4038"
+dark  = "#986255"
 
 # Default accent by requested icon id. Explicit alias accents in aliases.toml win.
 # Deliberately not inherited from a master: ground reuses c_fix but is not a constraint.

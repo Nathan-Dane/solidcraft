@@ -5,6 +5,10 @@
 @@PALETTE_CSS@@</style>
 <body data-vision="off">
 <header>
+  <section id="palette-editor" aria-label="Temporary icon palette editor">
+    <div class="palette-heading"><b>Icon colours</b><span class="sum">Light · Dark · Purpose</span><button id="palette-all">Show all icons</button><button id="palette-apply" disabled>Apply palette</button><button id="palette-reset" disabled>Reset preview</button><span id="palette-status" role="status">Live preview · Apply saves palette.toml</span></div>
+    <div id="palette-tokens"></div>
+  </section>
   <h1>Icon review</h1><span class="sum" id="cnt" aria-live="polite"></span>
   <span class="grp" aria-label="Review status"><button data-f="open" class="on">Open</button><button data-f="notes">Notes</button><button data-f="final">Final</button><button data-f="all">All</button></span>
   <span class="grp"><button id="tab-all" class="chip on">Everything</button>@@TABS@@</span>

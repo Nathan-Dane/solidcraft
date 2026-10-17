@@ -56,6 +56,17 @@ The app compiles these values, including related Sketch/constraint/construction
 UI tokens. Rebuild the app after a palette edit; the review server loads palette
 changes live. Its Colour vision selector uses the same adjustment tables.
 
+The temporary **Icon colours** panel previews every display token live. Each pair
+is light then dark. **Guides** controls non-blue dotted/dashed reference lines.
+Blue source strokes retain their semantic accent. **Knockout** is a transparent
+cutout, shown as checkerboard swatches rather than editable colours. GAP erases
+earlier layers; later foreground shapes draw normally. It never paints the theme
+background. Literal white/black in binary masks remain coverage values.
+**Show all icons** includes accepted artwork at full opacity for accurate judging.
+**Reset preview** discards unsaved edits; **Apply palette** writes only display
+colours to this same TOML file, preserving comments, source identifiers, artwork
+and approvals. A stale page cannot overwrite a palette edited elsewhere.
+
 Explicit accents in `aliases.toml` take precedence. Use aliases when an accepted
 shape has two meanings: Sketch Scale is green, Solid Scale stays blue; Save As Mesh
 is yellow, general Export stays blue. Keep matching command and timeline ids.

@@ -74,9 +74,13 @@ mod tests {
         for dark in [false, true] {
             for vision in [ColorVision::Off, ColorVision::Protan, ColorVision::Tritan] {
                 theme::set_vision(vision);
-                for icon in ["line", "c_parallel", "construction", "centerline", "surface_extrude", "mesh_export"] {
-                    let expected = icon_svg::primary(icon, dark, vision);
-                    let output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                for icon in ["line", "c_parallel", "construction", "centerline", "surface_extrude", "mesh_export", "contact_new"] {
+                    let expected = if icon == "construction" {
+                        icon_svg::role_colour("guide", Look { dark, accent: None, vision })
+                    } else {
+                        icon_svg::primary(icon, dark, vision)
+                    };
+                    let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
                         let r = Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(64.0, 64.0));
                         paint_on(ui.painter(), r, icon, Some(dark), 1.0);
                     });
@@ -86,6 +90,22 @@ mod tests {
                         })),
                         "{icon}, {dark}, {vision:?}: actual texture misses its semantic stroke or reused a stale cache entry"
                     );
+                    if icon == "contact_new" {
+                        let image = output
+                            .textures_delta
+                            .set
+                            .values()
+                            .flatten()
+                            .find_map(|delta| match &delta.image {
+                                egui::ImageData::Color(image) if image.size == [64, 64] => Some(image),
+                                _ => None,
+                            })
+                            .unwrap();
+                        assert_eq!(image.pixels.get(48 * 64 + 48), Some(&Color32::TRANSPARENT), "uploaded plus must stay transparent");
+                    }
+                    // This headless test inspects uploads instead of sending them
+                    // to a GPU; acknowledge the deltas before they are dropped.
+                    output.textures_delta.clear();
                 }
             }
         }

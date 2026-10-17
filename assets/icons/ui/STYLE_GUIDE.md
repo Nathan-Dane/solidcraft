@@ -90,7 +90,7 @@ to add arbitrary colours. All values and accents come from `design/palette.toml`
 | Active 2 | A2 | #328bd3 | Medium result face |
 | Active 3 | A3 | #236ead | Strong blue action or result stroke |
 | Guide | GUIDE | #6f879c | Sparse construction references |
-| Gap | GAP | #ffffff | Deliberate background knockout |
+| Gap | GAP | #ffffff | Erase earlier artwork to real transparency |
 
 The source hexes identify paint roles, not the displayed colour. **Never recolour an
 SVG to apply a workspace accent.** Keep these identifiers and every finished shape
@@ -112,9 +112,15 @@ A role with `use = "active-3"` follows that stroke automatically.
 | Future Form workspace | Purple | Form aliases |
 
 Passive faces, outlines, reference guides, knockouts and monochrome navigation stay
-in their original roles. Construction line mode is the one guide-paint exception;
-its accent links guide paint to the primary stroke. Construct planes/axes/points
-remain blue. The active workspace never recolours shared tools.
+in their original roles. Non-blue dotted or dashed reference lines use **Guides**.
+Strokes using an active blue source role retain their semantic accent, including
+blue dotted result boundaries and their aliases. A wider knockout beneath such a
+line erases earlier artwork. Draw manual reference dashes and dots with GUIDE.
+Construct planes/axes/points remain blue. The active workspace never
+recolours shared tools. Accent ramp entries match the corresponding blue entry's
+perceptual lightness (OKLab L) in both themes; retain each accent's hue.
+Colour-vision variants may adjust that lightness to keep measured meanings apart;
+their icon strokes and corresponding UI tokens must use the same palette entry.
 
 Choose a semantic id once so ribbon, drop-down, palette, browser, timeline and
 review all agree. An explicit alias accent wins over an id's default. Defaults
@@ -133,6 +139,9 @@ screenshots, hard-code private variants or quietly change shared ramps.
   Its direction follows the curve's final tangent. `bases.arrow` supplies the
   straight version. Standard small heads are around 8–10 units long/wide.
 - A knockout around an overlaid arrow/X is normally about 1–1.2 units per side.
+  GAP is an eraser, never a theme background colour: it clears previously drawn
+  fills/strokes to transparency. Draw the coloured foreground after the knockout.
+  Existing binary masks use literal `white`/`black` for coverage, not GAP.
   Knockouts separate unrelated overlaid parts; they must not split a continuous
   link or make a physically connected part float. Wider borders need a clear
   semantic reason, as in the infinity symbol.

@@ -45,3 +45,18 @@ button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(-
 .vision{display:none}body[data-vision="off"] .vision-off,body[data-vision="red-green"] .vision-red-green,body[data-vision="blue-yellow"] .vision-blue-yellow{display:contents}
 
 .acc{color:var(--icon-accent,var(--mut))}
+
+/* Temporary palette tuning controls; keep them separate from review/acceptance. */
+#palette-editor{flex-basis:100%;border-bottom:1px solid var(--line);padding:2px 0 8px}
+.palette-heading{display:flex;align-items:center;flex-wrap:wrap;gap:6px 12px;margin-bottom:6px}
+#palette-status{color:var(--mut);font-size:11px}#palette-status.error{color:var(--review-error)}
+#palette-tokens{display:grid;grid-template-columns:repeat(auto-fit,minmax(175px,1fr));gap:3px 12px;max-height:180px;overflow:auto}
+.palette-token{display:flex;align-items:center;gap:5px;min-width:0;line-height:20px}
+.palette-token span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.palette-token input[type=color]{appearance:none;-webkit-appearance:none;box-sizing:border-box;width:19px;height:19px;border:1px solid var(--line);border-radius:50%;padding:0;background:transparent;flex-shrink:0;overflow:hidden}
+.palette-token input[type=color]::-webkit-color-swatch-wrapper{padding:0}
+.palette-token input[type=color]::-webkit-color-swatch{border:0;border-radius:50%}
+.palette-token input[type=color]::-moz-color-swatch{border:0;border-radius:50%}
+.palette-token input:disabled{cursor:default;opacity:1}
+.palette-knockout{box-sizing:border-box;width:19px;height:19px;flex-shrink:0;border:1px solid var(--line);border-radius:50%;background:repeating-conic-gradient(#8993a0 0% 25%,transparent 0% 50%) 0 0/8px 8px}
+body.palette-preview .card.final .art{opacity:1}

@@ -7,7 +7,8 @@
 //! `aliases.toml` (see `build.rs`), parsed once, and rasterised with tiny-skia into a texture per
 //! (icon, accent, theme, pixel size). A master never carries a colour of its own: it names a
 //! palette role, which resolves to the theme's hex, or to the accent's hex for the `active-*`
-//! roles. Changing a colour is an edit to `palette.toml` only.
+//! roles. GAP instead erases preceding artwork to transparency; it never paints a background.
+//! Changing a colour is an edit to `palette.toml` only.
 //!
 //! Nothing here panics on bad artwork: a master that does not parse is logged and drawn as the
 //! placeholder, and `every_master_parses` holds that none do.
@@ -26,6 +27,8 @@ pub const PLACEHOLDER: &str = "placeholder";
 #[derive(Clone, Copy, Debug, PartialEq)]
 enum Paint {
     None,
+    /// Erase earlier artwork; never paint a theme background into the texture.
+    Knockout,
     /// `currentColor`: the `line` role.
     Line,
     /// A palette role (index into `ROLE_NAMES`).
@@ -259,7 +262,11 @@ fn parse_paint(v: Option<&str>, in_mask: bool) -> Result<Paint, String> {
         "black" if in_mask => Ok(Paint::Fixed([0, 0, 0])),
         _ => {
             let lower = v.to_ascii_lowercase();
-            ROLE_SOURCE_HEX.iter().position(|h| *h == lower).map(Paint::Role).ok_or_else(|| format!("colour {v} is not a palette colour"))
+            ROLE_SOURCE_HEX
+                .iter()
+                .position(|h| *h == lower)
+                .map(|role| if ROLE_NAMES.get(role) == Some(&"gap") { Paint::Knockout } else { Paint::Role(role) })
+                .ok_or_else(|| format!("colour {v} is not a palette colour"))
         }
     }
 }
@@ -332,13 +339,26 @@ impl Doc {
                         Some(id) => Some(*mask_ids.get(id).ok_or("unknown mask")?),
                         None => None,
                     };
+                    let dash = parse_dash(t.get("stroke-dasharray"));
+                    let mut stroke = parse_paint(t.get("stroke"), in_mask)?;
+                    let visible_stroke = match stroke {
+                        Paint::Line => true,
+                        Paint::Role(role) => !matches!(ROLE_NAMES.get(role).copied(), Some("gap" | "active-1" | "active-2" | "active-3")),
+                        _ => false,
+                    };
+                    // Non-blue dotted/dashed references share the guide colour.
+                    // Blue source paints retain their semantic accent; keep
+                    // background knockouts and literal mask paints unchanged.
+                    if !dash.is_empty() && visible_stroke && !in_mask {
+                        stroke = Paint::Role(ROLE_NAMES.iter().position(|name| *name == "guide").ok_or("missing guide colour")?);
+                    }
                     let node = Node {
                         path,
                         fill: if t.get("fill").is_none() && in_mask { Paint::None } else { parse_paint(t.get("fill").or(Some("none")), in_mask)? },
                         rule: if t.get("fill-rule") == Some("evenodd") { sk::FillRule::EvenOdd } else { sk::FillRule::Winding },
-                        stroke: parse_paint(t.get("stroke"), in_mask)?,
+                        stroke,
                         width: t.get("stroke-width").and_then(|w| w.parse().ok()).unwrap_or(1.0),
-                        dash: parse_dash(t.get("stroke-dasharray")),
+                        dash,
                         opacity: t.get("opacity").and_then(|o| o.parse().ok()).unwrap_or(1.0),
                         mask,
                     };
@@ -375,6 +395,9 @@ pub struct Look {
 impl Look {
     fn rgb(self, role: usize) -> [u8; 3] {
         let theme = usize::from(self.dark);
+        if ROLE_NAMES.get(role) == Some(&"guide") {
+            return PALETTE.get(theme).and_then(|p| p.get(role)).copied().unwrap_or([255, 0, 255]);
+        }
         let vision = match self.vision {
             crate::theme::ColorVision::Off => "",
             crate::theme::ColorVision::Protan | crate::theme::ColorVision::Deutan => "red-green",
@@ -391,7 +414,7 @@ impl Look {
 
     fn resolve(self, p: Paint) -> Option<[u8; 3]> {
         match p {
-            Paint::None => None,
+            Paint::None | Paint::Knockout => None,
             Paint::Fixed(c) => Some(c),
             Paint::Role(r) => Some(self.rgb(r)),
             Paint::Line => ROLE_NAMES.iter().position(|n| *n == "line").map(|r| self.rgb(r)),
@@ -406,6 +429,16 @@ fn paint_of(c: [u8; 3], alpha: f32) -> sk::Paint<'static> {
     p
 }
 
+fn shape_paint(paint: Paint, look: Look, alpha: f32) -> Option<sk::Paint<'static>> {
+    if paint == Paint::Knockout {
+        let mut paint = paint_of([0, 0, 0], alpha);
+        paint.blend_mode = sk::BlendMode::DestinationOut;
+        Some(paint)
+    } else {
+        look.resolve(paint).map(|colour| paint_of(colour, alpha))
+    }
+}
+
 fn draw_node(pm: &mut sk::Pixmap, n: &Node, look: Look, tf: sk::Transform, doc: &Doc, clip: Option<&sk::Mask>, opacity: f32) {
     let own;
     let mask = if let Some(m) = n.mask {
@@ -414,17 +447,23 @@ fn draw_node(pm: &mut sk::Pixmap, n: &Node, look: Look, tf: sk::Transform, doc: 
             for node in nodes {
                 draw_node(&mut sub, node, look, tf, doc, None, 1.0);
             }
-            Some(sk::Mask::from_pixmap(sub.as_ref(), sk::MaskType::Luminance))
+            let mut own = sk::Mask::from_pixmap(sub.as_ref(), sk::MaskType::Luminance);
+            if let Some(parent) = clip {
+                for (value, parent) in own.data_mut().iter_mut().zip(parent.data()) {
+                    *value = ((u16::from(*value) * u16::from(*parent) + 127) / 255) as u8;
+                }
+            }
+            Some(own)
         });
         own.as_ref()
     } else {
         clip
     };
     let alpha = n.opacity * opacity;
-    if let Some(c) = look.resolve(n.fill) {
-        pm.fill_path(&n.path, &paint_of(c, alpha), n.rule, tf, mask);
+    if let Some(paint) = shape_paint(n.fill, look, alpha) {
+        pm.fill_path(&n.path, &paint, n.rule, tf, mask);
     }
-    if let Some(c) = look.resolve(n.stroke) {
+    if let Some(paint) = shape_paint(n.stroke, look, alpha) {
         let stroke = sk::Stroke {
             width: n.width,
             line_cap: sk::LineCap::Round,
@@ -432,7 +471,7 @@ fn draw_node(pm: &mut sk::Pixmap, n: &Node, look: Look, tf: sk::Transform, doc: 
             dash: if n.dash.is_empty() { None } else { sk::StrokeDash::new(n.dash.clone(), 0.0) },
             ..sk::Stroke::default()
         };
-        pm.stroke_path(&n.path, &paint_of(c, alpha), &stroke, tf, mask);
+        pm.stroke_path(&n.path, &paint, &stroke, tf, mask);
     }
 }
 
@@ -506,8 +545,15 @@ fn default_accent(name: &str) -> Option<usize> {
 
 /// Primary semantic stroke, also used by toolbar affordances. The palette owns its value.
 pub(crate) fn primary(name: &str, dark: bool, vision: crate::theme::ColorVision) -> egui::Color32 {
-    let role = ROLE_NAMES.iter().position(|n| *n == "active-3");
     let look = Look { dark, accent: resolve(name).accent, vision };
+    role_colour("active-3", look)
+}
+
+pub(crate) fn role_colour(name: &str, look: Look) -> egui::Color32 {
+    if name == "gap" {
+        return egui::Color32::TRANSPARENT;
+    }
+    let role = ROLE_NAMES.iter().position(|n| *n == name);
     let [r, g, b] = role.map(|role| look.rgb(role)).unwrap_or([255, 0, 255]);
     crate::theme::icon_color([r, g, b])
 }
@@ -565,6 +611,82 @@ mod tests {
             assert!(table().0.contains_key(master), "{alias} -> {master}");
             assert!(accent.is_empty() || ACCENT_NAMES.contains(accent), "{alias}: accent {accent}");
             assert!(!resolve(alias).placeholder);
+        }
+    }
+
+    #[test]
+    fn non_blue_dashed_strokes_use_guides_but_preserve_accents_and_knockouts() {
+        let svg = "<svg><path d='M8 20L56 20' stroke='#8e9faf' stroke-width='4.25' stroke-dasharray='3 5'/><path d='M8 40L56 40' stroke='#ffffff' stroke-width='6' stroke-dasharray='3 5'/><path d='M8 52L56 52' stroke='#236ead' stroke-width='4.25' stroke-dasharray='3 5'/></svg>";
+        let doc = Doc::parse(svg).unwrap();
+        let guide = ROLE_NAMES.iter().position(|name| *name == "guide").unwrap();
+        let active = ROLE_NAMES.iter().position(|name| *name == "active-3").unwrap();
+        let Item::Node(line) = &doc.items[0] else { panic!("expected line") };
+        let Item::Node(knockout) = &doc.items[1] else { panic!("expected knockout") };
+        let Item::Node(blue) = &doc.items[2] else { panic!("expected blue line") };
+        assert_eq!(line.stroke, Paint::Role(guide));
+        assert_eq!(knockout.stroke, Paint::Knockout);
+        assert_eq!(blue.stroke, Paint::Role(active));
+        for dark in [false, true] {
+            for accent in std::iter::once(None).chain((0..ACCENT_NAMES.len()).map(Some)) {
+                let look = Look { dark, accent, vision: crate::theme::ColorVision::Off };
+                assert_eq!(look.rgb(guide), PALETTE[usize::from(dark)][guide]);
+                let pm = render(&doc, look, 64).unwrap();
+                assert_eq!([pm.pixel(9, 20).unwrap().red(), pm.pixel(9, 20).unwrap().green(), pm.pixel(9, 20).unwrap().blue()], look.rgb(guide));
+                assert_eq!([pm.pixel(9, 52).unwrap().red(), pm.pixel(9, 52).unwrap().green(), pm.pixel(9, 52).unwrap().blue()], look.rgb(active));
+            }
+        }
+    }
+
+    #[test]
+    fn knockout_fills_and_strokes_erase_earlier_layers_and_allow_later_foreground() {
+        let doc = Doc::parse("<svg><path d='M0 0L64 0L64 64L0 64Z' fill='#8e9faf'/><circle cx='20' cy='20' r='10' fill='#ffffff'/><circle cx='20' cy='20' r='3' fill='#236ead'/><path d='M8 44L56 44' stroke='#ffffff' stroke-width='6'/><circle cx='44' cy='20' r='6' fill='#ffffff' opacity='0.5'/></svg>").unwrap();
+        for dark in [false, true] {
+            for accent in std::iter::once(None).chain((0..ACCENT_NAMES.len()).map(Some)) {
+                let look = Look { dark, accent, vision: crate::theme::ColorVision::Off };
+                let pm = render(&doc, look, 64).unwrap();
+                assert_eq!(pm.pixel(26, 20).unwrap().alpha(), 0, "fill must reveal the real background");
+                assert_eq!(pm.pixel(20, 44).unwrap().alpha(), 0, "stroke must reveal the real background");
+                assert_eq!(pm.pixel(20, 20).unwrap().alpha(), 255, "foreground is drawn after erasure");
+                assert_eq!(pm.pixel(2, 2).unwrap().alpha(), 255, "unaffected base stays opaque");
+                assert!((126..=128).contains(&pm.pixel(44, 20).unwrap().alpha()), "partial opacity erases partially");
+            }
+        }
+    }
+
+    #[test]
+    fn knockout_respects_its_clip_and_combines_explicit_masks_with_clips() {
+        let doc = Doc::parse("<svg><defs><clipPath id='left'><path d='M0 0L32 0L32 64L0 64Z'/></clipPath><mask id='all'><path d='M0 0L64 0L64 64L0 64Z' fill='white'/></mask></defs><path d='M0 0L64 0L64 64L0 64Z' fill='#8e9faf'/><g clip-path='url(#left)'><circle cx='32' cy='32' r='16' fill='#ffffff' mask='url(#all)'/></g></svg>").unwrap();
+        let pm = render(&doc, Look { dark: false, accent: None, vision: crate::theme::ColorVision::Off }, 64).unwrap();
+        assert_eq!(pm.pixel(24, 32).unwrap().alpha(), 0);
+        assert_eq!(pm.pixel(40, 32).unwrap().alpha(), 255, "cutout must not escape its parent clip");
+    }
+
+    #[test]
+    fn accepted_badges_and_environment_sun_have_transparent_holes() {
+        for dark in [false, true] {
+            let look = Look { dark, accent: None, vision: crate::theme::ColorVision::Off };
+            assert_eq!(role_colour("gap", look), egui::Color32::TRANSPARENT);
+            for (id, x, y) in [("contact_new", 48, 48), ("environment_map", 45, 19), ("line_mid", 35, 28)] {
+                let pm = render(doc_for(id, 64).unwrap(), look, 64).unwrap();
+                assert_eq!(pm.pixel(x, y).unwrap().alpha(), 0, "{id}: GAP must not be a painted theme colour");
+            }
+        }
+    }
+
+    #[test]
+    fn native_clip_paths_and_plus_mask_keep_the_artwork_inside_its_shape() {
+        for dark in [false, true] {
+            for px in [16, 24, 64] {
+                let look = Look { dark, accent: None, vision: crate::theme::ColorVision::Off };
+                for id in ["environment_map", "curvature_map", "iso_analysis", "zebra"] {
+                    let doc = doc_for(id, px).unwrap();
+                    let pm = render(doc, look, px).unwrap();
+                    assert_eq!(pm.pixel(px - 2, px - 2).unwrap().alpha(), 0, "{id} escapes its native clip");
+                    assert!(pm.pixel(px / 2, px / 2).unwrap().alpha() > 0, "{id} lost its clipped contents");
+                }
+            }
+            let pm = render(doc_for("new", 64).unwrap(), Look { dark, accent: None, vision: crate::theme::ColorVision::Off }, 64).unwrap();
+            assert_eq!(pm.pixel(45, 45).unwrap().alpha(), 0, "the plus is genuinely punched out in the native renderer");
         }
     }
 

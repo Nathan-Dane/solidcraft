@@ -131,6 +131,8 @@ fn icon_data() -> Result<(), String> {
         ("CONSTRAINT_PRIMARY", palette.get("accents").and_then(|v| v.get("constraint"))),
         ("CONSTRUCTION_PRIMARY", palette.get("accents").and_then(|v| v.get("construction"))),
         ("SKETCH_RED_GREEN", palette.get("variants").and_then(|v| v.get("red-green")).and_then(|v| v.get("sketch"))),
+        ("CONSTRUCTION_RED_GREEN", palette.get("variants").and_then(|v| v.get("red-green")).and_then(|v| v.get("construction"))),
+        ("CONSTRUCTION_BLUE_YELLOW", palette.get("variants").and_then(|v| v.get("blue-yellow")).and_then(|v| v.get("construction"))),
         ("CONSTRAINT_BLUE_YELLOW", palette.get("variants").and_then(|v| v.get("blue-yellow")).and_then(|v| v.get("constraint"))),
     ] {
         let role = value.and_then(|v| v.get("active-3"));
