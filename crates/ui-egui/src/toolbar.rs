@@ -1,6 +1,5 @@
 //! Application bar, the workspace toolbar (tabs and panels) and keyboard shortcuts.
 
-use crate::icons::glyphs::caret;
 use crate::icons::glyphs::pin_icon;
 use egui::{Align2, Color32, FontId, Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
@@ -793,6 +792,11 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
     }
 }
 
+/// The dropdown chevron every ribbon menu shares.
+fn chevron(painter: &egui::Painter, at: egui::Pos2, ink: Color32) {
+    crate::icons::paint_ink(painter, Rect::from_center_size(at, vec2(10.0, 10.0)), "chevron", ink);
+}
+
 /// The label colour on a selected tab or open section: on the dark ribbon a lighter tint of the accent.
 fn selected_ink(accent: &crate::theme::TabAccent) -> Color32 {
     if crate::theme::is_dark() { accent.color.lerp_to_gamma(Color32::WHITE, 0.5) } else { accent.color }
@@ -821,8 +825,9 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         icons::paint_icon(&painter, Rect::from_center_size(pos2(ws.center().x, ws.top() + 39.0), vec2(30.0, 30.0)), workspace_icon, 1.0);
         ribbon_text(ui, pos2(ws.center().x, ws.top() + 69.0), app.tr(if render { "ui.render" } else { "ui.design" }), 13.0, t.text, true);
         let label = app.tr("ui.ribbon_workspace");
-        ribbon_text(ui, pos2(ws.center().x - 4.0, ws.top() + 89.0), label, 11.0, t.text_dim, false);
-        caret(&painter, pos2(ws.right() - 8.0, ws.top() + 89.0), t.text_dim);
+        let label_width = painter.layout_no_wrap(label.to_string(), FontId::proportional(11.0), t.text_dim).size().x;
+        ribbon_text(ui, pos2(ws.center().x - 6.0, ws.top() + 89.0), label, 11.0, t.text_dim, false);
+        chevron(&painter, pos2(ws.center().x - 6.0 + label_width / 2.0 + 7.0, ws.top() + 89.5), t.text_dim);
         if wresp.on_hover_text(app.tr("ui.change_workspace")).clicked() {
             crate::context_menu::toggle_for(app, ws, ws.left_bottom(), crate::context_menu::Target::Workspace);
         }
@@ -949,7 +954,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     let acc = command_accent(c.icon);
                     icons::paint(&painter, Rect::from_center_size(br.center() - vec2(0.0, 3.0), vec2(26.0, 26.0)), c.icon, t.icon, t.icon_fill, acc);
                 }
-                caret(&painter, pos2(br.center().x, br.bottom() - 3.0), t.text_dim);
+                chevron(&painter, pos2(br.center().x, br.bottom() - 3.0), t.text_dim);
                 let tip = format!("{} ({})", app.tr_label(panel), shown.len().max(cmds.len()));
                 if fresp.on_hover_text(tip).clicked() && enabled_panel {
                     ui.ctx().data_mut(|d| d.insert_temp(egui::Id::new("sc_panel_open"), popup_id));
@@ -1019,7 +1024,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                         painter.rect_filled(ar, t.radius_sm, t.hover);
                     }
                     ribbon_text(ui, ar.center() - vec2(4.0, 0.0), app.tr_label(f.label), 12.0, t.text, false);
-                    caret(&painter, pos2(ar.right() - 5.0, ar.center().y), t.text_dim);
+                    chevron(&painter, pos2(ar.right() - 6.0, ar.center().y + 0.5), t.text_dim);
                     arrow.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, app.tr_label(f.label)));
                     egui::Popup::menu(&arrow).show(|ui| {
                         let variants: Vec<_> = f.commands.iter().filter_map(|id| solidcraft_engine::find_command(id)).collect();
@@ -1098,8 +1103,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             let ink = if panel_open { selected_ink(&accent) } else { t.text_dim };
             ribbon_text(ui, lr.center() - vec2(if finish { 0.0 } else { 6.0 }, 0.0), &label, 11.5, ink, panel_open || hot);
             if !finish {
-                let at = pos2(lr.center().x + label_width / 2.0 + 1.0, lr.center().y + 0.5);
-                crate::icons::paint_ink(&painter, Rect::from_center_size(at, vec2(10.0, 10.0)), "chevron", ink);
+                chevron(&painter, pos2(lr.center().x + label_width / 2.0 + 1.0, lr.center().y + 0.5), ink);
             }
             if lresp.clicked() && enabled_panel {
                 ui.ctx().data_mut(|d| {

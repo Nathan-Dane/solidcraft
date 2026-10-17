@@ -89,10 +89,6 @@ pub(crate) fn pin_icon(p: &egui::Painter, r: Rect, on: bool, col: Color32) {
     p.line_segment([at(0.0, -2.0), at(0.0, 7.0)], stroke);
 }
 
-pub(crate) fn caret(p: &egui::Painter, c: egui::Pos2, col: Color32) {
-    p.add(egui::Shape::convex_polygon(vec![pos2(c.x - 3.5, c.y - 2.0), pos2(c.x + 3.5, c.y - 2.0), pos2(c.x, c.y + 2.5)], col, Stroke::NONE));
-}
-
 pub(crate) fn brand_mark(p: &egui::Painter, c: Pos2) {
     let s = 20.0 / 412.217;
     let m = |pts: &[(f32, f32)]| -> Vec<egui::Pos2> { pts.iter().map(|&(x, y)| pos2(c.x + (x - 178.5) * s, c.y + (y - 206.1) * s)).collect() };
