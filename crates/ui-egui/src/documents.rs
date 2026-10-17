@@ -494,12 +494,8 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
 
 /// Tabs are rounded chips on the bar; the active design has the stronger fill.
 fn tab_shape(painter: &egui::Painter, t: &Tokens, r: Rect, active: bool, hovered: bool) {
-    // On the dark bar the active tab is a solid lifted surface; on the light bar the usual overlay.
-    let dark_bar = t.app_bar.r() < 100;
-    let fill = if active && dark_bar {
-        egui::Color32::from_rgb(53, 59, 71)
-    } else if active {
-        t.app_bar_hover_strong
+    let fill = if active {
+        t.app_bar_tab_active
     } else if hovered {
         t.app_bar_hover
     } else {

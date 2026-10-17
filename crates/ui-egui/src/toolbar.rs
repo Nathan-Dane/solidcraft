@@ -875,7 +875,7 @@ fn chevron(painter: &egui::Painter, at: egui::Pos2, ink: Color32) {
 
 /// The label colour on a selected tab or open section: on the dark ribbon a lighter tint of the accent.
 fn selected_ink(accent: &crate::theme::TabAccent) -> Color32 {
-    if crate::theme::is_dark() { accent.color.lerp_to_gamma(Color32::WHITE, 0.5) } else { accent.color }
+    if crate::theme::is_dark() { accent.color.lerp_to_gamma(Tokens::get().on_accent, 0.5) } else { accent.color }
 }
 
 pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {

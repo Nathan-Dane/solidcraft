@@ -347,6 +347,8 @@ pub struct Tokens {
     pub app_bar_hover_subtle: Color32,
     pub app_bar_hover_button: Color32,
     pub app_bar_hover_strong: Color32,
+    /// The active document tab: a solid surface lifted from the bar.
+    pub app_bar_tab_active: Color32,
     /// Timeline items: normal and failed.
     pub timeline_item: Color32,
     pub timeline_item_error: Color32,
