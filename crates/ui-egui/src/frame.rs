@@ -302,8 +302,8 @@ mod tests {
         h.frames(6);
         let hovered = h.app.viewport.dialog_rect.unwrap();
         assert!((hovered.size() - rest.size()).length() < 0.01, "hovering resized the dialog: {rest:?} -> {hovered:?}");
-        // Dragged by its title text.
-        let title = h.widget("CREATE SKETCH").map(|[x, y]| egui::pos2(x as f32, y as f32)).unwrap();
+        // Drag the published title band, independent of similarly labelled toolbar controls.
+        let title = crate::scenario::handle_at("dialog:title").unwrap();
         h.call("ui.drag", json!({"x0": title.x, "y0": title.y, "x1": title.x - 300.0, "y1": title.y + 120.0, "steps": 8}));
         h.frames(4);
         let moved = h.app.viewport.dialog_rect.unwrap();

@@ -116,7 +116,9 @@ fn swap_in(app: &mut SolveApp, slot: DocSlot) -> DocSlot {
     app.session.auto_project = out.session.auto_project;
     // Views cache by revision: the incoming design must not look unchanged.
     app.session.invalidate_view(out_rev);
-    app.ui.tab = if app.session.active_sketch.is_some() { "SKETCH".into() } else { "SOLID".into() };
+    app.ui.ribbon_context = None;
+    app.ui.tab = "MODEL".into();
+    crate::workspace::sync_context(app);
     out
 }
 

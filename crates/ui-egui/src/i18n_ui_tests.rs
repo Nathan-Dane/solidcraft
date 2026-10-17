@@ -76,7 +76,8 @@ fn window_chrome_renders_in_the_active_language() {
         // The browser heading is on screen from the start; the selection filter lives in the
         // SELECT panel, which is not the one shown by default.
         assert!(h.widget(browser).is_some(), "{lang}: the browser heading must show {browser:?}");
-        let select = scenario::handle_at("panel:SOLID:SELECT").expect("the SELECT panel is on the SOLID tab");
+        h.step(&json!({"click":{"handle":"tab:VIEW"}})).unwrap();
+        let select = scenario::handle_at("panel:VIEW:SELECT").expect("the selection filter is on VIEW");
         h.step(&json!({"click": [select.x, select.y]})).unwrap();
         h.frames(2);
         assert!(h.widget(filter).is_some(), "{lang}: the selection filter must show {filter:?}");

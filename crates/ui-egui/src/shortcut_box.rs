@@ -105,8 +105,9 @@ pub fn search(app: &SolveApp, q: &str) -> Vec<(&'static str, &'static str, &'sta
     let mut v: Vec<(u32, &'static str, &'static str, &'static str, String)> = command_specs()
         .into_iter()
         .filter_map(|c| {
-            let place = if c.tab.is_empty() { String::new() } else { format!("{} › {}", c.tab, c.panel) };
-            let s = score(&q, c.label).max(score(&q, c.id) * 9 / 10).max(score(&q, c.tab) / 3).max(score(&q, c.panel) / 3);
+            let (tab, panel) = crate::workspace::destination(c).unwrap_or(("", ""));
+            let place = if tab.is_empty() { String::new() } else { format!("{} › {}", app.tr_label(tab), app.tr_label(panel)) };
+            let s = score(&q, c.label).max(score(&q, c.id) * 9 / 10).max(score(&q, tab) / 3).max(score(&q, panel) / 3);
             let recent = app.sbox.recent.iter().position(|r| r == c.id).map_or(0, |i| 2000 - i as u32);
             // Commands that can run now come before those that can't.
             let usable = if c.info(&app.session).enabled { 150 } else { 0 };
@@ -327,7 +328,7 @@ mod tests {
         let mut app = SolveApp::new(solidcraft_engine::Session::default(), Default::default());
         assert_eq!(search(&app, "extr").first().map(|x| x.0), Some("solid.extrude"));
         assert_eq!(search(&app, "solid.fil").first().map(|x| x.0), Some("solid.fillet"));
-        assert!(search(&app, "constraints").iter().any(|x| x.0 == "sketch.constraint.parallel"), "by panel");
+        assert!(search(&app, "constrain").iter().any(|x| x.0 == "sketch.constraint.parallel"), "by panel");
         app.sbox.used("solid.shell");
         app.sbox.used("solid.revolve");
         let all = search(&app, "");

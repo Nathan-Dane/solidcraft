@@ -8,7 +8,7 @@ use serde_json::json;
 use crate::theme::Tokens;
 use crate::{SolveApp, icons};
 
-pub const TABS: &[&str] = &["SOLID", "SURFACE", "MESH", "SHEET METAL", "PLASTIC", "UTILITIES"];
+pub use crate::workspace::TABS;
 
 /// Legacy paint arguments and non-SVG affordances follow the same semantic palette as the icon.
 /// The requested icon id determines its meaning on ribbons, menus and drag previews alike.
@@ -18,40 +18,15 @@ fn command_accent(icon: &str) -> Color32 {
 
 /// Accent for a tab or a panel with a more specific semantic role.
 fn panel_accent(t: &Tokens, tab: &str, panel: &str) -> Color32 {
-    if panel == "CONSTRAINTS" {
+    if panel == "CONSTRAIN" {
         return t.glyph_text;
     }
     crate::theme::TabAccent::for_tab(t, tab).color
 }
 
 /// Panels shown on each tab (in order). Commands come from the registry by (tab, panel).
-pub fn panels(tab: &str) -> &'static [&'static str] {
-    if let Some(p) = crate::workspace::panels(tab) {
-        return p;
-    }
-    match tab {
-        "SOLID" => &["CREATE", "MODIFY", "ASSEMBLE", "CONSTRUCT", "INSPECT", "INSERT", "SELECT"],
-        "SKETCH" => &["CREATE", "MODIFY", "PATTERN", "CONSTRAINTS", "INSPECT", "INSERT", "SELECT", "FINISH SKETCH"],
-        "SURFACE" => &["CREATE", "MODIFY", "ASSEMBLE", "CONSTRUCT", "INSPECT", "INSERT", "SELECT"],
-        "MESH" => &["CREATE", "PREPARE", "MODIFY", "ASSEMBLE", "CONSTRUCT", "INSPECT", "INSERT", "SELECT"],
-        "SHEET METAL" => &["CREATE", "MODIFY", "ASSEMBLE", "CONSTRUCT", "INSPECT", "INSERT", "SELECT"],
-        "PLASTIC" => &["CREATE", "MODIFY", "ASSEMBLE", "CONSTRUCT", "INSPECT", "INSERT", "SELECT"],
-        "RENDER" => &["SCENE"],
-        _ => &["MAKE", "ADD-INS", "UTILITY", "INSPECT", "SELECT"],
-    }
-}
-
-/// How many commands of a panel get a button on a fresh (or reset) toolbar. The user's own
-/// layout (`toolbar_custom`) has no cap: every pinned command gets a button.
-pub fn promoted(tab: &str, panel: &str) -> usize {
-    match (tab, panel) {
-        ("SOLID", "CREATE") => 4,
-        ("SOLID", "MODIFY") => 4,
-        ("SKETCH", "CONSTRAINTS") => 6,
-        ("SKETCH", "PATTERN") => 3,
-        (_, "FINISH SKETCH") => 1,
-        _ => 2,
-    }
+pub fn panels(tab: &str) -> Vec<&'static str> {
+    crate::workspace::panels(tab)
 }
 
 /// How a panel is drawn on a toolbar that may be too narrow for every button.
@@ -600,7 +575,7 @@ fn export_as(app: &mut SolveApp, ext: &str, format: Option<&str>) {
 
 pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    let sketching = app.session.active_sketch.is_some();
+    crate::workspace::sync_context(app);
     egui::Panel::top("sc_toolbar").exact_size(92.0).frame(egui::Frame::NONE.fill(t.toolbar)).show(ui, |ui| {
         let r = ui.max_rect();
         let painter = ui.painter().clone();
@@ -646,20 +621,25 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         crate::scenario::publish_rect("toolbar", r);
         crate::scenario::publish_rect("workspace_switcher", ws);
         let mut x = r.left() + 112.0;
-        let mut tabs: Vec<&str> = Vec::new();
-        if sketching {
-            tabs.push("SKETCH");
-        }
-        if crate::render_workspace::active(app) {
-            tabs.push("RENDER");
-        } else {
-            tabs.extend(TABS.iter());
-        }
+        let tabs = crate::workspace::visible_tabs(app);
         for tab in tabs {
             let display_tab = app.tr_label(tab);
             let text_width = painter.layout_no_wrap(display_tab.to_string(), FontId::proportional(t.font_body), t.text).size().x;
             let w = 12.0 + text_width.max(28.0);
             let tr = Rect::from_min_size(pos2(x, tabs_y), vec2(w, 22.0));
+            crate::scenario::publish_handle(&format!("tab:{tab}"), tr.center());
+            // Existing automation names remain aliases for their replacement tabs.
+            let aliases: &[&str] = match tab {
+                "MODEL" => &["SOLID", "PLASTIC"],
+                "SURFACE" => &["MESH"],
+                "MANAGE" => &["UTILITIES"],
+                _ => &[],
+            };
+            for alias in aliases {
+                crate::scenario::publish_handle(&format!("tab:{alias}"), tr.center());
+            }
+
+            crate::scenario::publish_rect(&format!("tab:{tab}"), tr);
             let active = app.ui.tab == tab;
             let resp = ui.interact(tr, ui.id().with(("tab", tab)), Sense::click());
             if active {
@@ -799,7 +779,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     painter.rect_filled(
                         br,
                         t.radius_sm,
-                        if tab == "SOLID" || panel_accent(&t, &tab, "") == t.accent {
+                        if tab == "MODEL" || panel_accent(&t, &tab, "") == t.accent {
                             t.border.gamma_multiply(0.7)
                         } else {
                             crate::theme::TabAccent::for_tab(&t, &tab).soft
@@ -818,8 +798,8 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     if sketch_create { Rect::from_center_size(pos2(br.center().x, br.top() + 13.0), vec2(24.0, 24.0)) } else { br.shrink(6.0) };
                 icons::paint(&painter, icon_rect, icon, ink, fill, acc);
                 let label = match c.id {
-                    "parameters.change" if *panel == "CONFIGURE" => "Parameters",
-                    "config.table" if *panel == "CONFIGURE" => "Configurations",
+                    "parameters.change" if *panel == "PARAMETERS" => "Parameters",
+                    "config.table" if *panel == "CONFIGURATIONS" => "Configurations",
                     _ => selected.label,
                 };
                 let tr_label = app.tr_label(label);
@@ -1153,8 +1133,9 @@ fn dropdown_row(app: &SolveApp, ui: &mut egui::Ui, c: &'static solidcraft_engine
     // Every row drags onto the toolbar (to pin it there); enabled rows also start their command.
     let sense = if info.enabled { Sense::click_and_drag() } else { Sense::drag() };
     let resp = ui.interact(rect, dropdown_row_id(c.id), sense);
-    // Rows reached with the arrow keys scroll into view in a drop-down taller than the window.
-    if resp.has_focus() && ui.input(|i| i.key_pressed(egui::Key::ArrowDown) || i.key_pressed(egui::Key::ArrowUp)) {
+    // Focus can settle on the following frame, after the key event has gone.
+    // Keep the focused row visible even then in a drop-down taller than the window.
+    if resp.has_focus() && !ui.clip_rect().contains_rect(rect) {
         resp.scroll_to_me_animation(None, egui::style::ScrollAnimation::none());
     }
     if resp.drag_started() {
@@ -1499,7 +1480,7 @@ mod header_report_tests {
                 let t = Tokens::themed(dark, vision);
                 for tab in TABS.iter().copied().chain(["SKETCH", "FORM", "RENDER"]) {
                     assert_eq!(panel_accent(&t, tab, "CREATE"), crate::theme::TabAccent::for_tab(&t, tab).color);
-                    assert_eq!(panel_accent(&t, tab, "CONSTRAINTS"), t.glyph_text);
+                    assert_eq!(panel_accent(&t, tab, "CONSTRAIN"), t.glyph_text);
                 }
             }
         }
@@ -1800,14 +1781,14 @@ mod dropdown_tests {
     fn a_tall_drop_down_scrolls_inside_a_short_window() {
         let mut h = crate::scenario::Harness::new();
         h.app.home.open = false;
-        h.call("ui.resize", json!({"width":1200,"height":480}));
+        h.call("ui.resize", json!({"width":1200,"height":320}));
         h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
         h.frames(4);
         h.step(&json!({"click":{"handle":"panel:SKETCH:CREATE"}})).unwrap();
         h.frames(4);
         let menu = crate::scenario::rect_of("toolbar_dropdown").expect("the drop-down is open");
-        assert!(menu.bottom() <= 480.0, "the drop-down runs past the window: {menu:?}");
-        assert!(crate::scenario::handle_at("dropdown:sketch.intersect").is_some_and(|p| !menu.contains(p)), "Intersect starts below the fold");
+        assert!(menu.bottom() <= 320.0, "the drop-down runs past the window: {menu:?}");
+        assert!(crate::scenario::handle_at("dropdown:sketch.text").is_some_and(|p| !menu.contains(p)), "Text starts below the fold");
         // Up from no focus goes to the last enabled row; it scrolls into view.
         h.step(&json!({"key":"ArrowUp"})).unwrap();
         h.frames(10);
@@ -1824,10 +1805,10 @@ mod dropdown_tests {
         let mut h = crate::scenario::Harness::new();
         h.app.home.open = false;
         h.call("ui.resize", json!({"width":1600,"height":1000}));
-        let open = |h: &mut crate::scenario::Harness, tab: &str| {
+        let open = |h: &mut crate::scenario::Harness, tab: &str, panel: &str| {
             h.app.ui.tab = tab.into();
             h.frames(4);
-            h.step(&json!({"click":{"handle":format!("panel:{tab}:MODIFY")}})).unwrap();
+            h.step(&json!({"click":{"handle":format!("panel:{tab}:{panel}")}})).unwrap();
             h.frames(6);
             let menu = crate::scenario::rect_of("toolbar_dropdown").expect("the drop-down is open");
             let rows = crate::scenario::handles("dropdown:");
@@ -1835,9 +1816,9 @@ mod dropdown_tests {
             h.frames(4);
             (menu, rows)
         };
-        let (short, short_rows) = open(&mut h, "MESH");
-        let (menu, rows) = open(&mut h, "PLASTIC");
-        assert!(rows.len() > short_rows.len(), "PLASTIC MODIFY lists more than MESH MODIFY: {rows:?} vs {short_rows:?}");
+        let (short, short_rows) = open(&mut h, "MANAGE", "RULES");
+        let (menu, rows) = open(&mut h, "MODEL", "MODIFY");
+        assert!(rows.len() > short_rows.len(), "MODEL MODIFY lists more than MANAGE RULES: {rows:?} vs {short_rows:?}");
         assert!(menu.height() > short.height(), "the longer list is taller: {menu:?} vs {short:?}");
         for (id, at) in &rows {
             assert!(menu.contains(*at), "{id} at {at:?} is cut off by the drop-down {menu:?}");
@@ -1853,21 +1834,21 @@ mod panel_drop_tests {
     fn panel_label_gap_and_margins_append_while_buttons_insert_before() {
         for target in ["label", "gap", "left margin", "right margin", "button"] {
             let mut h = crate::scenario::Harness::new();
-            h.step(&json!({"click":{"handle":"panel:SOLID:CREATE"}})).unwrap();
-            let label = crate::scenario::handle_at("panel:SOLID:CREATE").unwrap();
+            h.step(&json!({"click":{"handle":"panel:MODEL:CREATE"}})).unwrap();
+            let label = crate::scenario::handle_at("panel:MODEL:CREATE").unwrap();
             let destination = match target {
                 "gap" => label - vec2(0.0, 10.0),
-                "left margin" => pos2(label.x - panel_width(4) / 2.0 + 1.0, label.y - 30.0),
-                "right margin" => pos2(label.x + panel_width(4) / 2.0 - 1.0, label.y - 30.0),
+                "left margin" => pos2(label.x - panel_width(3) / 2.0 + 1.0, label.y - 30.0),
+                "right margin" => pos2(label.x + panel_width(3) / 2.0 - 1.0, label.y - 30.0),
                 "button" => crate::scenario::handle_at("button:solid.extrude").unwrap(),
                 _ => label,
             };
             h.step(&json!({"drag":[{"handle":"dropdown:solid.cylinder"}, [destination.x,destination.y]],"steps":12})).unwrap();
             h.step(&json!({"key":"Escape"})).unwrap();
             let order = if target == "button" {
-                json!(["button:sketch.create", "button:solid.cylinder", "button:solid.extrude", "button:solid.revolve", "button:solid.sweep"])
+                json!(["button:solid.cylinder", "button:solid.extrude", "button:solid.revolve", "button:solid.hole"])
             } else {
-                json!(["button:sketch.create", "button:solid.extrude", "button:solid.revolve", "button:solid.sweep", "button:solid.cylinder"])
+                json!(["button:solid.extrude", "button:solid.revolve", "button:solid.hole", "button:solid.cylinder"])
             };
             h.step(&json!({"expect":{"handle_order":order,"tool":null,"dialog":null,"errors":0}})).unwrap();
             assert!(h.app.session.doc.features.is_empty(), "{target}: pinning must not run the command");
@@ -1879,10 +1860,10 @@ mod panel_drop_tests {
     #[test]
     fn panel_label_drop_moves_a_button_between_panels() {
         let mut h = crate::scenario::Harness::new();
-        h.step(&json!({"drag":[{"handle":"button:solid.extrude"},{"handle":"panel:SOLID:MODIFY"}],"steps":12})).unwrap();
-        h.step(&json!({"expect":{"handle_order":["button:solid.fillet","button:solid.chamfer","button:solid.scale","button:solid.extrude"],"tool":null,"dialog":null,"errors":0}})).unwrap();
+        h.step(&json!({"drag":[{"handle":"button:solid.extrude"},{"handle":"panel:MODEL:MODIFY"}],"steps":12})).unwrap();
+        h.step(&json!({"expect":{"handle_order":["button:solid.fillet","button:solid.chamfer","button:solid.shell","button:solid.extrude"],"tool":null,"dialog":null,"errors":0}})).unwrap();
         h.step(&json!({"restart":"close"})).unwrap();
-        h.step(&json!({"expect":{"handle_order":["button:solid.scale","button:solid.extrude"]}})).unwrap();
+        h.step(&json!({"expect":{"handle_order":["button:solid.shell","button:solid.extrude"]}})).unwrap();
     }
 }
 
@@ -1907,10 +1888,10 @@ mod dropdown_toggle_tests {
         assert!(h.app.viewport.context_menu.is_some(), "and a third opens it again");
         h.step(&json!({"key": "Escape"})).unwrap();
 
-        h.step(&json!({"click": {"handle": "panel:SOLID:CREATE"}})).unwrap();
+        h.step(&json!({"click": {"handle": "panel:MODEL:CREATE"}})).unwrap();
         h.frames(2);
         assert!(rect_of("toolbar_dropdown").is_some(), "the first click opens the panel's list");
-        h.step(&json!({"click": {"handle": "panel:SOLID:CREATE"}})).unwrap();
+        h.step(&json!({"click": {"handle": "panel:MODEL:CREATE"}})).unwrap();
         h.frames(2);
         assert!(rect_of("toolbar_dropdown").is_none(), "the second click closes it");
     }

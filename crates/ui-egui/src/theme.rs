@@ -48,7 +48,7 @@ impl TabAccent {
     }
 
     pub fn current(ctx: &egui::Context) -> Self {
-        ctx.data(|d| d.get_temp::<Self>(egui::Id::new("sc_tab_accent"))).unwrap_or_else(|| Self::for_tab(&Tokens::get(), "SOLID"))
+        ctx.data(|d| d.get_temp::<Self>(egui::Id::new("sc_tab_accent"))).unwrap_or_else(|| Self::for_tab(&Tokens::get(), "MODEL"))
     }
 
     pub fn publish(app: &crate::SolveApp, ctx: &egui::Context) {
@@ -480,7 +480,7 @@ mod tests {
                     assert_ne!(accent.soft, color);
                     assert_ne!(accent.soft, t.panel);
                 }
-                for tab in ["SOLID", "SHEET METAL", "PLASTIC", "UTILITIES", "RENDER", "unknown"] {
+                for tab in ["MODEL", "ASSEMBLE", "INSERT", "INSPECT", "MANAGE", "VIEW", "SHEET METAL", "RENDER", "unknown"] {
                     assert_eq!(super::TabAccent::for_tab(&t, tab), super::TabAccent { color: t.accent, soft: t.accent_soft });
                 }
             }
@@ -499,7 +499,7 @@ mod tests {
         assert_eq!(super::TabAccent::current(&first).color, super::Tokens::get().surface_accent);
         assert_eq!(super::TabAccent::current(&second).color, super::Tokens::get().accent);
         assert_eq!(first.style_of(egui::Theme::Dark).visuals, before, "dialog OK, checkboxes and status styles must not inherit the tab");
-        app.ui.tab = "SOLID".into();
+        app.ui.tab = "MODEL".into();
         super::TabAccent::publish(app, &first);
         assert_eq!(super::TabAccent::current(&first).soft, super::Tokens::get().accent_soft);
     }

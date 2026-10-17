@@ -739,13 +739,13 @@ mod tests {
             for vision in crate::theme::ColorVision::ALL {
                 let t = Tokens::themed(dark, vision);
                 let base = Colors::from_tokens(&t);
-                for tab in ["SOLID", "SKETCH", "SURFACE", "MESH", "FORM"] {
+                for tab in ["MODEL", "SKETCH", "SURFACE", "ASSEMBLE", "INSERT", "INSPECT", "MANAGE", "VIEW", "SHEET METAL", "RENDER"] {
                     for active in [false, true] {
                         let colors = Colors::for_tool(&t, tab, active);
                         assert_eq!(colors.removed, base.removed);
                         assert_eq!(colors.body, base.body);
                         assert_eq!(colors.edge, base.edge);
-                        if !active || tab == "SOLID" {
+                        if !active || crate::theme::TabAccent::for_tab(&t, tab).color == t.accent {
                             assert_eq!(colors.added, base.added);
                             assert_eq!(colors.new_body, base.new_body);
                         } else {
