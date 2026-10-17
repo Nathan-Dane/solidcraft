@@ -100,7 +100,9 @@ pub(crate) fn brand_mark(p: &egui::Painter, c: Pos2) {
     let face = |col: Color32, pts: &[(f32, f32)]| {
         p.add(egui::Shape::convex_polygon(m(pts), col, Stroke::NONE));
     };
-    let [light, mid, dark, edge_col] = crate::theme::Tokens::get().logo;
+    // The faces are separated by gaps that show the application bar, not by white lines.
+    let [light, mid, dark, _] = crate::theme::Tokens::get().logo;
+    let edge_col = crate::theme::Tokens::get().app_bar;
     face(light, &[(3.5, 105.9), (177.0, 5.8), (263.4, 55.6), (263.8, 156.0), (177.0, 406.4)]);
     face(light, &[(177.0, 206.1), (263.8, 156.0), (350.5, 206.2), (350.5, 306.3), (177.0, 406.4)]);
     face(mid, &[(3.5, 105.9), (177.0, 206.1), (177.0, 406.4)]);
