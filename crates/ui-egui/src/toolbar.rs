@@ -1049,8 +1049,8 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 for c in &gallery {
                     let index = crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).unwrap_or(0);
                     let cell = Rect::from_min_size(
-                        pos2(button_x + (index % 3) as f32 * 36.0, top + 2.0 + (index / 3) as f32 * 32.0),
-                        vec2(32.0, 28.0),
+                        pos2(button_x + (index % 3) as f32 * 34.0, top + 5.0 + (index / 3) as f32 * 30.0),
+                        vec2(30.0, 26.0),
                     );
                     let info = c.info(&app.session);
                     let resp = ui.interact(cell, ui.id().with(("cmd", c.id)), Sense::click_and_drag());
@@ -1070,7 +1070,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     );
                     icons::paint_icon(
                         &painter,
-                        Rect::from_center_size(cell.center(), vec2(22.0, 22.0)),
+                        Rect::from_center_size(cell.center(), vec2(19.0, 19.0)),
                         c.icon,
                         if info.enabled { 1.0 } else { 0.35 },
                     );
@@ -1357,7 +1357,7 @@ enum RowAction {
 
 const ROW_H: f32 = 30.0;
 
-const CONSTRAINT_GRID_WIDTH: f32 = 104.0;
+const CONSTRAINT_GRID_WIDTH: f32 = 98.0;
 
 /// Registry parameter syntax is not a user-facing description. Reuse existing catalog prose
 /// where present; other commands intentionally show only their name and registered shortcut.
@@ -2354,7 +2354,7 @@ mod ribbon_gallery_tests {
         let mut cells = Vec::new();
         for id in crate::workspace::CONSTRAINT_GALLERY {
             let cell = rect_of(&format!("ribbon:constraint:{id}")).unwrap();
-            assert_eq!(cell.size(), vec2(32.0, 28.0));
+            assert_eq!(cell.size(), vec2(30.0, 26.0));
             assert_eq!(rect_of(&format!("button:{id}")), Some(cell));
             assert!(cell.left() > dimension.right());
             cells.push(cell);
