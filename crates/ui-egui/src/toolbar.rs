@@ -786,6 +786,11 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
             [row.left_bottom() - vec2(0.0, 1.0), row.right_bottom() - vec2(0.0, 1.0)],
             Stroke::new(2.0, panel_accent(&t, &app.ui.tab, "")),
         );
+    } else {
+        ui.painter().line_segment(
+            [row.left_bottom() - vec2(0.0, 0.5), row.right_bottom() - vec2(0.0, 0.5)],
+            Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)),
+        );
     }
 }
 
