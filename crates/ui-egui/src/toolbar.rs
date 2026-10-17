@@ -906,13 +906,13 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
         let wresp = ui.interact(ws, ui.id().with("workspace_switcher"), Sense::click());
         let open = app.viewport.context_menu.is_some() && app.menu.target == crate::context_menu::Target::Workspace;
         if wresp.hovered() || open {
-            painter.rect_filled(ws.shrink(if floating { 1.0 } else { 0.0 }), if floating { t.radius_lg } else { 0 }, t.hover);
+            painter.rect_filled(ws, if floating { t.radius_lg } else { 0 }, t.hover);
         }
         // Keep the accent straight while leaving the floating card's top corners round.
         let accent_inset = if floating { f32::from(t.radius_lg) } else { 0.0 };
         painter.rect_filled(
             Rect::from_min_size(ws.left_top() + vec2(accent_inset, 0.0), vec2((ws.width() - 2.0 * accent_inset).max(0.0), t.space_3)),
-            0.0,
+            egui::CornerRadius { nw: 0, ne: 0, sw: if floating { 2 } else { 0 }, se: if floating { 2 } else { 0 } },
             t.accent,
         );
         if !floating {
