@@ -267,6 +267,10 @@ pub fn group_action(app: &mut SolveApp, action: &str, p: &Value) {
 // ---------------------------------------------------------------------------------------------
 
 const ROW_H: f32 = 26.0;
+/// The floating card's inner margin: the header highlight sits this far from the card's top, left
+/// and right edges, so its corners are concentric with the card's.
+const CARD_INSET: f32 = 4.0;
+const HEADER_H: f32 = 26.0;
 const INDENT: f32 = 14.0;
 
 /// One row's look.
@@ -520,10 +524,10 @@ fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui, timeline_above: bool) {
         let available = floating_bounds(ui.available_rect_before_wrap(), app.shell.history);
         app.shell.browser = None;
         // When even the header cannot fit, leave the remaining sliver to the viewport.
-        let min_height = t.font_small + t.space_4 + 2.0 * (t.space_6 + ui.spacing().item_spacing.y + 1.0);
+        let min_height = t.font_small + t.space_4 + 2.0 * (CARD_INSET + ui.spacing().item_spacing.y + 1.0);
         if available.is_positive() && available.height() >= min_height {
             let mut child = ui.new_child(egui::UiBuilder::new().id_salt("sc_browser_card").max_rect(available));
-            let frame = crate::frame::shell_card(t.panel).inner_margin(t.space_6 as i8);
+            let frame = crate::frame::shell_card(t.panel).inner_margin(CARD_INSET as i8);
             let inner_width = (available.width() - frame.total_margin().sum().x).max(0.0);
             let inner_height = (available.height() - frame.total_margin().sum().y).max(0.0);
             let response = frame.show(&mut child, |ui| {
@@ -593,8 +597,8 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     if collapsible && app.tree.panel_collapsed {
         return;
     }
-    ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), egui::Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)));
-    ui.add_space(t.space_4);
+    ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top() + 1.0, egui::Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)));
+    ui.add_space(t.space_3);
     browser_rows(app, ui, acts);
 }
 
@@ -602,17 +606,17 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
 /// card to just this row. The whole row is the button.
 fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     let t = Tokens::get();
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::hover());
+    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), HEADER_H), Sense::hover());
     let response = ui.interact(rect, ui.id().with("browser_header"), if collapsible { Sense::click() } else { Sense::hover() });
     crate::scenario::publish_handle("browser:header", rect.center());
     crate::scenario::publish_rect("browser:header", rect);
     let collapsed = collapsible && app.tree.panel_collapsed;
     if collapsible && (response.hovered() || response.has_focus()) {
-        ui.painter().rect_filled(rect.shrink2(vec2(0.0, 2.0)), t.radius_sm, t.hover);
+        ui.painter().rect_filled(rect, t.radius_lg.saturating_sub(CARD_INSET as u8), t.hover);
     }
     let galley = ui.painter().layout_no_wrap(crate::i18n::tr("ui.browser_title").to_string(), FontId::proportional(t.font_heading), t.text);
-    ui.painter().galley(pos2(rect.left() + t.space_8, rect.center().y - galley.size().y / 2.0), galley, t.text);
-    let mut right = rect.right() - t.space_8;
+    ui.painter().galley(pos2(rect.left() + t.space_6, rect.center().y - galley.size().y / 2.0), galley, t.text);
+    let mut right = rect.right() - t.space_6;
     if collapsible {
         let chevron = Rect::from_center_size(pos2(right - 5.0, rect.center().y), vec2(12.0, 12.0));
         if collapsed {
