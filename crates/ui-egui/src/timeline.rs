@@ -219,6 +219,12 @@ pub fn timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     if app.ui.layout == crate::shell::LayoutMode::Floating {
         let rect = floating_rect(ui.available_rect_before_wrap());
+        // A window too short for the card (the ribbon already fills it) leaves the history out
+        // rather than drawing into a negative-size rectangle.
+        if !rect.is_finite() || rect.width() < 1.0 || rect.height() < 30.0 {
+            app.shell.history = None;
+            return;
+        }
         app.shell.history = Some(rect);
         crate::scenario::publish_rect("history:card", rect);
         let mut child = ui.new_child(UiBuilder::new().id_salt("sc_timeline").max_rect(rect));

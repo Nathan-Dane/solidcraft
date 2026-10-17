@@ -115,3 +115,21 @@ fn browser_header_folds_the_floating_card_to_its_header_and_back() {
     assert!(!h.app.tree.panel_collapsed);
     assert!((rect_of("browser:card").unwrap().height() - open.height()).abs() < 1.0);
 }
+
+/// Tiny or odd window sizes never panic: the cards leave out what cannot fit.
+#[test]
+fn tiny_floating_windows_never_panic() {
+    for (w, h) in [(100, 60), (240, 90), (320, 140), (700, 150), (700, 300), (1400, 120), (180, 800)] {
+        for scale in [1.0, 2.0] {
+            let mut harness = Harness::new();
+            harness.call("ui.resize", json!({"width": w, "height": h}));
+            harness.call("ui.prefs", json!({"ui_scale": scale}));
+            harness.app.run("sketch.create", json!({"plane": "XY"})).unwrap();
+            harness.settle();
+            for mode in [LayoutMode::Floating, LayoutMode::Docked] {
+                harness.app.ui.layout = mode;
+                harness.settle();
+            }
+        }
+    }
+}
