@@ -372,7 +372,20 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let mut x = x0;
     let mut pick: Option<usize> = None;
     let mut shut: Option<usize> = None;
+    // Each tab fits its name (up to MAX_FIT) while all of them fit; otherwise they share the room.
+    const MAX_FIT: f32 = 200.0;
+    let natural: Vec<f32> = info
+        .iter()
+        .map(|(name, dirty)| {
+            let shown_name = if name == "Untitled" { app.tr("ui.untitled") } else { name.as_str() };
+            let label = format!("{shown_name}{}", if *dirty { " •" } else { "" });
+            let text = ui.painter().layout_no_wrap(label, FontId::proportional(13.0), t.app_bar_text).size().x;
+            (text + 40.0).clamp(72.0, MAX_FIT)
+        })
+        .collect();
+    let fit_all = shown == n && natural.iter().sum::<f32>() <= x1 - x0 - 34.0;
     for (i, (name, dirty)) in info.iter().enumerate().skip(first).take(shown) {
+        let w = if fit_all { natural.get(i).copied().unwrap_or(w) } else { w };
         let tr = Rect::from_min_size(pos2(x, r.top() + 4.0), vec2(w - 2.0, r.height() - 8.0));
         let active = !app.home.open && (i == app.docs.active || app.docs.slots.is_empty());
         let resp = ui.interact(tr, ui.id().with(("doc_tab", i)), Sense::click_and_drag());
@@ -397,16 +410,19 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         ui.painter().with_clip_rect(clip).galley(pos2(tr.left() + 10.0, tr.center().y - g.size().y / 2.0), g, ink);
         // ×
         let xr = Rect::from_center_size(pos2(tr.right() - 13.0, tr.center().y), vec2(16.0, 16.0));
-        let xresp = ui.interact(xr, ui.id().with(("doc_close", i)), Sense::click());
+        let show_close = active || resp.hovered() || ui.rect_contains_pointer(tr);
+        let xresp = ui.interact(xr, ui.id().with(("doc_close", i)), if show_close { Sense::click() } else { Sense::hover() });
         crate::scenario::publish_handle(&format!("tab:close:{i}"), xr.center());
         crate::scenario::publish_rect(&format!("tab:close:{i}"), xr);
-        if xresp.hovered() || xresp.has_focus() {
+        if show_close && (xresp.hovered() || xresp.has_focus()) {
             ui.painter().rect_filled(xr, 3.0, t.app_bar_hover_strong);
         }
         let c = xr.center();
         let s = Stroke::new(1.3, t.app_bar_text);
-        ui.painter().line_segment([c - vec2(3.5, 3.5), c + vec2(3.5, 3.5)], s);
-        ui.painter().line_segment([c - vec2(3.5, -3.5), c + vec2(3.5, -3.5)], s);
+        if show_close {
+            ui.painter().line_segment([c - vec2(3.5, 3.5), c + vec2(3.5, 3.5)], s);
+            ui.painter().line_segment([c - vec2(3.5, -3.5), c + vec2(3.5, -3.5)], s);
+        }
         if xresp.on_hover_text("Close").clicked() {
             shut = Some(i);
         } else if resp.on_hover_text(name.as_str()).clicked() {
