@@ -1042,15 +1042,15 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 if !gallery.is_empty() {
                     // A quiet rule sets the grid apart from the large button before it.
                     painter.line_segment(
-                        [pos2(button_x - 1.5, top + 10.0), pos2(button_x - 1.5, top + 52.0)],
+                        [pos2(button_x - 1.5, top + 8.0), pos2(button_x - 1.5, top + 46.0)],
                         Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)),
                     );
                 }
                 for c in &gallery {
                     let index = crate::workspace::CONSTRAINT_GALLERY.iter().position(|id| *id == c.id).unwrap_or(0);
                     let cell = Rect::from_min_size(
-                        pos2(button_x + (index % 3) as f32 * 34.0, top + 5.0 + (index / 3) as f32 * 30.0),
-                        vec2(30.0, 26.0),
+                        pos2(button_x + (index % 3) as f32 * 27.0, top + 6.0 + (index / 3) as f32 * 23.0),
+                        vec2(24.0, 20.0),
                     );
                     let info = c.info(&app.session);
                     let resp = ui.interact(cell, ui.id().with(("cmd", c.id)), Sense::click_and_drag());
@@ -1070,7 +1070,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                     );
                     icons::paint_icon(
                         &painter,
-                        Rect::from_center_size(cell.center(), vec2(19.0, 19.0)),
+                        Rect::from_center_size(cell.center(), vec2(15.0, 15.0)),
                         c.icon,
                         if info.enabled { 1.0 } else { 0.35 },
                     );
@@ -1357,7 +1357,7 @@ enum RowAction {
 
 const ROW_H: f32 = 30.0;
 
-const CONSTRAINT_GRID_WIDTH: f32 = 98.0;
+const CONSTRAINT_GRID_WIDTH: f32 = 82.0;
 
 /// Registry parameter syntax is not a user-facing description. Reuse existing catalog prose
 /// where present; other commands intentionally show only their name and registered shortcut.
@@ -2354,7 +2354,7 @@ mod ribbon_gallery_tests {
         let mut cells = Vec::new();
         for id in crate::workspace::CONSTRAINT_GALLERY {
             let cell = rect_of(&format!("ribbon:constraint:{id}")).unwrap();
-            assert_eq!(cell.size(), vec2(30.0, 26.0));
+            assert_eq!(cell.size(), vec2(24.0, 20.0));
             assert_eq!(rect_of(&format!("button:{id}")), Some(cell));
             assert!(cell.left() > dimension.right());
             cells.push(cell);
