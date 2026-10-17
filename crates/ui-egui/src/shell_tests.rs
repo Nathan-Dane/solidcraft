@@ -33,10 +33,10 @@ fn both_modes_keep_their_geometry_and_fit_clear_of_covered_rects() {
             let ribbon = rect_of("ribbon:card").unwrap();
             assert_eq!(viewport.left(), 0.0);
             assert_eq!(viewport.top(), toolbar::APP_BAR_HEIGHT);
-            assert_eq!(workspace.left(), 8.0);
-            assert_eq!(workspace.top(), viewport.top() + 8.0);
-            assert_eq!(ribbon.left() - workspace.right(), Tokens::get().space_6);
-            assert_eq!(ribbon.right(), viewport.right() - 8.0);
+            assert_eq!(workspace.left(), SHELL_GAP);
+            assert_eq!(workspace.top(), viewport.top() + SHELL_GAP);
+            assert_eq!(ribbon.left() - workspace.right(), SHELL_GAP);
+            assert_eq!(ribbon.right(), viewport.right() - SHELL_GAP);
             assert!(!covered(&h.app, pos2(4.0, workspace.center().y)));
             assert!(!covered(&h.app, pos2(workspace.right() + 2.0, workspace.center().y)));
             assert!(covered(&h.app, workspace.center()));

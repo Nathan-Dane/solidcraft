@@ -13,6 +13,43 @@ pub enum LayoutMode {
     Docked,
 }
 
+/// The gap from the viewport edge to the floating cards and between the cards.
+pub(crate) const SHELL_GAP: f32 = 7.0;
+
+/// The viewport's top corners are rounded concentrically with the cards: the card margin plus the
+/// card radius.
+pub(crate) fn corner_radius() -> f32 {
+    SHELL_GAP + f32::from(Tokens::get().radius_lg)
+}
+
+/// Fill the two concave corners where the application bar flows into the viewport's top edge, so
+/// the viewport reads as a rounded surface under the bar.
+pub(crate) fn paint_top_corners(painter: &egui::Painter, viewport: Rect, color: egui::Color32) {
+    let r = corner_radius().min(viewport.width() / 2.0).min(viewport.height() / 2.0);
+    if !(r.is_finite() && r > 0.5) {
+        return;
+    }
+    const STEPS: usize = 32;
+    for left in [true, false] {
+        let (corner, centre, dir) = if left {
+            (viewport.left_top(), pos2(viewport.left() + r, viewport.top() + r), -1.0)
+        } else {
+            (viewport.right_top(), pos2(viewport.right() - r, viewport.top() + r), 1.0)
+        };
+        let mut mesh = egui::Mesh::default();
+        mesh.colored_vertex(corner, color);
+        for i in 0..=STEPS {
+            // From the top tangent point round to the side tangent point.
+            let a = std::f32::consts::FRAC_PI_2 * i as f32 / STEPS as f32;
+            mesh.colored_vertex(pos2(centre.x + dir * r * a.sin(), centre.y - r * a.cos()), color);
+        }
+        for i in 0..STEPS as u32 {
+            mesh.add_triangle(0, i + 1, i + 2);
+        }
+        painter.add(egui::Shape::mesh(mesh));
+    }
+}
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct Cards {
     pub workspace: Rect,
@@ -22,9 +59,8 @@ pub(crate) struct Cards {
 
 impl Cards {
     pub fn new(available: Rect, mode: LayoutMode) -> Self {
-        let t = Tokens::get();
-        let margin = if mode == LayoutMode::Floating { t.space_8 } else { 0.0 };
-        let gap = if mode == LayoutMode::Floating { t.space_6 } else { 1.0 };
+        let margin = if mode == LayoutMode::Floating { SHELL_GAP } else { 0.0 };
+        let gap = if mode == LayoutMode::Floating { SHELL_GAP } else { 1.0 };
         let left = available.left() + margin;
         let top = available.top() + margin;
         let right = (available.right() - margin).max(left);

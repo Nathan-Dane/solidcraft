@@ -1402,6 +1402,7 @@ impl SolveApp {
                 viewport_ui.disable();
             }
             self.show_workspace(&mut viewport_ui);
+            shell::paint_top_corners(ui.painter(), full, theme::Tokens::get().app_bar);
             toolbar::toolbar(self, ui);
             theme::TabAccent::publish(self, ui.ctx());
         }
