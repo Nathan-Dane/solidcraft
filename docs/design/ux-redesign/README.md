@@ -63,5 +63,8 @@ options and collapsed sections, so commands with 10 to 20 options fit.
 
 - The earlier sketch variant with tab locks and a Finish menu was set aside as too complex for a
   first version, and is not part of this proposal.
-- The icons in the mockups come from the separate "Technical Accent" icon handoff. This proposal
-  does not implement or change any app icons.
+- The icons in the mockups are the reviewed SVGs from the icon system in PR #853
+  (`assets/icons/ui/design/svg/`), coloured with its accents from `palette.toml`: Sketch tools in
+  the Sketch green, constraints in red, everything else in the Solid blue. Simulation and
+  Manufacture have no icon there yet, so those two are placeholders. This proposal does not
+  implement or change any app icons.
