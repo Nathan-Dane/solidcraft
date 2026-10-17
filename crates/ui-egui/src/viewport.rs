@@ -2810,7 +2810,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if let Some(since) = app.computing_since() {
         let seconds = ((crate::now_ms() - since) / 1000.0).floor().max(0.0);
         let text = crate::i18n::format("dialog.computing", &[("seconds", &format!("{seconds:.0}"))]);
-        let pos = pos2(crate::shell::content_rect(app, rect).left() + 12.0, rect.bottom() - 76.0);
+        let pos = pos2(crate::shell::content_rect(app, rect).left() + 12.0, crate::shell::content_rect(app, rect).bottom() - 76.0);
         let galley = painter.layout_no_wrap(text, FontId::proportional(t.font_label), t.text);
         let r = Rect::from_min_size(pos, galley.size() + vec2(34.0, 8.0));
         painter.rect_filled(r, t.radius_sm, t.overlay);
@@ -2821,7 +2821,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     // Status chip.
     if let Some((msg, at, err)) = app.status.clone() {
         if crate::now_ms() - at < 6000.0 {
-            let pos = pos2(crate::shell::content_rect(app, rect).left() + 12.0, rect.bottom() - 46.0);
+            let pos = pos2(crate::shell::content_rect(app, rect).left() + 12.0, crate::shell::content_rect(app, rect).bottom() - 46.0);
             let galley = painter.layout_no_wrap(msg, FontId::proportional(t.font_label), if err { t.error } else { t.text });
             let r = Rect::from_min_size(pos, galley.size() + vec2(16.0, 8.0));
             painter.rect_filled(r, t.radius_sm, t.overlay);

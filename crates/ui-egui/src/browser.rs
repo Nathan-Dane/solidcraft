@@ -264,7 +264,7 @@ pub fn group_action(app: &mut SolveApp, action: &str, p: &Value) {
 // Drawing
 // ---------------------------------------------------------------------------------------------
 
-const ROW_H: f32 = 22.0;
+const ROW_H: f32 = 26.0;
 const INDENT: f32 = 14.0;
 
 /// One row's look.
@@ -386,7 +386,8 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
         icons::paint(ui.painter(), ir, row.icon, ink, if row.dim { t.panel_header } else { t.icon_fill }, t.accent);
         x += 21.0;
     }
-    let col = row.color.unwrap_or(if row.dim { t.text_dim } else { t.text });
+    let col =
+        if row.selected { crate::theme::TabAccent::current(ui.ctx()).color } else { row.color.unwrap_or(if row.dim { t.text_dim } else { t.text }) };
     let label_display = if row.name { crate::i18n::tr_name(row.label) } else { crate::i18n::tr_dyn(row.label) };
     let galley = ui.painter().layout_no_wrap(label_display, FontId::proportional(t.font_label), col);
     let lw = galley.size().x;
@@ -496,12 +497,45 @@ pub fn browser_below_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     browser_panel(app, ui, true);
 }
 
+/// Maximum card bounds; the scroll area shrinks its height to the tree's content.
+fn floating_bounds(available: Rect, history: Option<Rect>) -> Rect {
+    let gap = crate::shell::SHELL_GAP;
+    let left = available.left() + gap;
+    // The ribbon panel has already reserved its bottom gap.
+    let top = available.top();
+    let right = (available.right() - gap).max(left);
+    let bottom = history.map_or(available.bottom() - gap, |r| r.top() - gap).max(top);
+    Rect::from_min_max(pos2(left, top), pos2((left + 250.0).min(right), bottom))
+}
+
 fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui, timeline_above: bool) {
     let t = Tokens::get();
     app.tree.order.clear();
     DRAWN.with(|d| d.borrow_mut().clear());
     OCCURRENCES.with(|d| d.borrow_mut().clear());
     let mut acts = Actions::default();
+    if app.ui.layout == crate::shell::LayoutMode::Floating && !timeline_above {
+        let available = floating_bounds(ui.available_rect_before_wrap(), app.shell.history);
+        app.shell.browser = None;
+        // When even the header cannot fit, leave the remaining sliver to the viewport.
+        let min_height = t.font_small + t.space_4 + 2.0 * (t.space_6 + ui.spacing().item_spacing.y + 1.0);
+        if available.is_positive() && available.height() >= min_height {
+            let mut child = ui.new_child(egui::UiBuilder::new().id_salt("sc_browser_card").max_rect(available));
+            let frame = crate::frame::shell_card(t.panel).inner_margin(t.space_6 as i8);
+            let inner_width = (available.width() - frame.total_margin().sum().x).max(0.0);
+            let inner_height = (available.height() - frame.total_margin().sum().y).max(0.0);
+            let response = frame.show(&mut child, |ui| {
+                ui.set_width(inner_width);
+                ui.set_max_height(inner_height);
+                browser_contents(app, ui, &mut acts);
+            });
+            let rect = response.response.rect;
+            app.shell.browser = Some(rect);
+            crate::scenario::publish_rect("browser:card", rect);
+        }
+        finish_browser(app, ui, acts);
+        return;
+    }
     egui::Panel::left("sc_browser")
         .exact_size(250.0)
         .resizable(false)
@@ -611,7 +645,7 @@ fn model_feature_indices(app: &SolveApp, component: u64, sketches: bool) -> Vec<
 fn browser_rows(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     prepare_model(app);
     egui::ScrollArea::vertical()
-        .auto_shrink([false, false])
+        .auto_shrink([false, app.ui.layout == crate::shell::LayoutMode::Floating && !app.preferences.timeline_left])
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
@@ -2043,3 +2077,7 @@ pub(crate) fn body_rows(app: &SolveApp) -> Vec<String> {
 #[cfg(test)]
 #[path = "section_browser_tests.rs"]
 mod section_browser_tests;
+
+#[cfg(test)]
+#[path = "browser_card_tests.rs"]
+mod card_tests;

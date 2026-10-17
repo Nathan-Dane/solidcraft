@@ -154,3 +154,65 @@ fn selection_drag_released_over_a_card_leaves_no_rubber_band() {
     assert!(h.app.viewport.boxsel.is_none());
     assert!(h.app.session.selection.is_empty());
 }
+
+#[test]
+fn browser_and_history_cards_block_input_while_their_gaps_and_space_below_browser_do_not() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1400,"height":900}));
+    h.app.run("solid.box", json!({"length":40,"width":30,"height":20})).unwrap();
+    h.settle();
+    let browser = rect_of("browser:card").unwrap();
+    let history = rect_of("history:card").unwrap();
+    let viewport = h.app.viewport.rect.unwrap();
+    assert_eq!(history.left(), viewport.left() + SHELL_GAP);
+    assert_eq!(history.right(), viewport.right() - SHELL_GAP);
+    assert_eq!(history.bottom(), viewport.bottom() - SHELL_GAP);
+    let layout = h.app.viewport.layout.as_ref().unwrap();
+    assert!(layout.navigation.bottom() < history.top());
+    assert!(layout.axis_view.top() >= rect_of("ribbon:card").unwrap().bottom());
+    for r in [browser, history] {
+        assert!(covered(&h.app, r.center()));
+        assert!(!layout.drawable.intersect(r).is_positive());
+    }
+    for at in [pos2(browser.left() + 2.0, browser.top() + 2.0), pos2(history.right() - 30.0, history.center().y)] {
+        let camera = h.app.cam;
+        h.call("ui.move", json!({"x":at.x,"y":at.y}));
+        assert!(h.app.viewport.mouse.is_none());
+        assert!(h.app.viewport.hover.is_none());
+        h.call("ui.scroll", json!({"x":at.x,"y":at.y,"delta":120}));
+        h.call("ui.drag", json!({"x0":at.x,"y0":at.y,"x1":at.x+10.0,"y1":at.y+2.0,"button":"middle","steps":6}));
+        assert_eq!(h.app.cam, camera);
+    }
+    for at in [pos2(3.0, browser.center().y), pos2(browser.center().x, browser.bottom() + SHELL_GAP), pos2(3.0, history.center().y)] {
+        assert!(!covered(&h.app, at));
+        h.call("ui.move", json!({"x":at.x,"y":at.y}));
+        assert_eq!(h.app.viewport.mouse, Some(at));
+    }
+    h.app.ui.show_browser = false;
+    h.app.ui.show_timeline = false;
+    h.settle();
+    assert!(h.app.shell.browser.is_none() && h.app.shell.history.is_none());
+    assert!(!covered(&h.app, browser.center()));
+    assert!(!covered(&h.app, history.center()));
+}
+
+#[test]
+fn left_history_keeps_the_existing_column_in_both_modes() {
+    for mode in [LayoutMode::Floating, LayoutMode::Docked] {
+        let mut h = Harness::new();
+        h.app.ui.layout = mode;
+        h.app.preferences.timeline_left = true;
+        h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"name":"First"})).unwrap();
+        h.settle();
+        assert!(rect_of("history:card").is_none());
+        assert!(rect_of("browser:card").is_none());
+        assert!(crate::scenario::handle_at("timeline:First").is_some());
+        let viewport = h.app.viewport.rect.unwrap();
+        let content = content_rect(&h.app, viewport);
+        assert_eq!(content.left(), 250.0);
+        assert_eq!(content.bottom(), viewport.bottom());
+        if mode == LayoutMode::Floating {
+            assert!(covered(&h.app, pos2(125.0, content.center().y)));
+        }
+    }
+}

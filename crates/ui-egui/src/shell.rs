@@ -78,6 +78,8 @@ impl Cards {
 pub(crate) struct State {
     pub cards: Vec<Rect>,
     pub panels: Vec<Rect>,
+    pub browser: Option<Rect>,
+    pub history: Option<Rect>,
     pub content: Option<Rect>,
 }
 
@@ -87,6 +89,8 @@ pub(crate) fn covered_rects(app: &SolveApp) -> Vec<Rect> {
     if app.ui.layout == LayoutMode::Floating {
         rects.extend(app.shell.cards.iter().copied());
         rects.extend(app.shell.panels.iter().copied());
+        rects.extend(app.shell.browser);
+        rects.extend(app.shell.history);
     }
     rects.extend(app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some()));
     rects.extend(app.viewport.dialog_rect.filter(|_| app.dialog.is_some()));

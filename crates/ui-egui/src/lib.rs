@@ -1382,7 +1382,7 @@ impl SolveApp {
             toolbar::toolbar(self, ui);
         }
         theme::TabAccent::publish(self, ui.ctx());
-        if show_timeline && !left_timeline {
+        if !floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
         palette::palette_bar(self, ui);
@@ -1390,6 +1390,10 @@ impl SolveApp {
         if floating {
             let cards = shell::Cards::new(full, self.ui.layout);
             self.shell.cards = vec![cards.workspace, cards.ribbon];
+            self.shell.history = (show_timeline && !left_timeline).then(|| timeline::floating_rect(full));
+            if !self.ui.show_browser || left_timeline {
+                self.shell.browser = None;
+            }
             // Draw the scene first, then let the unchanged panel layouts cover it. The
             // viewport keeps its full projection even underneath the browser and cards.
             preview::update(self, ui.ctx());
@@ -1406,6 +1410,9 @@ impl SolveApp {
             toolbar::toolbar(self, ui);
             theme::TabAccent::publish(self, ui.ctx());
         }
+        if floating && show_timeline && !left_timeline {
+            timeline::timeline(self, ui);
+        }
         if self.ui.show_browser {
             if left_timeline {
                 browser::browser_below_timeline(self, ui);
@@ -1421,11 +1428,18 @@ impl SolveApp {
         agent_chat::show(self, ui);
         egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| {
             if floating {
-                let content = ui.max_rect();
+                let panel_content = ui.max_rect();
+                let mut content = panel_content;
+                if let Some(history) = self.shell.history {
+                    content.max.y = (history.top() - shell::SHELL_GAP).max(content.top());
+                }
+                if let Some(browser) = self.shell.browser {
+                    content.min.x = (browser.right() + shell::SHELL_GAP).min(content.right());
+                }
                 self.shell.content = Some(content);
                 self.shell.panels = [
-                    egui::Rect::from_min_max(egui::pos2(full.left(), content.top()), egui::pos2(content.left(), full.bottom())),
-                    egui::Rect::from_min_max(egui::pos2(content.right(), content.top()), full.max),
+                    egui::Rect::from_min_max(egui::pos2(full.left(), panel_content.top()), egui::pos2(panel_content.left(), full.bottom())),
+                    egui::Rect::from_min_max(egui::pos2(panel_content.right(), panel_content.top()), full.max),
                 ]
                 .into_iter()
                 .filter(|r| r.is_positive())
