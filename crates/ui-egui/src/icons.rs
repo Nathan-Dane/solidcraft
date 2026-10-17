@@ -47,6 +47,11 @@ pub(crate) fn paint_app_bar(p: &Painter, r: Rect, name: &str, opacity: f32) {
     paint_with_ink(p, r, name, Some(true), opacity, Some(crate::theme::Tokens::get().app_bar_text));
 }
 
+/// Paint a single-colour icon in `ink`.
+pub(crate) fn paint_ink(p: &Painter, r: Rect, name: &str, ink: Color32) {
+    paint_with_ink(p, r, name, Some(true), 1.0, Some(ink));
+}
+
 fn paint_with_ink(p: &Painter, r: Rect, name: &str, dark: Option<bool>, opacity: f32, ink: Option<Color32>) {
     let ctx = p.ctx();
     let ppp = ctx.pixels_per_point().max(0.5);

@@ -754,8 +754,7 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
                         if contextual {
                             t.on_accent
                         } else if active {
-                            // On the dark ribbon the selected label is a lighter tint of the accent.
-                            if crate::theme::is_dark() { accent.color.lerp_to_gamma(Color32::WHITE, 0.5) } else { accent.color }
+                            selected_ink(&accent)
                         } else {
                             t.text
                         },
@@ -792,6 +791,11 @@ fn ribbon_tabs(app: &mut SolveApp, ui: &mut egui::Ui, row: Rect) {
             Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)),
         );
     }
+}
+
+/// The label colour on a selected tab or open section: on the dark ribbon a lighter tint of the accent.
+fn selected_ink(accent: &crate::theme::TabAccent) -> Color32 {
+    if crate::theme::is_dark() { accent.color.lerp_to_gamma(Color32::WHITE, 0.5) } else { accent.color }
 }
 
 pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
@@ -1091,9 +1095,11 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
             let label = if finish { app.tr("ui.ribbon_exit").to_string() } else { ribbon_label(app, panel) };
             let label_width = painter.layout_no_wrap(label.clone(), FontId::proportional(11.5), t.text_dim).size().x;
-            ribbon_text(ui, lr.center() - vec2(if finish { 0.0 } else { 5.0 }, 0.0), &label, 11.5, t.text_dim, panel_open || hot);
+            let ink = if panel_open { selected_ink(&accent) } else { t.text_dim };
+            ribbon_text(ui, lr.center() - vec2(if finish { 0.0 } else { 6.0 }, 0.0), &label, 11.5, ink, panel_open || hot);
             if !finish {
-                caret(&painter, pos2(lr.center().x + label_width / 2.0 + 3.0, lr.center().y), t.text_dim);
+                let at = pos2(lr.center().x + label_width / 2.0 + 1.0, lr.center().y + 0.5);
+                crate::icons::paint_ink(&painter, Rect::from_center_size(at, vec2(10.0, 10.0)), "chevron", ink);
             }
             if lresp.clicked() && enabled_panel {
                 ui.ctx().data_mut(|d| {
