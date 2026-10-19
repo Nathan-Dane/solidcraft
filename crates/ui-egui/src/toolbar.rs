@@ -722,7 +722,8 @@ fn ribbon_button_galley(painter: &egui::Painter, label: &str, width: f32, color:
 
 /// Ribbon headings use the translated labels, with normal word casing instead of registry caps.
 fn ribbon_label(app: &SolveApp, label: &str) -> String {
-    app.tr_label(label)
+    let label = app
+        .tr_label(label)
         .split_whitespace()
         .map(|word| {
             let lower = word.to_lowercase();
@@ -730,7 +731,9 @@ fn ribbon_label(app: &SolveApp, label: &str) -> String {
             chars.next().map(|c| c.to_uppercase().collect::<String>() + chars.as_str()).unwrap_or_default()
         })
         .collect::<Vec<_>>()
-        .join(" ")
+        .join(" ");
+    // Partial catalogs may already translate the word-cased name (for example "Model").
+    app.tr_label(&label).to_string()
 }
 
 fn ribbon_text(ui: &egui::Ui, at: egui::Pos2, text: &str, size: f32, color: Color32, bold: bool) {

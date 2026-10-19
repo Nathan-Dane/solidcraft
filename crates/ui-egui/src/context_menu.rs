@@ -383,7 +383,7 @@ fn body_feature_and_sketch(app: &SolveApp, body: &str) -> (Option<u64>, Option<u
     (f, sketch)
 }
 
-/// The canvas menus follow Fusion's (`plan/fusion/ui/NOTES.md`, feature names only): Repeat on
+/// The canvas menus put Repeat on
 /// top, then what fits the selection, our extras after a separator.
 fn viewport_items(app: &SolveApp) -> Vec<Item> {
     let sel = &app.session.selection;
@@ -1779,17 +1779,20 @@ fn workspace_menu(ui: &mut egui::Ui, items: &[Item], key_row: Option<usize>, hei
                 let badge_rect = Rect::from_min_size(pos2(badge_x, y - 8.0), badge.size() + vec2(12.0, 3.0));
                 ui.painter().rect_filled(badge_rect, 8.0, if current { accent } else { soft });
                 ui.painter().galley(badge_rect.min + vec2(6.0, 1.5), badge, accent);
-                let line = |message: &str, y: f32| {
-                    let mut job = egui::text::LayoutJob::simple_singleline(crate::i18n::tr(message).to_string(), FontId::proportional(12.0), text);
+                let line = |label: &str, y: f32| {
+                    let mut job = egui::text::LayoutJob::simple_singleline(label.to_string(), FontId::proportional(12.0), text);
                     job.wrap.max_width = r.right() - x - 6.0;
                     job.wrap.max_rows = 1;
                     job.wrap.break_anywhere = false;
                     let galley = ui.painter().layout_job(job);
                     ui.painter().galley(pos2(x, y), galley, text);
                 };
-                line(description, r.top() + 29.0);
+                line(crate::i18n::tr(description), r.top() + 29.0);
                 if let Some(tabs) = tabs {
-                    line(tabs, r.top() + 47.0);
+                    // Reuse existing tab-name translations when a partial catalog falls back
+                    // to the English summary; complete catalogs keep their translated summary.
+                    let labels = crate::i18n::tr(tabs).split('·').map(|label| crate::i18n::tr_label(label.trim())).collect::<Vec<_>>().join(" · ");
+                    line(&labels, r.top() + 47.0);
                 }
                 resp.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, item.enabled, name));
                 if resp.clicked() && item.enabled {

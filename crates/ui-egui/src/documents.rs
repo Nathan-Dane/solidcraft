@@ -377,7 +377,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
     let natural: Vec<f32> = info
         .iter()
         .map(|(name, dirty)| {
-            let shown_name = if name == "Untitled" { app.tr("ui.untitled") } else { name.as_str() };
+            let shown_name = crate::i18n::Locale::for_language(&app.preferences.language).given_name(name);
             let label = format!("{shown_name}{}", if *dirty { " •" } else { "" });
             let text = ui.painter().layout_no_wrap(label, FontId::proportional(13.0), t.app_bar_text).size().x;
             (text + 40.0).clamp(72.0, MAX_FIT)
@@ -402,8 +402,7 @@ pub fn tabs(app: &mut SolveApp, ui: &mut egui::Ui, r: Rect, x0: f32, x1: f32) {
         }
         tab_shape(ui.painter(), &t, tr, active, resp.hovered() || resp.has_focus());
         let ink = if active || resp.hovered() { t.app_bar_text } else { t.app_bar_text.gamma_multiply(0.7) };
-        let name_display = if name == "Untitled" { app.tr("ui.untitled") } else { name };
-        let label = format!("{name_display}{}", if *dirty { " •" } else { "" });
+        let label = format!("{}{}", crate::i18n::Locale::for_language(&app.preferences.language).given_name(name), if *dirty { " •" } else { "" });
         let g = ui.painter().layout_no_wrap(label, FontId::proportional(13.0), ink);
         let text_w = (tr.width() - 30.0).max(10.0);
         let clip = Rect::from_min_size(tr.min, vec2(text_w + 10.0, tr.height()));
@@ -535,7 +534,7 @@ pub fn prompt(app: &mut SolveApp, ctx: &egui::Context) {
     quit_step(app);
     let Some(i) = app.docs.closing else { return };
     let name = tabs_info(app).get(i).map(|x| x.0.clone()).unwrap_or_default();
-    let name_display = if name == "Untitled" { crate::i18n::tr("ui.untitled") } else { &name };
+    let name_display = crate::i18n::tr_name(&name);
     let mut answer: Option<Answer> = None;
     // Left and Right move between the buttons (Save is picked first); Enter gives the picked one.
     let order = [Answer::Save, Answer::DontSave, Answer::Cancel];
@@ -559,14 +558,14 @@ pub fn prompt(app: &mut SolveApp, ctx: &egui::Context) {
     if enter {
         answer = Some(choice);
     }
-    let title = crate::i18n::format("document.save_changes", &[("name", name_display)]);
+    let title = crate::i18n::format("document.save_changes", &[("name", &name_display)]);
     crate::frame::window(ctx, title, crate::frame::Width::Normal)
         .id(egui::Id::new("sc_close_prompt"))
         .collapsible(false)
         .resizable(false)
         .anchor(Align2::CENTER_CENTER, vec2(0.0, 0.0))
         .show(ctx, |ui| {
-            ui.label(crate::i18n::format("document.unsaved_changes", &[("name", name_display)]));
+            ui.label(crate::i18n::format("document.unsaved_changes", &[("name", &name_display)]));
             ui.add_space(8.0);
             ui.horizontal(|ui| {
                 if ui.add(egui::Button::new(crate::i18n::tr("ui.save")).selected(choice == Answer::Save)).clicked() {

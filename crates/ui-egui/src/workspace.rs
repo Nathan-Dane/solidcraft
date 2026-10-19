@@ -705,6 +705,48 @@ mod tests {
         assert!(h.widget("Add Row").is_some());
     }
 
+    /// Shared assembly, sheet and plastic commands remain reachable in their ribbon sections.
+    #[test]
+    fn ribbon_sections_keep_shared_commands_reachable() {
+        let specs = solidcraft_engine::command_specs();
+        let ids = |tab, panel| layout(tab, panel, &specs).unwrap().0.iter().map(|c| c.id).collect::<Vec<_>>();
+        let joints = ids("ASSEMBLE", "JOINTS");
+        assert_eq!(joints.first().copied(), Some("joint.create"));
+        assert!(ids("ASSEMBLE", "MOTION").contains(&"joint.drive"));
+        assert!(ids("ASSEMBLE", "COMPONENTS").contains(&"component.create"));
+        let sheet = ids("SHEET METAL", "CREATE");
+        assert_eq!(sheet.first().copied(), Some("sheet.flange"));
+        assert!(ids("MODEL", "CREATE").contains(&"solid.extrude"));
+        assert!(ids("SHEET METAL", "FLAT").contains(&"sheet.flat_pattern"));
+        assert!(ids("SHEET METAL", "FLAT").contains(&"sheet.unfold"));
+        assert!(ids("MANAGE", "RULES").contains(&"plastic.manage_rules"));
+        let create = ids("MODEL", "CREATE");
+        assert!(create.contains(&"plastic.boss") && create.contains(&"solid.rib") && create.contains(&"plastic.lip"));
+        assert!(ids("MODEL", "MODIFY").contains(&"solid.shell"));
+        assert_eq!(panels("MANAGE"), ["PARAMETERS", "CONFIGURATIONS", "MATERIALS", "RULES", "DESIGN"]);
+        // The former sketch/solid INSPECT panels now share a global INSPECT tab.
+        for (panel, commands) in [
+            ("CHECK", vec!["inspect.interference", "inspect.draft", "inspect.accessibility"]),
+            ("MEASURE", vec!["inspect.center_of_mass"]),
+            (
+                "SURFACE QUALITY",
+                vec![
+                    "inspect.zebra",
+                    "inspect.curvature_map",
+                    "inspect.environment_map",
+                    "inspect.minimum_radius",
+                    "inspect.isocurve",
+                    "inspect.curvature_comb",
+                ],
+            ),
+        ] {
+            let actual = ids("INSPECT", panel);
+            for id in commands {
+                assert!(actual.contains(&id), "{panel}: {id}");
+            }
+        }
+    }
+
     /// #1240: a saved part reaches an assembly from the ASSEMBLE panel (and the File menu) as a
     /// linked component, and a STEP file picked there is inserted as Insert STEP would.
     #[test]

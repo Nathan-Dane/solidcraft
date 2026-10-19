@@ -224,7 +224,7 @@ fn combs(app: &SolveApp, painter: &egui::Painter, proj: &Proj) {
     });
 }
 
-/// Snap a cursor point on the sketch plane to what Fusion infers while drawing: a line's
+/// Snap a cursor point on the sketch plane to what is inferred while drawing: a line's
 /// midpoint, or alignment (horizontal/vertical) with the previous point of the tool. None:
 /// nothing near, use the grid.
 pub fn refine_snap(
