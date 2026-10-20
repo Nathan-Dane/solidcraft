@@ -367,6 +367,9 @@ pub struct SolveApp {
     /// How long OK waits for a feature before computing it off the window thread, saying so;
     /// `None`: it waits as long as it takes (headless use, tests). The desktop app sets it.
     pub apply_off_thread: Option<std::time::Duration>,
+    /// Tests: how long OK's off-thread evaluation lingers, so that "still computing" does not depend on how fast the machine is.
+    #[cfg(test)]
+    pub apply_hold: std::time::Duration,
     /// The last command started interactively (id, label), for Repeat.
     pub last_command: Option<(String, String)>,
     /// Esc was already acted on this frame (by the shortcuts), so later handlers skip it.
@@ -486,6 +489,8 @@ impl SolveApp {
             deferred: None,
             deferred_queue: Vec::new(),
             apply_off_thread: None,
+            #[cfg(test)]
+            apply_hold: std::time::Duration::ZERO,
             last_command: None,
             esc_handled: false,
             status: None,

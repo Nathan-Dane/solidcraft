@@ -443,9 +443,13 @@ fn begin_applying(app: &SolveApp, d: &Dialog) -> Option<Applying> {
     let scratch = app.session.scratch();
     let (tx, rx) = std::sync::mpsc::channel();
     let computed = cmds.clone();
+    #[cfg(test)]
+    let hold = app.apply_hold;
     std::thread::Builder::new()
         .name("apply".into())
         .spawn(move || {
+            #[cfg(test)]
+            std::thread::sleep(hold);
             let _ = scratch.preview(&computed);
             let _ = tx.send(());
         })
