@@ -57,6 +57,7 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 
 | Module / element | Use and options | Main tokens |
 | --- | --- | --- |
+| history: `HistoryChip`, `HistoryStyle`, `history_drop_bar`, `history_marker` | One painter family for bottom chips, 38 pt vertical icon chips and single-line 26 pt name rows (the browser's shared `TREE_ROW_HEIGHT`). Selected items use the active tab tint/ink/border; all variants retain multi-tone feature artwork using one shared kind-to-accent rule (Sketch green, Surface orange, Mesh yellow, Form purple, solids base blue); rolled-back items have 42% opacity. Error/warning badges, suppression strikes, horizontal/vertical drop bars and rollback line/hollow circle are shared. No connector lines. | `control_height`, `space_2/3/4/6/8/10/12/14/16/24`, radii, typography, `TabAccent`, `timeline_item`, `form_error/fill` |
 | search: `CommandSearch`, `MenuItem::search_row` | Ribbon search composition: one persistent ribbon editor expands from 28 to 40 pt and to 520 pt wide with its right edge anchored, magnifier and S/Esc keycap, 38 pt two-line menu row with 26 pt icon tile, accent bold substring, path, shortcut/kind keycap, counts, JSON detail box and footer. The ordinary 30 pt menu row cannot fit a second line; this variant keeps its enabled/selected states and scenario IDs. Ranking and dispatch stay with the caller. | `form_card_width × 2 − space_8` (520 pt), `control_height`, `space_2/3/4/6/8/10/12/14/16/24`, `radius_xl/control_radius`, `control_fill`, `dialog_body/footer/rule/border`, `form_ink/dim/primary/error/error_fill/success/success_fill`, `selected_ink`, `accent_soft`, typography |
 | menu: `Menu`, `MenuItem` | Shared popup, 30 pt rows, 28 pt icon column, clipped labels, right-aligned mono shortcuts, submenu chevrons, checked/unchecked and document swatches, inert 40% disabled rows and danger ink; headings and separators; ribbon drag/pin targets retained | `dialog_body/border/rule`, `radius_xl`, `control_height/radius`, `form_ink/dim/primary/error`, `accent_soft`, typography and spacing |
 | radial: `radial_menu` | Eight rounded annular sectors, parallel 4 pt gaps, 9 pt circular corner joins, tab-accent artwork and hover, centre label/key; existing hold/flick/release dispatch | `dialog_body/border`, `form_ink/dim`, `TabAccent`, icon palette, font/spacing tokens |
@@ -107,6 +108,20 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | `label_actions` | Clipped row name beside compact actions | `control_height`, form font/spacing tokens |
 | status: `status_header`, `StatusHeader` | Supplied icon/name/status and constraint meter | `font_label`, `text/dim`, `accent`, sketch/header tokens |
 | `progress` | Clamped determinate progress | `space_3/6`, `dialog_rule`, `accent` |
+
+The vertical history occupies the far left of the viewport shell; the browser card or its
+34 pt collapsed rail sits to its right with the shell gap. Floating mode keeps the scene's
+projection intact; Docked reserves the history column. The strip's disclosure control stores
+`timeline_left_names` (56 pt icons / 168 pt names), independently of browser collapse. The whole collapsed browser rail expands on click and uses
+the same inset, rounded tab-accent hover tint as the expanded header, with a pointing-hand cursor. Transport
+sits at the top, stacked for icons and horizontal for names. The rollback marker is 12 pt high.
+Its 2 pt line uses the active tab fill and ends in a 10 pt hollow circle with a 2 pt accent
+border and the card/panel surface inside. The circle overlaps the line end by 1 pt. The bottom
+strip uses the same painter, rotated. Folder selection, range selection, context menus,
+sketch-pattern children, drag reordering and command JSON retain their existing behavior and handles.
+`history_icons`, `history_names` and `history_marker` have light/dark gallery references. The CPU
+board test captures both strip widths with expanded and collapsed browsers
+(`SOLIDCRAFT_HISTORY_EVIDENCE`).
 
 `text(ui, text, options)` supports the existing text behaviors and the new error band:
 

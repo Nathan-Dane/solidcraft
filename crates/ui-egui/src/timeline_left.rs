@@ -1,7 +1,6 @@
 //! The left feature-history panel: named rows, folders, rollback and drag-and-drop.
 
-use crate::fonts::RichTextExt as _;
-use egui::{Color32, Rect, RichText, Sense, Stroke, pos2, vec2};
+use egui::{Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
 use crate::theme::Tokens;
@@ -58,40 +57,78 @@ impl TimelineItem {
     }
 }
 
-/// A standalone left feature-history panel, used when the parts browser is hidden.
-pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
+/// Saved width variant of the vertical strip.
+pub(crate) fn strip_width(app: &SolveApp) -> f32 {
     let t = Tokens::get();
-    egui::Panel::left("sc_timeline_left")
-        .exact_size(250.0)
-        .resizable(false)
-        .frame(egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin::symmetric(6, 6)))
-        .show(ui, |ui| left_timeline(app, ui));
+    if app.preferences.timeline_left_names { t.space_24 * 7.0 } else { t.control_height * 2.0 }
 }
 
-/// Vertical feature history with named rows, folders and a horizontal rollback bar. The caller
-/// gives this a bounded height so the parts and scene browser can use the space below it.
+pub(crate) fn floating_rect(app: &SolveApp, available: Rect) -> Rect {
+    let gap = crate::shell::SHELL_GAP;
+    let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
+    let min = available.min + vec2(gap, top_gap);
+    Rect::from_min_max(min, pos2((min.x + strip_width(app)).min((available.right() - gap).max(min.x)), (available.bottom() - gap).max(min.y)))
+}
+
+/// A vertical card at the far left, before the browser card or docked column.
+pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let t = Tokens::get();
+    if app.ui.layout == crate::shell::LayoutMode::Floating {
+        let bounds = floating_rect(app, ui.available_rect_before_wrap());
+        app.shell.history = None;
+        if !bounds.is_finite() || bounds.width() < strip_width(app) || bounds.height() < t.control_height {
+            return;
+        }
+        app.shell.history = Some(bounds);
+        crate::scenario::publish_rect("history:vertical", bounds);
+        let frame = crate::frame::shell_card(t.panel).inner_margin(egui::Margin::symmetric(t.space_4 as i8, t.space_6 as i8));
+        let card = crate::frame::area(egui::Id::new("sc_timeline_left_card")).fixed_pos(bounds.min).order(egui::Order::Middle).show(ui.ctx(), |ui| {
+            frame.show(ui, |ui| {
+                ui.set_width((bounds.width() - frame.total_margin().sum().x).max(0.0));
+                ui.set_max_height((bounds.height() - frame.total_margin().sum().y).max(0.0));
+                left_timeline(app, ui);
+            });
+        });
+        app.shell.history = Some(card.response.rect);
+        crate::scenario::publish_rect("history:vertical", card.response.rect);
+    } else {
+        let response = egui::Panel::left("sc_timeline_left")
+            .exact_size(strip_width(app))
+            .resizable(false)
+            .frame(egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin::symmetric(t.space_4 as i8, t.space_6 as i8)))
+            .show(ui, |ui| left_timeline(app, ui));
+        crate::scenario::publish_rect("history:vertical", response.response.rect);
+    }
+}
+
+/// Both widths retain the same folders, selection, keyboard and drag interactions.
 pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let groups = app.session.doc.timeline_groups.clone();
-    ui.horizontal(|ui| {
-        // Reserve the selection menu's measured height even when no features are selected.
-        let font = egui::TextStyle::Button.resolve(ui.style());
-        let menu_height = ui.fonts_mut(|fonts| fonts.row_height(&font)) + 2.0 * ui.spacing().button_padding.y;
-        ui.set_min_height(menu_height.ceil().max(22.0));
-        ui.label(RichText::new("FEATURE HISTORY").size(crate::theme::Tokens::get().font_small).semibold().color(t.text_dim));
-        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-            let count = selected_feature_ids(app).len() + app.tree.picked_timeline_groups.len();
-            if count > 0 {
-                crate::ui_kit::Menu::button(ui, format!("{count} selected"), |ui| selection_actions(app, ui, &groups));
-            }
-        });
-    });
     timeline_transport(app, ui);
-    ui.separator();
-
+    ui.horizontal(|ui| {
+        ui.set_min_height(t.space_24);
+        let (rect, response) = ui.allocate_exact_size(vec2(t.space_24, t.space_24), Sense::click());
+        crate::ui_kit::disclosure(ui.painter(), rect.center(), app.preferences.timeline_left_names, t.text_dim);
+        crate::scenario::publish_handle("history:names", rect.center());
+        if response.on_hover_text(crate::i18n::tr("ui.history_toggle_names")).clicked() {
+            app.preferences.timeline_left_names = !app.preferences.timeline_left_names;
+        }
+        let count = selected_feature_ids(app).len() + app.tree.picked_timeline_groups.len();
+        if count > 0 {
+            let label = if app.preferences.timeline_left_names {
+                crate::i18n::format("ui.history_selected", &[("count", &count.to_string())])
+            } else {
+                count.to_string()
+            };
+            crate::ui_kit::Menu::button(ui, label, |ui| selection_actions(app, ui, &groups));
+        }
+    });
+    ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0, t.border));
+    ui.add_space(t.space_4);
     egui::ScrollArea::vertical()
         .id_salt("sc_left_timeline_scroll")
-        .auto_shrink([false, false])
+        .auto_shrink([false, true])
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| vertical_features(app, ui));
 }
@@ -100,27 +137,42 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let n = app.session.doc.features.len();
     let marker = app.session.doc.marker.unwrap_or(n);
-    ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
-        let controls = [("first", Some(0usize)), ("back", Some(marker.saturating_sub(1))), ("forward", Some((marker + 1).min(n))), ("last", None)];
-        for (what, target) in controls {
-            let (rect, response) = ui.allocate_exact_size(vec2(24.0, 22.0), Sense::click());
+    let names = app.preferences.timeline_left_names;
+    let layout = if names { egui::Layout::left_to_right(egui::Align::Center) } else { egui::Layout::top_down(egui::Align::Center) };
+    let height = if names { t.space_24 } else { t.control_height * 3.0 + t.space_2 * 2.0 };
+    ui.allocate_ui_with_layout(vec2(ui.available_width(), height), layout, |ui| {
+        let gap = if names { ((ui.available_width() - t.space_24 * 3.0) / 2.0).max(t.space_2) } else { t.space_2 };
+        ui.spacing_mut().item_spacing = vec2(gap, t.space_2);
+        for (what, target, key) in [
+            ("back", Some(marker.saturating_sub(1)), "ui.history_back"),
+            ("last", None, "ui.history_play"),
+            ("forward", Some(marker.saturating_add(1).min(n)), "ui.history_forward"),
+        ] {
+            let side = if names { t.space_24 } else { t.control_height };
+            let (rect, response) = ui.allocate_exact_size(vec2(side, side), Sense::click());
+            crate::scenario::publish_handle(&format!("history:{what}"), rect.center());
             if response.hovered() {
-                ui.painter().rect_filled(rect, 3.0, t.hover);
+                ui.painter().rect_filled(rect, t.radius_sm, t.hover);
             }
-            transport_glyph(ui.painter(), rect.center(), what, t.icon);
-            if response
-                .on_hover_text(match what {
-                    "first" => "Roll back to the start",
-                    "back" => "Step back one feature",
-                    "forward" => "Step forward one feature",
-                    _ => "Play to the end",
-                })
-                .clicked()
-            {
-                let params = match target {
-                    Some(position) if position < n => json!({"position": position}),
-                    _ => json!({}),
+            transport_glyph(
+                ui.painter(),
+                rect.center(),
+                match what {
+                    "back" => "first",
+                    "last" => "forward",
+                    _ => "last",
+                },
+                t.icon,
+            );
+            let first = what == "back" && response.double_clicked();
+            if response.on_hover_text(crate::i18n::tr(key)).clicked() {
+                let params = if first {
+                    json!({"position": 0})
+                } else {
+                    match target {
+                        Some(position) if position < n => json!({"position": position}),
+                        _ => json!({}),
+                    }
                 };
                 let _ = app.run_heavy("timeline.roll_to", params);
             }
@@ -197,17 +249,14 @@ fn vertical_drop_bar_left(panel_left: f32, target: Option<u64>, groups: &[solidc
 
 fn vertical_marker(app: &mut SolveApp, ui: &mut egui::Ui, drag: &mut Option<Drag>) {
     let t = Tokens::get();
-    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 7.0), Sense::drag());
-    let line = Rect::from_min_max(pos2(rect.left() + 8.0, rect.center().y - 1.5), pos2(rect.right() - 5.0, rect.center().y + 1.5));
-    let colour = crate::theme::TabAccent::for_tab(&t, &app.ui.tab).color;
-    ui.painter().rect_filled(line, 1.5, colour);
-    ui.painter().circle_filled(pos2(line.right(), line.center().y), 4.0, colour);
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), t.space_12), Sense::drag());
+    crate::ui_kit::history_marker(ui.painter(), rect, true, crate::theme::TabAccent::for_tab(&t, &app.ui.tab));
     crate::scenario::publish_handle("timeline:rollback", rect.center());
+    crate::scenario::publish_rect("history:marker", rect);
     if response.drag_started() {
         *drag = Some(Drag::Marker);
     }
-    response.on_hover_text("Rollback bar: drag to roll the model back; new features are inserted here");
-    let _ = app;
+    response.on_hover_text(crate::i18n::tr("ui.history_marker_tip"));
 }
 
 fn group_for(groups: &[solidcraft_engine::doc::TimelineGroup], feature: u64) -> Option<u64> {
@@ -501,7 +550,10 @@ fn timeline_group_name(
     let editing =
         matches!(app.menu.rename.as_ref().map(|rename| &rename.what), Some(crate::context_menu::RenameWhat::TimelineGroup(id)) if *id == group.id);
     if !editing {
-        ui.painter().text(
+        if !app.preferences.timeline_left_names {
+            return false;
+        }
+        ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).text(
             pos2(rect.left() + 40.0 + offset, rect.center().y),
             egui::Align2::LEFT_CENTER,
             &group.name,
@@ -562,13 +614,13 @@ fn vertical_group_row(
         group: group.parent,
         indent_group: previous_visible_group.filter(|previous| Some(*previous) != group.parent),
     });
-    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 23.0), Sense::click_and_drag());
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), crate::ui_kit::TREE_ROW_HEIGHT), Sense::click_and_drag());
     drop_zones.push((rect, group.id));
     slots.push(VerticalSlot { y: rect.bottom(), position: if open { position } else { end_position }, group: Some(group.id), indent_group: None });
     if selected || response.hovered() {
         ui.painter().rect_filled(rect, 3.0, if selected { crate::theme::TabAccent::current(ui.ctx()).soft } else { t.hover });
     }
-    let offset = depth as f32 * 14.0;
+    let offset = if app.preferences.timeline_left_names { depth as f32 * 14.0 } else { 0.0 };
     let centre = pos2(rect.left() + 9.0 + offset, rect.center().y);
     crate::ui_kit::disclosure(ui.painter(), centre, open, t.text_dim);
     let icon = Rect::from_center_size(pos2(rect.left() + 27.5 + offset, rect.center().y), vec2(17.0, 17.0));
@@ -613,7 +665,7 @@ fn vertical_group_row(
 
 fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    ui.spacing_mut().item_spacing.y = 0.0;
+    ui.spacing_mut().item_spacing.y = if app.preferences.timeline_left_names { t.space_2 } else { t.space_4 };
     let features: Vec<_> = app
         .session
         .doc
@@ -694,61 +746,43 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
         let has_patterns = matches!(kind, TimelineKind::Sketch) && crate::sketch_pattern_tree::has_patterns(app, *id);
         let pattern_key = format!("timeline/sketch/{id}/patterns");
         let patterns_open = crate::browser::is_open(app, &pattern_key, true);
-        let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), 24.0), Sense::click_and_drag());
+        let style = if app.preferences.timeline_left_names { crate::ui_kit::HistoryStyle::Names } else { crate::ui_kit::HistoryStyle::Icons };
+        let (row, response) = ui.allocate_exact_size(vec2(ui.available_width(), style.height()), Sense::click_and_drag());
+        let rect = if style == crate::ui_kit::HistoryStyle::Icons {
+            Rect::from_center_size(row.center(), vec2(style.height(), style.height()))
+        } else {
+            row
+        };
+        crate::scenario::publish_rect(&format!("history:feature:{name}"), rect);
         let fold_rect = Rect::from_min_size(rect.left_top() + vec2(indent, 0.0), vec2(16.0, rect.height()));
         let on_fold = has_patterns && response.interact_pointer_pos().is_some_and(|p| fold_rect.contains(p));
         crate::scenario::publish_handle(&format!("timeline:{name}"), rect.center());
         let result = app.session.model.result(*id);
+        let elapsed = result.map(|r| r.ms);
         let error = result.and_then(|result| result.error.clone());
         let warning = result.and_then(|result| result.warning.clone());
         let rolled = index >= marker;
         let selected =
             app.session.selection.iter().any(|selection| matches!(selection, solidcraft_engine::Sel::Feature { id: selected } if selected == id));
-        let background = if error.is_some() {
-            t.timeline_item_error
-        } else if selected {
-            crate::theme::TabAccent::current(ui.ctx()).soft
-        } else if response.hovered() || from_view == Some(*id) {
-            t.hover
-        } else {
-            Color32::TRANSPARENT
-        };
-        if background != Color32::TRANSPARENT {
-            ui.painter().rect_filled(rect, 3.0, background);
+        // Folder and sketch-pattern disclosure targets retain their original handles.
+        let inset = if app.preferences.timeline_left_names { indent + if has_patterns { 16.0 } else { 0.0 } } else { 0.0 };
+        let chip = Rect::from_min_max(rect.min + vec2(inset.min(rect.width()), 0.0), rect.max);
+        crate::ui_kit::HistoryChip {
+            icon,
+            name,
+            kind: ty,
+            selected,
+            hovered: response.hovered() || from_view == Some(*id),
+            dim: rolled,
+            suppressed: *suppressed,
+            error: error.is_some(),
+            warning: warning.is_some(),
+            accent: crate::theme::TabAccent::for_tab(&t, &app.ui.tab),
         }
+        .paint(ui.painter(), chip, style);
         if has_patterns {
             crate::ui_kit::disclosure(ui.painter(), fold_rect.center(), patterns_open, t.text_dim);
             crate::scenario::publish_handle(&format!("timeline-sketch-fold:{name}"), fold_rect.center());
-        }
-        let icon_rect =
-            Rect::from_center_size(pos2(rect.left() + 13.0 + indent + if has_patterns { 16.0 } else { 0.0 }, rect.center().y), vec2(18.0, 18.0));
-        let ink = if rolled || *suppressed { t.border } else { t.icon };
-        icons::paint(ui.painter(), icon_rect, icon, ink, if rolled { t.panel_header } else { t.icon_fill }, if rolled { t.border } else { t.accent });
-        if *suppressed {
-            ui.painter().line_segment([icon_rect.left_bottom(), icon_rect.right_top()], Stroke::new(1.5, t.text_dim));
-        }
-        let text_colour = if rolled || *suppressed { t.text_dim } else { t.text };
-        ui.painter().text(
-            pos2(icon_rect.right() + 7.0, rect.center().y),
-            egui::Align2::LEFT_CENTER,
-            name,
-            egui::FontId::proportional(crate::theme::Tokens::get().font_body),
-            text_colour,
-        );
-        // A failed feature has a mark of its own, not only its colour (#972).
-        if error.is_some() {
-            let at = Rect::from_min_size(pos2(rect.right() - 15.0, rect.center().y - 6.0), vec2(12.0, 12.0));
-            icons::paint(ui.painter(), at, "error", t.panel, t.error, t.error);
-        }
-        if warning.is_some() && error.is_none() {
-            icons::paint(
-                ui.painter(),
-                Rect::from_min_size(pos2(rect.right() - 15.0, rect.center().y - 6.0), vec2(12.0, 12.0)),
-                "warning",
-                t.icon,
-                t.warning,
-                t.warning,
-            );
         }
         if response.hovered() {
             hovered = Some(*id);
@@ -760,9 +794,23 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
             let origin_x = drag_press_x(&response, rect.center().x);
             drag = Some(Drag::Items(selected_drag_items(app, origin_x, group_id)));
         }
-        let mut tip = crate::timeline::status_text(name, ty, error.as_deref(), warning.as_deref());
-        tip.push_str("\nDouble-click to edit · drag to reorder · right-click for more");
-        let response = response.on_hover_text(tip);
+        let mut tooltip = egui::Tooltip::for_enabled(&response);
+        tooltip.popup = tooltip.popup.align(egui::RectAlign::RIGHT_START);
+        tooltip.show(|ui| {
+            let summary = app
+                .session
+                .doc
+                .features
+                .get(index)
+                .and_then(|f| f.kind.expressions().first().map(ToString::to_string))
+                .unwrap_or_else(|| elapsed.map_or_else(String::new, |ms| format!("{ms:.1} ms")));
+            let kind = crate::i18n::tr_label(ty.strip_suffix("Feature").unwrap_or(ty));
+            let mut tip = format!("{name} · {kind} · {summary}");
+            if error.is_some() || warning.is_some() {
+                tip.push_str(&format!("\n{}", crate::timeline::status_text(name, ty, error.as_deref(), warning.as_deref())));
+            }
+            crate::ui_kit::text(ui, &tip, crate::ui_kit::Text::Value("history", false));
+        });
         if response.clicked() && on_fold {
             crate::browser::toggle(app, &pattern_key, true);
         } else if response.clicked() {
@@ -859,9 +907,11 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
             ui.painter().rect_stroke(rect.shrink(1.0), 3.0, Stroke::new(2.0, t.sketch_accent), egui::StrokeKind::Inside);
         } else {
             let left = vertical_drop_bar_left(ui.min_rect().left(), folder_target, &groups);
-            ui.painter().line_segment(
-                [pos2(left, slot.y), pos2(ui.max_rect().right() - 5.0, slot.y)],
-                Stroke::new(2.0, if matches!(active, Drag::Marker) { crate::theme::TabAccent::current(ui.ctx()).color } else { t.sketch_accent }),
+            crate::ui_kit::history_drop_bar(
+                ui.painter(),
+                Rect::from_min_max(pos2(left, slot.y), pos2(ui.max_rect().right() - 5.0, slot.y)),
+                true,
+                if matches!(active, Drag::Marker) { crate::theme::TabAccent::current(ui.ctx()).color } else { t.sketch_accent },
             );
         }
     }
@@ -913,45 +963,98 @@ mod tests {
     use crate::scenario::{Harness, handle_at};
 
     #[test]
-    fn left_history_shows_named_features_and_folders_above_the_browser() {
-        let mut harness = Harness::new();
-        harness.app.preferences.timeline_left = true;
-        harness.app.run("solid.box", json!({"length": 20, "width": 15, "height": 10, "name": "Base"})).unwrap();
-        harness.app.run("solid.fillet", json!({"edges": [[20, 7.5, 10]], "radius": 1, "name": "Round"})).unwrap();
-        harness.app.run("timeline.group", json!({"name": "Housing", "features": ["Base", "Round"]})).unwrap();
-        harness.frames(4);
-
-        let folder = handle_at("timeline-folder:Housing").unwrap();
-        let base = handle_at("timeline:Base").unwrap();
-        let round = handle_at("timeline:Round").unwrap();
-        let browser = handle_at("row:Untitled").unwrap();
-        assert!(folder.x < 250.0 && base.x < 250.0 && round.x < 250.0);
-        assert!(folder.y < base.y && base.y < round.y);
-        assert!(round.y < browser.y, "the parts/scene browser belongs below the feature history");
+    fn both_widths_keep_selection_reorder_marker_transport_and_feature_menus() {
+        for names in [false, true] {
+            let mut h = Harness::new();
+            h.app.preferences.timeline_left = true;
+            h.app.preferences.timeline_left_names = names;
+            for (name, x) in [("First", 0), ("Second", 20)] {
+                h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"corner":[x,0,0],"operation":"new_body","name":name})).unwrap();
+            }
+            h.settle();
+            h.step(&json!({"click":{"handle":"timeline:First"}})).unwrap();
+            h.step(&json!({"click":{"handle":"timeline:Second"},"ctrl":true})).unwrap();
+            assert_eq!(selected_feature_ids(&h.app).len(), 2);
+            h.step(&json!({"click":{"handle":"timeline:Second"},"button":"right"})).unwrap();
+            h.step(&json!({"widget":"Copy"})).unwrap();
+            assert_eq!(h.app.session.clipboard.len(), 2);
+            h.app.run("select.clear", json!({})).unwrap();
+            h.settle();
+            let first = handle_at("timeline:First").unwrap();
+            h.step(&json!({"drag":[{"handle":"timeline:Second"},[first.x,first.y-15.0]]})).unwrap();
+            h.settle();
+            assert_eq!(h.app.session.doc.features.first().unwrap().name, "Second");
+            let first = handle_at("timeline:Second").unwrap();
+            h.step(&json!({"drag":[{"handle":"timeline:rollback"},[first.x,first.y-15.0]]})).unwrap();
+            h.settle();
+            assert_eq!(h.app.session.doc.marker, Some(0));
+            h.step(&json!({"click":{"handle":"history:forward"}})).unwrap();
+            h.settle();
+            assert_eq!(h.app.session.doc.marker, Some(1));
+            h.step(&json!({"click":{"handle":"history:last"}})).unwrap();
+            h.settle();
+            assert_eq!(h.app.session.doc.marker, None);
+            h.frames(40);
+            h.step(&json!({"click":{"handle":"timeline:First"},"double":true})).unwrap();
+            h.frames(3);
+            assert!(h.app.dialog.is_some(), "double-click edits the feature, names={names}");
+        }
     }
 
     #[test]
-    fn history_browser_divider_resizes_and_browser_collapses() {
-        let mut harness = Harness::new();
-        harness.app.preferences.timeline_left = true;
-        harness.app.preferences.timeline_left_height = 180.0;
-        harness.frames(4);
+    fn history_is_left_of_the_browser_in_both_layouts_widths_and_browser_states() {
+        for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+            for names in [false, true] {
+                for collapsed in [false, true] {
+                    let mut h = Harness::new();
+                    h.app.ui.layout = mode;
+                    h.app.preferences.timeline_left = true;
+                    h.app.preferences.timeline_left_names = names;
+                    h.app.preferences.timeline_left_browser_collapsed = collapsed;
+                    h.app.run("solid.box", json!({"length":20,"width":15,"height":10,"name":"Base"})).unwrap();
+                    h.app.run("solid.fillet", json!({"edges":[[20,7.5,10]],"radius":1,"name":"Round"})).unwrap();
+                    h.app.run("timeline.group", json!({"name":"Housing","features":["Base","Round"]})).unwrap();
+                    h.settle();
+                    let history = crate::scenario::rect_of("history:vertical").unwrap();
+                    let browser = crate::scenario::rect_of("browser:card").unwrap();
+                    assert!(history.right() < browser.left(), "{mode:?}, names={names}, collapsed={collapsed}: {history:?}, {browser:?}");
+                    assert_eq!(history.width(), if names { 168.0 } else { 56.0 });
+                    assert_eq!(handle_at("row:Untitled").is_none(), collapsed);
+                    let folder = handle_at("timeline-folder:Housing").unwrap();
+                    let base = handle_at("timeline:Base").unwrap();
+                    let round = handle_at("timeline:Round").unwrap();
+                    assert!(folder.y < base.y && base.y < round.y);
+                    let row = crate::scenario::rect_of("history:feature:Base").unwrap();
+                    assert_eq!(row.height(), if names { crate::ui_kit::TREE_ROW_HEIGHT } else { 38.0 });
+                    if names && !collapsed {
+                        let browser_row = crate::browser::drawn_rows().into_iter().find(|r| r.0 == "Untitled").unwrap().1;
+                        assert_eq!(row.height(), browser_row.height());
+                    }
+                }
+            }
+        }
+    }
 
-        let divider = handle_at("left-history-divider").unwrap();
-        let before = harness.app.preferences.timeline_left_height;
-        harness.step(&json!({"drag": [[divider.x, divider.y], [divider.x, divider.y + 40.0]]})).unwrap();
-        assert!(
-            harness.app.preferences.timeline_left_height > before + 20.0,
-            "dragging the divider should remember a taller history section: {before} -> {}",
-            harness.app.preferences.timeline_left_height
-        );
-
-        harness.step(&json!({"click": {"handle": "left-browser-toggle"}})).unwrap();
-        assert!(harness.app.preferences.timeline_left_browser_collapsed);
-        assert!(handle_at("row:Untitled").is_none(), "the collapsed browser should hide its rows");
-        harness.step(&json!({"click": {"handle": "left-browser-toggle"}})).unwrap();
-        assert!(!harness.app.preferences.timeline_left_browser_collapsed);
-        assert!(handle_at("row:Untitled").is_some(), "expanding the browser should restore its rows");
+    #[test]
+    fn history_width_toggle_and_browser_rail_persist_independently() {
+        let mut h = Harness::new();
+        h.app.preferences.timeline_left = true;
+        h.settle();
+        h.step(&json!({"click":{"handle":"history:names"}})).unwrap();
+        assert!(!h.app.preferences.timeline_left_names);
+        h.step(&json!({"click":{"handle":"left-browser-toggle"}})).unwrap();
+        assert!(h.app.preferences.timeline_left_browser_collapsed);
+        assert!(handle_at("row:Untitled").is_none());
+        let mut restored = Harness::new();
+        restored.app.load_prefs(&h.app.prefs());
+        assert!(!restored.app.preferences.timeline_left_names);
+        assert!(restored.app.preferences.timeline_left_browser_collapsed);
+        h.settle();
+        h.step(&json!({"click":{"handle":"left-browser-toggle"}})).unwrap();
+        assert!(!h.app.preferences.timeline_left_browser_collapsed);
+        assert!(handle_at("row:Untitled").is_some());
+        h.step(&json!({"click":{"handle":"history:names"}})).unwrap();
+        assert!(h.app.preferences.timeline_left_names);
     }
 
     #[test]

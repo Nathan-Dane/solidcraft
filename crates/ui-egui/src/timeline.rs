@@ -8,8 +8,8 @@ use solidcraft_engine::doc::{
     construct::{AxisDef, PointDef},
 };
 
+use crate::SolveApp;
 use crate::theme::Tokens;
-use crate::{SolveApp, icons};
 
 // Snapshot only the data used by timeline interactions. Cloning FeatureKind here would
 // also copy imported mesh vertices and triangles on every frame.
@@ -360,8 +360,8 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
             let mut marker_rect: Option<Rect> = None;
             for (i, (id, name, icon, suppressed, ty, kind)) in feats.iter().enumerate() {
                 if i == marker {
-                    marker_rect = Some(Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(6.0, r.height() - 10.0)));
-                    x += 10.0;
+                    marker_rect = Some(Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(t.space_12, r.height() - 10.0)));
+                    x += t.space_16;
                 }
                 xs.push(x);
                 let br = Rect::from_min_size(pos2(x, r.top() + 6.0), vec2(28.0, 28.0));
@@ -376,49 +376,19 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
                 if resp.hovered() {
                     hovered = Some(*id);
                 }
-                let bg = if err.is_some() {
-                    t.timeline_item_error
-                } else if sel || (floating && marker > 0 && i == marker - 1) {
-                    accent.soft
-                } else if resp.hovered() || from_view == Some(*id) {
-                    t.hover
-                } else {
-                    t.timeline_item
-                };
-                let edge = if err.is_some() {
-                    t.error
-                } else if from_view == Some(*id) || (floating && marker > 0 && i == marker - 1) {
-                    accent.color
-                } else {
-                    t.border
-                };
-                p.rect(br, 3.0, bg, Stroke::new(1.0, edge), egui::StrokeKind::Inside);
-                let ink = if rolled || *suppressed { t.border } else { t.icon };
-                icons::paint(
-                    &p,
-                    br.shrink(4.0),
+                crate::ui_kit::HistoryChip {
                     icon,
-                    ink,
-                    if rolled { t.panel_header } else { t.icon_fill },
-                    if rolled { t.border } else { t.accent },
-                );
-                if *suppressed {
-                    p.line_segment([br.left_bottom() + vec2(4.0, -4.0), br.right_top() + vec2(-4.0, 4.0)], Stroke::new(1.5, t.text_dim));
+                    name,
+                    kind: ty,
+                    selected: sel || (floating && marker > 0 && i == marker - 1),
+                    hovered: resp.hovered() || from_view == Some(*id),
+                    dim: rolled,
+                    suppressed: *suppressed,
+                    error: err.is_some(),
+                    warning: warn.is_some(),
+                    accent,
                 }
-                // A failed feature has a mark of its own, not only its colour (#972).
-                if err.is_some() {
-                    icons::paint(&p, Rect::from_min_size(br.right_top() - vec2(10.0, 0.0), vec2(10.0, 10.0)), "error", t.panel, t.error, t.error);
-                }
-                if warn.is_some() && err.is_none() {
-                    icons::paint(
-                        &p,
-                        Rect::from_min_size(br.right_top() - vec2(10.0, 0.0), vec2(10.0, 10.0)),
-                        "warning",
-                        t.icon,
-                        t.warning,
-                        t.warning,
-                    );
-                }
+                .paint(&p, br, crate::ui_kit::HistoryStyle::Bottom);
                 let mut tip = status_text(name, ty, err.as_deref(), warn.as_deref());
                 if let Some(r) = res {
                     tip += &format!("\n{:.1} ms", r.ms);
@@ -488,7 +458,7 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
             }
             let end = x;
             if marker >= feats.len() {
-                marker_rect = Some(Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(6.0, r.height() - 10.0)));
+                marker_rect = Some(Rect::from_min_size(pos2(x, r.top() + 5.0), vec2(t.space_12, r.height() - 10.0)));
             }
             // The history marker: drag it to roll the model back or forward.
             if let Some(mr) = marker_rect {
@@ -497,14 +467,7 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
                 if resp.drag_started() {
                     drag = Some(Drag::Marker);
                 }
-                let col = if resp.hovered() || drag == Some(Drag::Marker) {
-                    accent.color
-                } else if !floating && accent.color == t.accent {
-                    t.timeline_marker
-                } else {
-                    accent.color
-                };
-                p.rect_filled(mr, 1.0, col);
+                crate::ui_kit::history_marker(&p, mr, false, accent);
                 resp.on_hover_text("History marker: drag to roll the model back; new features go here");
             }
             let content_end = crate::dialogs_assembly::timeline_joints(app, ui, &p, end + 10.0, r);
@@ -514,9 +477,11 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
             if let (Some(dg), Some(pp)) = (drag.as_ref(), pointer) {
                 let slot = slot_at(&xs, end, pp.x);
                 let sx = xs.get(slot).copied().unwrap_or(end) - 4.0;
-                p.line_segment(
-                    [pos2(sx, r.top() + 3.0), pos2(sx, r.bottom() - 3.0)],
-                    Stroke::new(2.0, if matches!(dg, Drag::Marker) { accent.color } else { t.sketch_accent }),
+                crate::ui_kit::history_drop_bar(
+                    &p,
+                    Rect::from_min_max(pos2(sx, r.top() + 3.0), pos2(sx, r.bottom() - 3.0)),
+                    false,
+                    if matches!(dg, Drag::Marker) { accent.color } else { t.sketch_accent },
                 );
             }
             let released = ui.input(|i| i.pointer.any_released());
@@ -852,6 +817,7 @@ mod tests {
         assert_eq!(chips.last().unwrap().fill, accent.soft);
         assert_eq!(chips.last().unwrap().stroke.color, accent.color);
         let marker = crate::scenario::rect_of("history:marker").unwrap();
-        assert!(out.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.rect == marker && r.fill == accent.color)));
+        assert!(out.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Circle(c)
+            if marker.contains(c.center) && c.fill == t.timeline && c.stroke == egui::Stroke::new(t.space_2, accent.color))));
     }
 }

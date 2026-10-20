@@ -412,14 +412,15 @@ preference_settings! {
     /// Interface font: an installed font family (or a font file), or empty for the built-in one
     /// (#1290). Menus, dialogs and labels use it; glyphs it lacks fall back as before.
     ui_font: String = String::new(), 0;
-    /// Put the feature history above the parts browser in the left sidebar instead of along the
-    /// bottom of the viewport.
+    /// Put the feature history to the left of the browser instead of below the viewport.
     timeline_left: bool = false, 0;
-    /// Height of the feature-history section when it shares the left sidebar with the browser.
+    /// Show compact names instead of icon chips in the vertical history strip.
+    timeline_left_names: bool = true, 0;
+    /// Legacy shared-column height, retained for preference compatibility.
     timeline_left_height: f32 = 360.0, 0;
-    /// Whether the browser below the left feature history is collapsed.
+    /// Whether the browser beside the vertical history is collapsed to its rail.
     timeline_left_browser_collapsed: bool = false, 0;
-    /// Width of the left sidebar holding the browser (and the feature history above it), which
+    /// Width of the browser sidebar, which
     /// the user drags wider or narrower at its right edge.
     browser_width: f32 = DEFAULT_BROWSER_WIDTH, 0;
     /// Draw the parts browser on a translucent card over the 3D view instead of a column of its

@@ -1536,16 +1536,26 @@ impl SolveApp {
             timeline::timeline(self, ui);
         }
         // A floating browser keeps the workspace the whole width and covers viewport input.
-        let browser_float = self.ui.show_browser && (self.preferences.browser_float || (floating && !left_timeline));
+        let browser_float = self.ui.show_browser && (self.preferences.browser_float || floating || left_timeline);
         if !browser_float {
             self.shell.browser = None;
         }
+        let previous_history = self.shell.history;
         self.shell.history = None;
         let full = ui.available_rect_before_wrap();
         if floating {
             let cards = shell::Cards::new(full, self.ui.layout);
             self.shell.cards = vec![cards.workspace, cards.ribbon];
-            self.shell.history = (show_timeline && !left_timeline).then(|| timeline::floating_rect(full));
+            self.shell.history = if left_timeline {
+                let below_ribbon = egui::Rect::from_min_max(egui::pos2(full.left(), cards.bottom), full.max);
+                let mut rect = timeline_left::floating_rect(self, below_ribbon);
+                if let Some(previous) = previous_history.filter(|previous| (previous.width() - rect.width()).abs() < 1.0) {
+                    rect.max.y = (rect.top() + previous.height()).min(rect.bottom());
+                }
+                Some(rect)
+            } else {
+                show_timeline.then(|| timeline::floating_rect(full))
+            };
             // Draw the scene first, then let the unchanged panel layouts cover it. The
             // viewport keeps its full projection even underneath the browser and cards.
             preview::update(self, ui.ctx());
@@ -1571,14 +1581,11 @@ impl SolveApp {
         if floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
-        if self.ui.show_browser && !browser_float {
-            if left_timeline {
-                browser::browser_below_timeline(self, ui);
-            } else {
-                browser::browser(self, ui);
-            }
-        } else if left_timeline {
+        if left_timeline {
             timeline_left::left_panel(self, ui);
+        }
+        if self.ui.show_browser && !browser_float {
+            browser::browser(self, ui);
         }
         if render_workspace::active(self) {
             render_workspace::panel(self, ui);
@@ -1593,8 +1600,11 @@ impl SolveApp {
             if floating {
                 let panel_content = ui.max_rect();
                 let mut content = panel_content;
-                if let Some(history) = self.shell.history {
+                if let Some(history) = self.shell.history.filter(|_| !left_timeline) {
                     content.max.y = (history.top() - shell::SHELL_GAP).max(content.top());
+                }
+                if left_timeline && let Some(history) = self.shell.history {
+                    content.min.x = (history.right() + shell::SHELL_GAP).min(content.right());
                 }
                 if let Some(browser) = self.shell.browser {
                     content.min.x = (browser.right() + shell::SHELL_GAP).min(content.right());
