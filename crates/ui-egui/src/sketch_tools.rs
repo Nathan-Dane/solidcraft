@@ -1006,13 +1006,13 @@ pub fn preview(app: &SolveApp, t: &Tool, painter: &egui::Painter, proj: &Proj) {
         // In the error colour, thicker than a hover: it is what the click deletes.
         crate::tools::paint_sketch_path(&world, 0, painter, proj, Stroke::new(4.5, tk.error));
     }
-    let stroke = Stroke::new(1.5, tk.rubber_band);
+    let stroke = Stroke::new(1.5, tk.sketch_accent);
     if let Some((hp, snap)) = &t.hover
         && let Some(sp) = to(*hp)
     {
         painter.circle_stroke(sp, if snap.is_some() { 6.0 } else { 3.0 }, stroke);
     }
-    let faint = Stroke::new(1.0, tk.rubber_band.gamma_multiply(0.6));
+    let faint = Stroke::new(1.0, tk.sketch_accent.gamma_multiply(0.6));
     let mode = crate::sketch_palette::mode(app);
     for w in t.pts.windows(2) {
         crate::tools::paint_sketch_path(&[ss.plane.to_world(w[0].0), ss.plane.to_world(w[1].0)], mode, painter, proj, faint);
