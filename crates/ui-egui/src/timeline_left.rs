@@ -59,14 +59,16 @@ impl TimelineItem {
 
 /// Saved width variant of the vertical strip.
 pub(crate) fn strip_width(app: &SolveApp) -> f32 {
-    let t = Tokens::get();
-    if app.preferences.timeline_left_names { t.space_24 * 7.0 } else { t.control_height * 2.0 }
+    app.shell
+        .history_drag_width
+        .map(crate::ui_kit::history_clamp_width)
+        .unwrap_or_else(|| crate::ui_kit::history_width(app.preferences.timeline_left_names))
 }
 
 pub(crate) fn floating_rect(app: &SolveApp, available: Rect) -> Rect {
     let gap = crate::shell::SHELL_GAP;
     let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
-    let min = available.min + vec2(gap, top_gap);
+    let min = pos2((available.left() + gap).min(available.right()), (available.top() + top_gap).min(available.bottom()));
     Rect::from_min_max(min, pos2((min.x + strip_width(app)).min((available.right() - gap).max(min.x)), (available.bottom() - gap).max(min.y)))
 }
 
@@ -76,7 +78,7 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     if app.ui.layout == crate::shell::LayoutMode::Floating {
         let bounds = floating_rect(app, ui.available_rect_before_wrap());
         app.shell.history = None;
-        if !bounds.is_finite() || bounds.width() < strip_width(app) || bounds.height() < t.control_height {
+        if !bounds.is_finite() || bounds.width() < crate::ui_kit::history_width(false) || bounds.height() < t.control_height {
             return;
         }
         app.shell.history = Some(bounds);
@@ -91,14 +93,58 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         });
         app.shell.history = Some(card.response.rect);
         crate::scenario::publish_rect("history:vertical", card.response.rect);
+        seam_handle(app, ui, card.response.rect);
     } else {
+        let width = strip_width(app).min(ui.available_width().max(0.0));
+        if width < crate::ui_kit::history_width(false) {
+            return;
+        }
         let response = egui::Panel::left("sc_timeline_left")
-            .exact_size(strip_width(app))
+            .exact_size(width)
             .resizable(false)
             .frame(egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin::symmetric(t.space_4 as i8, t.space_6 as i8)))
             .show(ui, |ui| left_timeline(app, ui));
         crate::scenario::publish_rect("history:vertical", response.response.rect);
+        app.shell.history = Some(response.response.rect);
+        seam_handle(app, ui, response.response.rect);
     }
+}
+
+fn rows_have_names(app: &SolveApp) -> bool {
+    app.preferences.timeline_left_names || app.shell.history_drag_width.is_some()
+}
+
+fn names_menu(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let mut item = crate::ui_kit::MenuItem::new("view.history_names", crate::i18n::tr("ui.history_show_names"), "settings");
+    item.checked = Some(app.preferences.timeline_left_names);
+    if item.show(ui).clicked() {
+        let _ = app.run("view.history_names", json!({}));
+        ui.close();
+    }
+}
+
+fn seam_handle(app: &mut SolveApp, ui: &mut egui::Ui, card: Rect) {
+    let seam = crate::ui_kit::HistorySeam::new(card);
+    let bounds = seam.edge.union(seam.pill);
+    crate::frame::area(egui::Id::new("history_seam_overlay")).order(egui::Order::Foreground).fixed_pos(bounds.min).show(ui.ctx(), |ui| {
+        ui.set_min_size(bounds.size());
+        ui.set_clip_rect(ui.ctx().content_rect());
+        let result = crate::ui_kit::history_seam(ui, card, app.preferences.timeline_left_names);
+        if let Some(width) = result.width {
+            app.shell.history_drag_width = Some(width);
+            ui.ctx().request_repaint();
+            if result.released {
+                let _ = app.run("view.history_names", json!({"enabled": crate::ui_kit::history_snap_names(width)}));
+                app.shell.history_drag_width = None;
+            }
+        } else if result.toggle {
+            let _ = app.run("view.history_names", json!({}));
+            ui.ctx().request_repaint();
+        }
+        crate::ui_kit::Menu::context(&result.response, |ui| names_menu(app, ui));
+    });
+    let response = ui.interact(card, ui.id().with("history_context"), Sense::CLICK);
+    crate::ui_kit::Menu::context(&response, |ui| names_menu(app, ui));
 }
 
 /// Both widths retain the same folders, selection, keyboard and drag interactions.
@@ -106,17 +152,12 @@ pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let groups = app.session.doc.timeline_groups.clone();
     timeline_transport(app, ui);
+    // Reserve the selection-actions row so selecting never moves a feature under the pointer.
     ui.horizontal(|ui| {
         ui.set_min_height(t.space_24);
-        let (rect, response) = ui.allocate_exact_size(vec2(t.space_24, t.space_24), Sense::click());
-        crate::ui_kit::disclosure(ui.painter(), rect.center(), app.preferences.timeline_left_names, t.text_dim);
-        crate::scenario::publish_handle("history:names", rect.center());
-        if response.on_hover_text(crate::i18n::tr("ui.history_toggle_names")).clicked() {
-            app.preferences.timeline_left_names = !app.preferences.timeline_left_names;
-        }
         let count = selected_feature_ids(app).len() + app.tree.picked_timeline_groups.len();
         if count > 0 {
-            let label = if app.preferences.timeline_left_names {
+            let label = if ui.available_width() >= crate::ui_kit::history_width(true) - t.space_16 {
                 crate::i18n::format("ui.history_selected", &[("count", &count.to_string())])
             } else {
                 count.to_string()
@@ -137,7 +178,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let n = app.session.doc.features.len();
     let marker = app.session.doc.marker.unwrap_or(n);
-    let names = app.preferences.timeline_left_names;
+    let names = rows_have_names(app) && ui.available_width() >= t.space_24 * 3.0 + t.space_2 * 2.0;
     let layout = if names { egui::Layout::left_to_right(egui::Align::Center) } else { egui::Layout::top_down(egui::Align::Center) };
     let height = if names { t.space_24 } else { t.control_height * 3.0 + t.space_2 * 2.0 };
     ui.allocate_ui_with_layout(vec2(ui.available_width(), height), layout, |ui| {
@@ -550,7 +591,7 @@ fn timeline_group_name(
     let editing =
         matches!(app.menu.rename.as_ref().map(|rename| &rename.what), Some(crate::context_menu::RenameWhat::TimelineGroup(id)) if *id == group.id);
     if !editing {
-        if !app.preferences.timeline_left_names {
+        if !rows_have_names(app) {
             return false;
         }
         ui.painter().with_clip_rect(rect.intersect(ui.clip_rect())).text(
@@ -620,7 +661,7 @@ fn vertical_group_row(
     if selected || response.hovered() {
         ui.painter().rect_filled(rect, 3.0, if selected { crate::theme::TabAccent::current(ui.ctx()).soft } else { t.hover });
     }
-    let offset = if app.preferences.timeline_left_names { depth as f32 * 14.0 } else { 0.0 };
+    let offset = if rows_have_names(app) { depth as f32 * 14.0 } else { 0.0 };
     let centre = pos2(rect.left() + 9.0 + offset, rect.center().y);
     crate::ui_kit::disclosure(ui.painter(), centre, open, t.text_dim);
     let icon = Rect::from_center_size(pos2(rect.left() + 27.5 + offset, rect.center().y), vec2(17.0, 17.0));
@@ -653,6 +694,7 @@ fn vertical_group_row(
         select_only(app, TimelineItem::Group(group.id));
     }
     crate::ui_kit::Menu::context(&response, |ui| {
+        names_menu(app, ui);
         if crate::context_menu::button(ui, "Rename Folder", "rename").clicked() {
             crate::context_menu::start_rename(app, crate::context_menu::RenameWhat::TimelineGroup(group.id), rect.center());
             ui.close();
@@ -665,7 +707,7 @@ fn vertical_group_row(
 
 fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    ui.spacing_mut().item_spacing.y = if app.preferences.timeline_left_names { t.space_2 } else { t.space_4 };
+    ui.spacing_mut().item_spacing.y = if rows_have_names(app) { t.space_2 } else { t.space_4 };
     let features: Vec<_> = app
         .session
         .doc
@@ -746,7 +788,7 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
         let has_patterns = matches!(kind, TimelineKind::Sketch) && crate::sketch_pattern_tree::has_patterns(app, *id);
         let pattern_key = format!("timeline/sketch/{id}/patterns");
         let patterns_open = crate::browser::is_open(app, &pattern_key, true);
-        let style = if app.preferences.timeline_left_names { crate::ui_kit::HistoryStyle::Names } else { crate::ui_kit::HistoryStyle::Icons };
+        let style = if rows_have_names(app) { crate::ui_kit::HistoryStyle::Names } else { crate::ui_kit::HistoryStyle::Icons };
         let (row, response) = ui.allocate_exact_size(vec2(ui.available_width(), style.height()), Sense::click_and_drag());
         let rect = if style == crate::ui_kit::HistoryStyle::Icons {
             Rect::from_center_size(row.center(), vec2(style.height(), style.height()))
@@ -765,7 +807,7 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
         let selected =
             app.session.selection.iter().any(|selection| matches!(selection, solidcraft_engine::Sel::Feature { id: selected } if selected == id));
         // Folder and sketch-pattern disclosure targets retain their original handles.
-        let inset = if app.preferences.timeline_left_names { indent + if has_patterns { 16.0 } else { 0.0 } } else { 0.0 };
+        let inset = if rows_have_names(app) { indent + if has_patterns { 16.0 } else { 0.0 } } else { 0.0 };
         let chip = Rect::from_min_max(rect.min + vec2(inset.min(rect.width()), 0.0), rect.max);
         crate::ui_kit::HistoryChip {
             icon,
@@ -824,6 +866,7 @@ fn vertical_features(app: &mut SolveApp, ui: &mut egui::Ui) {
             select_only(app, TimelineItem::Feature(*id));
         }
         crate::ui_kit::Menu::context(&response, |ui| {
+            names_menu(app, ui);
             if crate::context_menu::button(ui, "Edit Feature", "edit").clicked() {
                 edit = Some(*id);
                 ui.close();
@@ -963,6 +1006,78 @@ mod tests {
     use crate::scenario::{Harness, handle_at};
 
     #[test]
+    fn seam_drag_and_command_persist_names_without_dialogs() {
+        for (names, delta, expected) in [(false, 80.0, true), (true, -80.0, false)] {
+            let mut h = Harness::new();
+            h.app.preferences.timeline_left = true;
+            h.app.preferences.timeline_left_names = names;
+            h.settle();
+            let card = crate::scenario::rect_of("history:vertical").unwrap();
+            let start = pos2(card.right() - 4.0, card.top() + 12.0);
+            h.step(&json!({"drag":[[start.x,start.y],[start.x+delta,start.y]]})).unwrap();
+            h.settle();
+            assert_eq!(h.app.preferences.timeline_left_names, expected);
+            assert!(h.app.shell.history_drag_width.is_none());
+            assert_eq!(crate::scenario::rect_of("history:vertical").unwrap().width(), crate::ui_kit::history_width(expected));
+            h.app.run("view.history_names", json!({})).unwrap();
+            assert_eq!(h.app.preferences.timeline_left_names, !expected);
+            assert!(h.app.dialog.is_none());
+        }
+    }
+
+    #[test]
+    fn names_command_is_searchable_and_the_context_menu_toggles_it() {
+        let mut h = Harness::new();
+        h.app.preferences.timeline_left = true;
+        assert!(crate::shortcut_box::search(&h.app, "history names").iter().any(|row| row.0 == "view.history_names"));
+        h.settle();
+        let card = crate::scenario::rect_of("history:vertical").unwrap();
+        let at = pos2(card.right() - 4.0, card.top() + 12.0);
+        h.step(&json!({"click":[at.x,at.y],"button":"right"})).unwrap();
+        h.step(&json!({"widget":"Show names"})).unwrap();
+        assert!(!h.app.preferences.timeline_left_names);
+        assert!(h.app.dialog.is_none());
+    }
+
+    #[test]
+    fn rendered_strip_content_never_exceeds_the_viewport_during_resize() {
+        for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+            for width in [70.0, 100.0, 130.0, 200.0] {
+                for drag_width in [None, Some(60.0), Some(112.0), Some(160.0)] {
+                    let ctx = crate::fonts::test_context();
+                    let mut app = crate::test_support::sample_app();
+                    app.ui.layout = mode;
+                    app.preferences.timeline_left = true;
+                    app.shell.history_drag_width = drag_width;
+                    let screen = Rect::from_min_size(egui::Pos2::ZERO, vec2(width, 600.0));
+                    for _ in 0..3 {
+                        let mut out = ctx.run_ui(egui::RawInput { screen_rect: Some(screen), ..Default::default() }, |ui| left_panel(&mut app, ui));
+                        out.textures_delta.clear();
+                    }
+                    if let Some(card) = app.shell.history {
+                        assert!(screen.contains_rect(card), "mode={mode:?} viewport={screen:?} card={card:?}");
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn history_seam_widths_stay_inside_small_viewports() {
+        let mut app = crate::test_support::sample_app();
+        for names in [false, true] {
+            app.preferences.timeline_left_names = names;
+            for drag in [None, Some(112.0), Some(f32::INFINITY)] {
+                app.shell.history_drag_width = drag;
+                for width in [0.0, 20.0, 56.0, 100.0, 200.0, 800.0] {
+                    let available = Rect::from_min_size(pos2(15.0, 30.0), vec2(width, 300.0));
+                    assert!(available.contains_rect(floating_rect(&app, available)));
+                }
+            }
+        }
+    }
+
+    #[test]
     fn both_widths_keep_selection_reorder_marker_transport_and_feature_menus() {
         for names in [false, true] {
             let mut h = Harness::new();
@@ -1055,6 +1170,10 @@ mod tests {
         assert!(handle_at("row:Untitled").is_some());
         h.step(&json!({"click":{"handle":"history:names"}})).unwrap();
         assert!(h.app.preferences.timeline_left_names);
+        h.step(&json!({"key":"Enter"})).unwrap();
+        assert!(!h.app.preferences.timeline_left_names, "focused seam handles Enter in the app");
+        h.step(&json!({"key":"Space"})).unwrap();
+        assert!(h.app.preferences.timeline_left_names, "focused seam handles Space in the app");
     }
 
     #[test]

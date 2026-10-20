@@ -7,6 +7,8 @@ use crate::params::{bad, num, req_vec2, req_vec3, vec3};
 use crate::{Result, Session};
 
 pub static COMMANDS: &[CommandSpec] = &[
+CommandSpec::new("view.history_names", "History names", history_names)
+    .icon("settings").noundo().doc_only().params("enabled?: bool; omitted toggles history names → enabled; display preference only, never opens a dialog"),
 CommandSpec::new("view.graphics_preset", "Graphics Preset", graphics_preset)
     .icon("settings").noundo().doc_only().params("preset: performance|quality → preset, enabled, display_quality, supersampling, supersampling_adaptive; Quality: AO, Fine, adaptive 2x SSAA; Performance: no AO, Normal, no SSAA"),
 CommandSpec::new("view.ambient_occlusion", "Ambient Occlusion", ambient_occlusion)
@@ -16,6 +18,15 @@ CommandSpec::new("view.navigate", "Navigate View", navigate)
     .noundo()
     .doc_only()
     .params("camera: Camera; direction?: [x,y,z] in the camera's up-axis frame; or action: left|right|up|down|clockwise|counterclockwise|home|fit, degrees?: 0..180 (how far left|right|up|down turn; default 90); or motion: pan|orbit|zoom, delta?: [dx,dy] (pixels, each ±10000), viewport?: [width,height] (1..1000000, required for pan or pivot), pivot?: [x,y,z], factor?: 0.05..20 (required for zoom), anchor?: [x,y,z] → camera, fit, continuous?")];
+
+fn history_names(s: &mut Session, p: &Value) -> Result<Value> {
+    let enabled = match p.get("enabled") {
+        Some(value) => value.as_bool().ok_or_else(|| bad("view.history_names", "enabled must be a boolean"))?,
+        None => !s.history_names,
+    };
+    s.history_names = enabled;
+    Ok(json!({"enabled": enabled}))
+}
 
 fn navigate(_s: &mut Session, p: &Value) -> Result<Value> {
     let cmd = "view.navigate";
@@ -348,4 +359,18 @@ mod graphics_preset_tests {
         assert_eq!(s.doc.to_json(), before);
         assert!(s.undo.is_empty());
     }
+}
+
+#[cfg(test)]
+#[test]
+fn history_names_toggles_or_sets_without_changing_the_design() {
+    let mut s = Session::default();
+    let doc = s.doc.clone();
+    assert_eq!(s.execute("view.history_names", &json!({})).unwrap(), json!({"enabled":false}));
+    assert_eq!(s.execute("view.history_names", &json!({})).unwrap(), json!({"enabled":true}));
+    assert_eq!(s.execute("view.history_names", &json!({"enabled":false})).unwrap(), json!({"enabled":false}));
+    assert!(s.execute("view.history_names", &json!({"enabled":42})).is_err());
+    assert!(!s.history_names);
+    assert_eq!(s.doc, doc);
+    assert!(s.undo.is_empty());
 }

@@ -729,10 +729,16 @@ impl SolveApp {
         if self.file_load.busy() || self.file_picker.is_some() || self.saving.is_some() {
             return Err("a file operation is in progress".into());
         }
+        if id == "view.history_names" {
+            self.session.history_names = self.preferences.timeline_left_names;
+        }
         let t0 = now_ms();
         let r = self.session.execute(id, &params).map_err(|e| e.to_string());
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         if let Ok(v) = &r {
+            if id == "view.history_names" {
+                self.preferences.timeline_left_names = self.session.history_names;
+            }
             if matches!(id, "view.ambient_occlusion" | "view.graphics_preset") {
                 self.preferences.ambient_occlusion = v.get("enabled").and_then(Value::as_bool).unwrap_or(false);
                 if id == "view.graphics_preset" {
@@ -852,6 +858,10 @@ impl SolveApp {
             return;
         }
         // A display toggle leaves the current modelling tool and camera in place.
+        if id == "view.history_names" {
+            let _ = self.run(id, json!({}));
+            return;
+        }
         if id == "view.ambient_occlusion" {
             let _ = self.run(id, json!({"enabled": !self.preferences.ambient_occlusion}));
             return;

@@ -40,6 +40,9 @@ const ELEMENTS: &[Element] = &[
             history_marker(ui.painter(), rect, false, accent);
         });
     }),
+    element!("history_seam_rest", |ui, _| history_seam_example(ui, HistoryHandleState::Rest)),
+    element!("history_seam_hover", |ui, _| history_seam_example(ui, HistoryHandleState::Hover)),
+    element!("history_seam_drag", |ui, _| history_seam_example(ui, HistoryHandleState::Drag)),
     element!("history_icons", |ui, _| history_example(ui, false)),
     element!("history_names", |ui, _| history_example(ui, true)),
     element!("command_search", |ui, _| {
@@ -1085,6 +1088,19 @@ fn gallery_covers_every_inline_element() {
 }
 
 #[cfg(test)]
+fn history_seam_example(ui: &mut Ui, state: HistoryHandleState) {
+    let t = Tokens::get();
+    let allocation = ui.allocate_space(vec2(280.0, 250.0)).1;
+    for (names, offset) in [(false, 0.0), (true, 125.0)] {
+        let width = if state == HistoryHandleState::Drag { 112.0 } else { history_width(names) };
+        // Separate samples vertically so the guide/chip fits within the gallery allocation.
+        let card = egui::Rect::from_min_size(allocation.min + vec2(t.space_8, offset + t.space_8), vec2(width, 104.0));
+        ui.painter().rect(card, t.radius_lg, t.panel, egui::Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
+        HistorySeam::new(card).paint(ui.painter(), card, names, state);
+    }
+}
+
+#[cfg(test)]
 fn history_example(ui: &mut Ui, names: bool) {
     let mut app = crate::test_support::sample_app();
     app.preferences.timeline_left = true;
@@ -1109,42 +1125,67 @@ fn history_board_in_both_themes_and_widths() {
     for dark in [false, true] {
         for names in [false, true] {
             for collapsed in [false, true] {
-                crate::theme::set_dark(dark);
-                let ctx = crate::fonts::test_context();
-                ctx.set_visuals(if dark { egui::Visuals::dark() } else { egui::Visuals::light() });
-                ctx.global_style_mut(|style| style.animation_time = 0.0);
-                let mut app = crate::test_support::sample_app();
-                app.preferences.timeline_left = true;
-                app.preferences.timeline_left_names = names;
-                app.preferences.timeline_left_browser_collapsed = collapsed;
-                app.run("timeline.roll_to", serde_json::json!({"position":3})).unwrap();
-                let feature = app.session.doc.features.get(2).unwrap().id;
-                app.run("select.set", serde_json::json!({"items":[{"type":"feature","id":feature}]})).unwrap();
-                let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, vec2(560.0, 680.0));
-                let mut textures = HashMap::new();
-                let mut image = None;
-                for _ in 0..4 {
-                    let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(bounds), ..Default::default() }, |ui| {
-                        ui.painter().rect_filled(bounds, 0.0, Tokens::get().viewport_top);
-                        crate::timeline_left::left_panel(&mut app, ui);
-                        crate::browser::floating(&mut app, ui, bounds);
-                    });
-                    textures_update(&mut textures, &output.textures_delta);
-                    output.textures_delta.clear();
-                    image = Some(raster(&ctx, output.shapes, output.pixels_per_point, bounds, &textures));
-                }
-                assert!(app.shell.history.unwrap().right() < app.shell.browser.unwrap().left());
-                if let Ok(dir) = std::env::var("SOLIDCRAFT_HISTORY_EVIDENCE") {
-                    std::fs::create_dir_all(&dir).unwrap();
-                    image
-                        .unwrap()
-                        .save(std::path::Path::new(&dir).join(format!(
-                            "history-{}-{}-{}.png",
-                            if names { "names" } else { "icons" },
-                            if collapsed { "rail" } else { "browser" },
-                            if dark { "dark" } else { "light" }
-                        )))
-                        .unwrap();
+                for state in [HistoryHandleState::Rest, HistoryHandleState::Hover, HistoryHandleState::Drag] {
+                    crate::theme::set_dark(dark);
+                    let ctx = crate::fonts::test_context();
+                    ctx.set_visuals(if dark { egui::Visuals::dark() } else { egui::Visuals::light() });
+                    ctx.global_style_mut(|style| style.animation_time = 0.0);
+                    let mut app = crate::test_support::sample_app();
+                    app.preferences.timeline_left = true;
+                    app.preferences.timeline_left_names = names;
+                    app.preferences.timeline_left_browser_collapsed = collapsed;
+                    app.run("timeline.roll_to", serde_json::json!({"position":3})).unwrap();
+                    let feature = app.session.doc.features.get(2).unwrap().id;
+                    app.run("select.set", serde_json::json!({"items":[{"type":"feature","id":feature}]})).unwrap();
+                    let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, vec2(560.0, 680.0));
+                    let mut textures = HashMap::new();
+                    let mut image = None;
+                    let mut drag_start = None;
+                    for pass in 0..9 {
+                        let mut events = vec![];
+                        if pass >= 2 {
+                            let card = app.shell.history.unwrap();
+                            if state == HistoryHandleState::Hover {
+                                events.push(egui::Event::PointerMoved(card.right_center()));
+                            } else if state == HistoryHandleState::Drag {
+                                let start = *drag_start.get_or_insert(egui::pos2(card.right() - 4.0, card.top() + 12.0));
+                                if pass == 2 {
+                                    events = crate::test_support::pointer(start, true);
+                                } else if pass == 3 {
+                                    events.push(egui::Event::PointerMoved(start + vec2(112.0 - history_width(names), 0.0)));
+                                }
+                            }
+                        }
+                        let mut output = ctx.run_ui(
+                            egui::RawInput { screen_rect: Some(bounds), time: Some(pass as f64 * 0.2), focused: true, events, ..Default::default() },
+                            |ui| {
+                                ui.painter().rect_filled(bounds, 0.0, Tokens::get().viewport_top);
+                                crate::timeline_left::left_panel(&mut app, ui);
+                                crate::browser::floating(&mut app, ui, bounds);
+                            },
+                        );
+                        textures_update(&mut textures, &output.textures_delta);
+                        output.textures_delta.clear();
+                        image = Some(raster(&ctx, output.shapes, output.pixels_per_point, bounds, &textures));
+                    }
+                    if state == HistoryHandleState::Drag {
+                        assert_eq!(app.shell.history_drag_width, Some(112.0));
+                        assert_eq!(app.shell.history.unwrap().width(), 112.0);
+                    }
+                    assert!(app.shell.history.unwrap().right() < app.shell.browser.unwrap().left());
+                    if let Ok(dir) = std::env::var("SOLIDCRAFT_HISTORY_EVIDENCE") {
+                        std::fs::create_dir_all(&dir).unwrap();
+                        image
+                            .unwrap()
+                            .save(std::path::Path::new(&dir).join(format!(
+                                "history-{}-{}-{}-{:?}.png",
+                                if names { "names" } else { "icons" },
+                                if collapsed { "rail" } else { "browser" },
+                                if dark { "dark" } else { "light" },
+                                state
+                            )))
+                            .unwrap();
+                    }
                 }
             }
         }

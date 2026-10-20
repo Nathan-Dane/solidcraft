@@ -304,7 +304,9 @@ fn left_history_and_browser_share_the_left_edge_without_moving_right_controls() 
         if mode == LayoutMode::Floating {
             assert!(covered(&h.app, history.center()));
             assert!(covered(&h.app, browser.center()));
-            assert!(!covered(&h.app, pos2((history.right() + browser.left()) / 2.0, history.center().y)));
+            let gap_x = (history.right() + browser.left()) / 2.0;
+            assert!(covered(&h.app, pos2(gap_x, history.center().y)), "the seam pill shields viewport input");
+            assert!(!covered(&h.app, pos2(gap_x, history.top() + 4.0)), "the rest of the shell gap remains available");
         }
     }
 }

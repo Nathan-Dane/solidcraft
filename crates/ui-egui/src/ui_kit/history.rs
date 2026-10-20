@@ -145,9 +145,310 @@ pub(crate) fn history_marker(p: &Painter, rect: Rect, vertical: bool, accent: Ta
     p.circle(centre, outer_radius - t.space_2 / 2.0, if vertical { t.panel } else { t.timeline }, Stroke::new(t.space_2, accent.color));
 }
 
+/// The vertical strip has exactly two persisted widths; intermediate widths are transient.
+pub(crate) fn history_width(names: bool) -> f32 {
+    let t = Tokens::get();
+    if names { t.space_24 * 7.0 } else { t.control_height * 2.0 }
+}
+
+pub(crate) fn history_clamp_width(width: f32) -> f32 {
+    if width.is_finite() { width.clamp(history_width(false), history_width(true)) } else { history_width(false) }
+}
+
+pub(crate) fn history_snap_names(width: f32) -> bool {
+    history_clamp_width(width) >= (history_width(false) + history_width(true)) / 2.0
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) enum HistoryHandleState {
+    Rest,
+    Hover,
+    Drag,
+}
+
+/// Seam geometry is independent of the strip's contents and consumes no layout space.
+pub(crate) struct HistorySeam {
+    pub grip: Rect,
+    pub pill: Rect,
+    pub edge: Rect,
+}
+
+impl HistorySeam {
+    pub fn new(card: Rect) -> Self {
+        let t = Tokens::get();
+        Self {
+            grip: Rect::from_center_size(pos2(card.right() - t.space_2 - t.space_3 / 2.0, card.center().y), vec2(t.space_3, TREE_ROW_HEIGHT)),
+            pill: Rect::from_center_size(card.right_center(), vec2(t.space_16 + t.space_2, t.control_height + t.space_16)),
+            edge: Rect::from_min_max(pos2(card.right() - t.space_10, card.top()), card.right_bottom()),
+        }
+    }
+
+    pub fn paint(&self, p: &Painter, card: Rect, names: bool, state: HistoryHandleState) {
+        let t = Tokens::get();
+        let accent = TabAccent::current(p.ctx());
+        match state {
+            HistoryHandleState::Rest => {
+                p.rect_filled(self.grip, t.space_2, t.control_border);
+            }
+            HistoryHandleState::Hover => {
+                p.rect(self.pill, self.pill.width() / 2.0, accent.soft, Stroke::new(1.0, accent.color), egui::StrokeKind::Inside);
+                let c = self.pill.center();
+                let dir = if names { -1.0 } else { 1.0 };
+                p.add(egui::Shape::line(
+                    vec![c + vec2(-dir * t.space_2, -t.space_4), c + vec2(dir * t.space_2, 0.0), c + vec2(-dir * t.space_2, t.space_4)],
+                    Stroke::new(t.space_2, accent.color),
+                ));
+            }
+            HistoryHandleState::Drag => {
+                p.rect_stroke(card, t.radius_lg, Stroke::new(1.0, accent.color), egui::StrokeKind::Inside);
+                let x = card.left() + history_width(true);
+                let line = [pos2(x, card.top()), pos2(x, card.bottom())];
+                p.extend(egui::Shape::dashed_line(&line, Stroke::new(t.space_2, accent.color), t.space_6, t.space_4));
+                let galley = p.layout_no_wrap(crate::i18n::tr("ui.history_names").to_owned(), crate::fonts::semibold(t.font_small), accent.ink);
+                let chip = Rect::from_min_size(pos2(x + t.space_8, card.top() + t.space_4), galley.size() + vec2(t.space_16, t.space_4));
+                p.rect_filled(chip, t.radius_lg, accent.soft);
+                p.galley(chip.min + vec2(t.space_8, t.space_2), galley, accent.ink);
+            }
+        }
+    }
+}
+
+pub(crate) struct HistorySeamResponse {
+    pub toggle: bool,
+    pub width: Option<f32>,
+    pub released: bool,
+    pub response: egui::Response,
+}
+
+/// Focusable seam button and edge gesture, shared by the panel and CPU interaction tests.
+pub(crate) fn history_seam(ui: &mut egui::Ui, card: Rect, names: bool) -> HistorySeamResponse {
+    let seam = HistorySeam::new(card);
+    let id = ui.id().with("history_seam");
+    let edge = ui.interact(seam.edge, id.with("edge"), egui::Sense::CLICK | egui::Sense::DRAG);
+    let button = ui.interact(seam.pill, id, egui::Sense::click_and_drag());
+    let label = crate::i18n::tr(if names { "ui.history_hide_names" } else { "ui.history_show_names" });
+    button.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
+    if button.clicked() {
+        button.request_focus();
+    }
+    let drag = if button.dragged() || button.drag_started() || button.drag_stopped() { &button } else { &edge };
+    let start_id = id.with("start_width");
+    if drag.drag_started() {
+        let press_x = ui.input(|i| i.pointer.press_origin()).map_or(card.right(), |p| p.x);
+        ui.data_mut(|d| d.insert_temp(start_id, (card.width(), press_x)));
+    }
+    let width = if drag.dragged() || drag.drag_stopped() {
+        let (start_width, press_x) = ui.data(|d| d.get_temp::<(f32, f32)>(start_id)).unwrap_or((card.width(), card.right()));
+        let pointer_x = ui.input(|i| i.pointer.latest_pos()).map_or(press_x, |p| p.x);
+        Some(history_clamp_width(start_width + pointer_x - press_x))
+    } else {
+        None
+    };
+    if drag.drag_stopped() {
+        ui.data_mut(|d| d.remove::<(f32, f32)>(start_id));
+    }
+    let dragging = width.is_some();
+    if dragging || edge.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::ResizeHorizontal);
+    }
+    if !dragging && button.hovered() {
+        ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
+    }
+    let active = edge.hovered() || button.hovered() || button.has_focus();
+    let state = if dragging {
+        HistoryHandleState::Drag
+    } else if active {
+        HistoryHandleState::Hover
+    } else {
+        HistoryHandleState::Rest
+    };
+    seam.paint(ui.painter(), card, names, state);
+    let response = button.clone().union(edge.clone());
+    if active && !dragging {
+        let mut tip = egui::Tooltip::for_widget(&response);
+        let t = Tokens::get();
+        let frame = egui::Frame::NONE
+            .fill(t.dialog_body)
+            .stroke(Stroke::new(1.0, t.dialog_border))
+            .corner_radius(t.radius_md)
+            .inner_margin(egui::Margin::symmetric(t.space_8 as i8, t.space_4 as i8))
+            .shadow(t.shell_shadow());
+        tip.popup = tip.popup.anchor(seam.pill).align(egui::RectAlign::RIGHT_START).frame(frame);
+        tip.show(|ui| {
+            let t = Tokens::get();
+            ui.label(egui::RichText::new(label).font(crate::fonts::semibold(t.font_body)).color(t.text));
+            ui.label(egui::RichText::new(crate::i18n::tr("ui.history_edge_hint")).size(t.font_small).color(t.text_dim));
+        });
+    }
+    crate::scenario::publish_handle("history:names", seam.pill.center());
+    crate::scenario::publish_rect("history:seam", seam.edge);
+    crate::scenario::publish_rect("history:handle", seam.pill);
+    // egui's click response includes Enter and Space for a focused button.
+    HistorySeamResponse { toggle: button.clicked() || edge.double_clicked(), width, released: drag.drag_stopped(), response }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn seam_geometry_and_paint_states_follow_tokens_in_both_themes() {
+        let previous = crate::theme::is_dark();
+        for dark in [false, true] {
+            crate::theme::set_dark(dark);
+            for names in [false, true] {
+                let card = Rect::from_min_size(pos2(20.0, 30.0), vec2(history_width(names), 280.0));
+                let seam = HistorySeam::new(card);
+                assert_eq!(seam.grip.size(), vec2(3.0, 26.0));
+                assert_eq!(seam.grip.center().y, card.center().y);
+                assert_eq!(seam.grip.right(), card.right() - 2.0);
+                assert_eq!(seam.pill.size(), vec2(18.0, 44.0));
+                assert_eq!(seam.pill.center(), card.right_center());
+                assert_eq!(seam.edge.width(), 10.0);
+                for state in [HistoryHandleState::Rest, HistoryHandleState::Hover, HistoryHandleState::Drag] {
+                    let ctx = crate::fonts::test_context();
+                    let mut out = ctx.run_ui(egui::RawInput::default(), |ui| seam.paint(ui.painter(), card, names, state));
+                    out.textures_delta.clear();
+                    let t = Tokens::get();
+                    let accent = TabAccent::current(&ctx);
+                    let rect = out
+                        .shapes
+                        .iter()
+                        .find_map(|s| match &s.shape {
+                            egui::Shape::Rect(r) => Some(r),
+                            _ => None,
+                        })
+                        .unwrap();
+                    match state {
+                        HistoryHandleState::Rest => {
+                            assert_eq!(rect.rect, seam.grip);
+                            assert_eq!(rect.fill, t.control_border);
+                        }
+                        HistoryHandleState::Hover => {
+                            assert_eq!(rect.rect, seam.pill);
+                            assert_eq!(rect.fill, accent.soft);
+                            assert_eq!(rect.stroke.color, accent.color);
+                        }
+                        HistoryHandleState::Drag => {
+                            assert_eq!(rect.rect, card);
+                            assert_eq!(rect.stroke.color, accent.color);
+                            assert!(out.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Text(text) if text.galley.text() == "Names")));
+                            assert!(out.shapes.iter().filter(|s| matches!(s.shape, egui::Shape::LineSegment { .. })).count() > 2);
+                        }
+                    }
+                }
+            }
+        }
+        crate::theme::set_dark(previous);
+    }
+
+    struct SeamHarness {
+        ctx: egui::Context,
+        names: bool,
+        width: f32,
+        time: f64,
+        focused: bool,
+    }
+
+    impl SeamHarness {
+        fn new(names: bool) -> Self {
+            let mut h = Self { ctx: crate::fonts::test_context(), names, width: history_width(names), time: 0.0, focused: false };
+            h.frame(vec![]);
+            h.frame(vec![]);
+            h
+        }
+
+        fn card(&self) -> Rect {
+            Rect::from_min_size(pos2(20.0, 20.0), vec2(self.width, 280.0))
+        }
+
+        fn frame(&mut self, events: Vec<egui::Event>) -> egui::FullOutput {
+            self.time += 0.05;
+            let card = self.card();
+            let mut out = self.ctx.run_ui(
+                egui::RawInput {
+                    screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(400.0, 400.0))),
+                    time: Some(self.time),
+                    focused: true,
+                    events,
+                    ..Default::default()
+                },
+                |ui| {
+                    let result = history_seam(ui, card, self.names);
+                    self.focused = result.response.has_focus();
+                    if let Some(width) = result.width {
+                        self.width = width;
+                        if result.released {
+                            self.names = history_snap_names(width);
+                            self.width = history_width(self.names);
+                        }
+                    } else if result.toggle {
+                        self.names = !self.names;
+                        self.width = history_width(self.names);
+                    }
+                },
+            );
+            out.textures_delta.clear();
+            out
+        }
+    }
+
+    #[test]
+    fn seam_edge_cursor_pill_click_double_click_and_keyboard_toggle() {
+        use crate::test_support::{key, pointer};
+        let mut h = SeamHarness::new(false);
+        let edge = pos2(h.card().right() - 4.0, h.card().top() + 30.0);
+        assert_eq!(h.frame(vec![egui::Event::PointerMoved(edge)]).platform_output.cursor_icon, egui::CursorIcon::ResizeHorizontal);
+        let pill = h.card().right_center();
+        assert_eq!(h.frame(vec![egui::Event::PointerMoved(pill)]).platform_output.cursor_icon, egui::CursorIcon::PointingHand);
+        h.frame(pointer(pill, true));
+        h.frame(pointer(pill, false));
+        assert!(h.names);
+        let mut h = SeamHarness::new(false);
+        for _ in 0..2 {
+            h.frame(pointer(edge, true));
+            h.frame(pointer(edge, false));
+        }
+        assert!(h.names, "double-click toggles once");
+        let mut h = SeamHarness::new(false);
+        h.ctx.enable_accesskit();
+        let focus = h.frame(key(egui::Key::Tab));
+        assert!(
+            focus
+                .platform_output
+                .events
+                .iter()
+                .any(|e| matches!(e, egui::output::OutputEvent::FocusGained(info) if info.label.as_deref() == Some("Show names")))
+        );
+        h.frame(vec![]);
+        assert!(h.focused, "Tab reaches the seam button");
+        h.frame(key(egui::Key::Enter));
+        assert!(h.names);
+        h.frame(key(egui::Key::Space));
+        assert!(!h.names);
+    }
+
+    #[test]
+    fn seam_drag_resizes_continuously_and_snaps_both_directions() {
+        use crate::test_support::pointer;
+        for (names, delta, expected) in [(false, 80.0, true), (false, 30.0, false), (true, -80.0, false), (true, -30.0, true)] {
+            for pill in [false, true] {
+                let mut h = SeamHarness::new(names);
+                let start = if pill { h.card().right_center() } else { pos2(h.card().right() - 4.0, h.card().top() + 30.0) };
+                let end = start + vec2(delta, 0.0);
+                h.frame(pointer(start, true));
+                h.frame(vec![egui::Event::PointerMoved(start + vec2(delta / 2.0, 0.0))]);
+                h.frame(vec![egui::Event::PointerMoved(end)]);
+                assert_eq!(h.width, history_width(names) + delta, "continuous width before release");
+                h.frame(pointer(end, false));
+                assert_eq!(h.names, expected);
+                assert_eq!(h.width, history_width(expected));
+            }
+        }
+        for hostile in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1000.0, 10000.0] {
+            assert!((history_width(false)..=history_width(true)).contains(&history_clamp_width(hostile)));
+        }
+    }
 
     #[test]
     fn chip_selection_error_and_rollback_use_tokens_in_both_themes() {

@@ -210,6 +210,10 @@ fn requested_menu_icons_have_artwork_and_match_manifest() {
         history.frames(3);
         context_rows(&mut history, "timeline:", &mut requested);
     }
+    // The seam has its own checked display menu, independent of feature and folder rows.
+    history.step(&json!({"click":{"handle":"history:names"},"button":"right"})).unwrap();
+    collect(&mut history, "history seam", &mut requested);
+    escape(&mut history);
     let features = history.app.session.doc.features.iter().take(2).map(|f| f.id).collect::<Vec<_>>();
     let group = history.app.run("timeline.group", json!({"features":features,"name":"Audit history folder"})).unwrap()["group"].as_u64().unwrap();
     history.frames(3);
