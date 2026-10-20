@@ -620,7 +620,7 @@ pub fn save(app: &mut SolveApp) {
         return;
     }
     if app.session.path.is_some() {
-        let _ = app.run("file.save", json!({}));
+        crate::save_job::start(app, "file.save", json!({}));
     } else {
         save_as(app);
     }
@@ -633,8 +633,11 @@ fn save_as(app: &mut SolveApp) {
 fn save_as_with_extension(app: &mut SolveApp, extension: &str) {
     let name = format!("{}.{extension}", app.session.doc.name);
     app.pick_save(&name, &[solidcraft_engine::io::DESIGN_EXT, "json"], |app, path| {
-        if let Some(path) = path {
-            let _ = app.run("file.save_as", json!({"path": path}));
+        // A save under way answers a closing tab when it ends.
+        if let Some(path) = path
+            && crate::save_job::start(app, "file.save_as", json!({"path": path}))
+        {
+            return;
         }
         crate::documents::saved_for_close(app);
     });
@@ -1836,6 +1839,8 @@ mod header_report_tests {
         h.frames(3);
         h.step(&json!({"click":{"handle":"appbar:folder"}})).unwrap();
         h.step(&json!({"widget":"Save As JSON…"})).unwrap();
+        // Written on a worker: the window keeps drawing until it is done.
+        h.settle();
         let saved = h.app.session.path.clone().unwrap();
         let bytes = std::fs::read(&saved).unwrap();
         assert!(!solidcraft_engine::io::is_design_container(&bytes));
@@ -2440,6 +2445,18 @@ mod app_bar_tests {
         }
     }
 
+    /// Save writes on a worker thread: frames until it has finished.
+    fn wait_for_save(h: &mut crate::scenario::Harness) {
+        for _ in 0..500 {
+            if h.app.saving.is_none() {
+                break;
+            }
+            h.frames(1);
+            std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        h.frames(1);
+    }
+
     #[test]
     fn save_button_uses_the_existing_save_flow_for_new_and_named_designs() {
         let mut h = crate::scenario::Harness::new();
@@ -2447,9 +2464,11 @@ mod app_bar_tests {
         h.app.run("solid.box", json!({"length":2,"width":3,"height":4})).unwrap();
         h.frames(3);
         h.step(&json!({"click":{"handle":"titlebar:save"}})).unwrap();
+        wait_for_save(&mut h);
         let path = h.app.session.path.clone().expect("Save chooses a path for an untitled design");
         h.app.run("solid.box", json!({"length":1,"width":1,"height":1,"corner":[10,0,0]})).unwrap();
         h.step(&json!({"click":{"handle":"titlebar:save"}})).unwrap();
+        wait_for_save(&mut h);
         assert_eq!(h.app.session.path.as_deref(), Some(path.as_str()));
         let saved = solidcraft_engine::io::read_design(&std::fs::read(path).unwrap()).unwrap();
         assert_eq!(saved, *h.app.session.doc);
