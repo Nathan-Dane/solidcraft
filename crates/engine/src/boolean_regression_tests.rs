@@ -88,6 +88,30 @@ fn read_back(s: &Session, body: &solidcraft_kernel::Body) -> (String, usize) {
     (text, back.file_faces)
 }
 
+/// The timeline insertion from #1765 on a small part with analytic material. The kernel test
+/// separately forces the empty numerical attempts, without needing the reporter's design.
+#[test]
+fn shallow_cuts_rebuild_after_inserting_an_earlier_pocket() {
+    let s = replay(include_str!("../../../examples/regressions/shallow_cuts_after_earlier_pocket.json"));
+    let rounded_plate = 40.0 * 30.0 * 10.0 - (4.0 - std::f64::consts::PI) * 40.0;
+    // Half of each circle overlaps the existing 0.75 mm pocket.
+    let expected = rounded_plate - 30.0 * 10.0 * 0.75 - 2.0 * std::f64::consts::PI * 25.0 * (1.5 - 0.75 / 2.0);
+    let reopened = Session::new(solidcraft_doc::Document::from_json(&s.doc.to_json()).unwrap());
+    for session in [s, reopened] {
+        assert!(session.model.results.iter().all(|r| r.error.is_none()));
+        assert_eq!(session.model.state().bodies.len(), 1);
+        let body = &session.model.state().bodies[0].body;
+        assert!(body.validity().is_empty(), "{:?}", body.validity());
+        let actual = volume(&session, "Plate");
+        assert!((actual - expected).abs() < 0.02, "{actual} vs {expected}");
+        let mesh = body.tessellate(0.001).unwrap();
+        assert!(!mesh.contains(solidcraft_geom::Vec3::new(12.0, 14.0, 9.0)));
+        assert!(mesh.contains(solidcraft_geom::Vec3::new(12.0, 14.0, 8.0)));
+        assert!(!mesh.contains(solidcraft_geom::Vec3::new(20.0, 20.0, 9.5)));
+        assert!(mesh.contains(solidcraft_geom::Vec3::new(20.0, 20.0, 9.0)));
+    }
+}
+
 /// #2059: tabs exactly as wide as their supporting ribs share the ribs' side
 /// planes. The base's remote conical chamfer must not prevent their join.
 #[test]
@@ -943,5 +967,33 @@ fn combine_of_a_piece_a_cut_used_to_split_off_takes_the_body_it_is_part_of() {
     ] {
         let r = posts_cut().execute("solid.combine", &json!({"target": target, "tools": tools, "operation": operation}));
         assert!(r.is_err(), "{target} {operation} {tools}: {r:?}");
+    }
+}
+
+/// A triangular prism and a thin slab sharing their bottom plane, the prism's edge in that plane
+/// lying in the slab's end face, the slab's corners rounded nearly to half its width (so its flat
+/// end is narrower than the prism).
+#[test]
+fn prism_edge_in_a_round_cornered_slab_end_face_joins() {
+    for r in [4.5, 4.9] {
+        let mut s = Session::default();
+        let mut run = |c: &str, p: Value| s.execute(c, &p).unwrap();
+        run("sketch.create", json!({"plane": {"origin": [-45.6, 0, 0], "x_dir": [0, 1, 0], "y_dir": [0, 0, 1]}}));
+        run("sketch.line", json!({"points": [[-63, 0], [-3, 0], [-63, 60]], "closed": true}));
+        run("sketch.finish", json!({}));
+        run("solid.extrude", json!({"distance": 1.2, "operation": "new", "body_name": "Prism"}));
+        run("sketch.create", json!({"plane": "XY"}));
+        run("sketch.rectangle.rounded", json!({"p0": [-50, -67], "p1": [-40, -3], "radius": r}));
+        run("sketch.finish", json!({}));
+        run("solid.extrude", json!({"distance": 0.4, "operation": "new", "body_name": "Slab"}));
+        let (prism, slab) = (volume(&s, "Prism"), volume(&s, "Slab"));
+        s.execute("solid.combine", &json!({"target": "Prism", "tools": ["Slab"], "operation": "join"})).unwrap();
+        let join = s.model.results.last().unwrap();
+        assert_eq!(join.error.as_deref(), None, "r {r}");
+        // The prism inside the slab: 1.2 wide, 0.4 high and 60 long, less the 0.4 x 0.4 triangle the
+        // sloped face leaves empty at the slab's end.
+        let shared = 1.2 * 0.4 * 60.0 - 1.2 * 0.4 * 0.4 / 2.0;
+        let got = volume(&s, "Prism");
+        assert!((got - (prism + slab - shared)).abs() < 1e-3 * got, "r {r}: {got} vs {}", prism + slab - shared);
     }
 }
