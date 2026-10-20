@@ -221,13 +221,13 @@ fn requested_menu_icons_have_artwork_and_match_manifest() {
     history.app.tree.picked_timeline_groups.clear();
     history.app.run("select.set", json!({"items":features.iter().map(|id| json!({"type":"feature","id":id})).collect::<Vec<_>>()})).unwrap();
     history.frames(3);
-    history.step(&json!({"widget":"2 selected"})).unwrap();
+    history.step(&json!({"click":{"handle":"timeline:History A"},"button":"right"})).unwrap();
     collect(&mut history, "history feature selection", &mut requested);
     escape(&mut history);
     history.app.run("select.clear", json!({})).unwrap();
     history.app.tree.picked_timeline_groups = vec![group];
     history.frames(3);
-    history.step(&json!({"widget":"1 selected"})).unwrap();
+    history.step(&json!({"click":{"handle":"timeline-folder:Audit history folder"},"button":"right"})).unwrap();
     collect(&mut history, "history folder selection", &mut requested);
     escape(&mut history);
     history.app.tree.picked_timeline_groups.clear();

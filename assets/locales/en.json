@@ -1536,7 +1536,6 @@
   "ui.history_marker_tip": "History marker: drag to roll the model back; new features go here",
   "ui.history_names": "Names",
   "ui.history_play": "Play to the end",
-  "ui.history_selected": "{count} selected",
   "ui.history_show_names": "Show names",
   "ui.history_title": "History",
   "ui.history_toggle_names": "Show or hide feature names",

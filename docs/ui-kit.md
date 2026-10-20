@@ -123,7 +123,9 @@ and draws a dashed accent guide at the names width with a Names chip. Release sn
 stays in memory. The command also appears in search and the strip context menu (checked **Show names**),
 independently of browser collapse. The whole collapsed browser rail expands on click and uses
 the same inset, rounded tab-accent hover tint as the expanded header, with a pointing-hand cursor. Transport
-sits at the top, stacked for icons and horizontal for names. The rollback marker is 12 pt high.
+sits at the top, stacked for icons and horizontal for names, followed by 6 pt padding, a 1 pt
+hairline and 2 pt before the first item. Selection actions live in the item context menus.
+The rollback marker is 12 pt high.
 Its 2 pt line uses the active tab fill and ends in a 10 pt hollow circle with a 2 pt accent
 border and the card/panel surface inside. The circle overlaps the line end by 1 pt. The bottom
 strip uses the same painter, rotated. Folder selection, range selection, context menus,

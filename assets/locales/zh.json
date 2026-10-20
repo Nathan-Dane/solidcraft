@@ -1536,7 +1536,6 @@
   "ui.history_marker_tip": "历史标记：拖动以回退模型；新特征将在此处添加",
   "ui.history_names": "名称",
   "ui.history_play": "播放至末尾",
-  "ui.history_selected": "已选择 {count} 项",
   "ui.history_show_names": "显示名称",
   "ui.history_title": "历史",
   "ui.history_toggle_names": "显示或隐藏特征名称",

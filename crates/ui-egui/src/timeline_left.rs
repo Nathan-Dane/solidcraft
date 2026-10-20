@@ -150,23 +150,12 @@ fn seam_handle(app: &mut SolveApp, ui: &mut egui::Ui, card: Rect) {
 /// Both widths retain the same folders, selection, keyboard and drag interactions.
 pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
-    let groups = app.session.doc.timeline_groups.clone();
+    let spacing = ui.spacing().item_spacing.y;
+    ui.spacing_mut().item_spacing.y = t.space_6;
     timeline_transport(app, ui);
-    // Reserve the selection-actions row so selecting never moves a feature under the pointer.
-    ui.horizontal(|ui| {
-        ui.set_min_height(t.space_24);
-        let count = selected_feature_ids(app).len() + app.tree.picked_timeline_groups.len();
-        if count > 0 {
-            let label = if ui.available_width() >= crate::ui_kit::history_width(true) - t.space_16 {
-                crate::i18n::format("ui.history_selected", &[("count", &count.to_string())])
-            } else {
-                count.to_string()
-            };
-            crate::ui_kit::Menu::button(ui, label, |ui| selection_actions(app, ui, &groups));
-        }
-    });
+    ui.spacing_mut().item_spacing.y = spacing;
     ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0, t.border));
-    ui.add_space(t.space_4);
+    ui.add_space(1.0 + t.space_2);
     egui::ScrollArea::vertical()
         .id_salt("sc_left_timeline_scroll")
         .auto_shrink([false, true])
@@ -181,7 +170,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui) {
     let names = rows_have_names(app) && ui.available_width() >= t.space_24 * 3.0 + t.space_2 * 2.0;
     let layout = if names { egui::Layout::left_to_right(egui::Align::Center) } else { egui::Layout::top_down(egui::Align::Center) };
     let height = if names { t.space_24 } else { t.control_height * 3.0 + t.space_2 * 2.0 };
-    ui.allocate_ui_with_layout(vec2(ui.available_width(), height), layout, |ui| {
+    let transport = ui.allocate_ui_with_layout(vec2(ui.available_width(), height), layout, |ui| {
         let gap = if names { ((ui.available_width() - t.space_24 * 3.0) / 2.0).max(t.space_2) } else { t.space_2 };
         ui.spacing_mut().item_spacing = vec2(gap, t.space_2);
         for (what, target, key) in [
@@ -219,6 +208,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
         }
     });
+    crate::scenario::publish_rect("history:transport", transport.response.rect);
 }
 
 fn nearest_vertical_slot(slots: &[VerticalSlot], y: f32) -> Option<VerticalSlot> {
@@ -1040,6 +1030,38 @@ mod tests {
     }
 
     #[test]
+    fn transport_to_first_item_gap_is_at_most_twelve_points() {
+        let previous = crate::theme::is_dark();
+        for dark in [false, true] {
+            crate::theme::set_dark(dark);
+            for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+                for names in [false, true] {
+                    let mut h = Harness::new();
+                    h.app.ui.dark = dark;
+                    h.app.preferences.theme = if dark { "dark" } else { "light" }.into();
+                    h.app.ui.layout = mode;
+                    h.app.preferences.timeline_left = true;
+                    h.app.preferences.timeline_left_names = names;
+                    h.app.run("solid.box", json!({"length":10,"width":10,"height":10,"name":"First"})).unwrap();
+                    for selected in [false, true] {
+                        if selected {
+                            let id = h.app.session.doc.features.first().unwrap().id;
+                            h.app.run("select.set", json!({"items":[{"type":"feature","id":id}]})).unwrap();
+                        }
+                        h.settle();
+                        assert_eq!(crate::theme::is_dark(), dark);
+                        let transport = crate::scenario::rect_of("history:transport").unwrap();
+                        let first = crate::scenario::rect_of("history:feature:First").unwrap();
+                        let gap = first.top() - transport.bottom();
+                        assert!((0.0..=12.0).contains(&gap), "gap={gap} dark={dark} mode={mode:?} names={names} selected={selected}");
+                    }
+                }
+            }
+        }
+        crate::theme::set_dark(previous);
+    }
+
+    #[test]
     fn rendered_strip_content_never_exceeds_the_viewport_during_resize() {
         for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
             for width in [70.0, 100.0, 130.0, 200.0] {
@@ -1401,7 +1423,7 @@ mod tests {
         harness.frames(4);
 
         harness.step(&json!({"click": {"handle": "timeline:Feature"}})).unwrap();
-        harness.step(&json!({"widget": "1 selected"})).unwrap();
+        harness.step(&json!({"click": {"handle": "timeline:Feature"}, "button": "right"})).unwrap();
         harness.step(&json!({"widget": "Add to New Folder"})).unwrap();
         harness.frames(2);
 
