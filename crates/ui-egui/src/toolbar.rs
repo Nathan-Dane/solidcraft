@@ -1080,7 +1080,7 @@ pub fn toolbar(app: &mut SolveApp, ui: &mut egui::Ui) {
                 // Only the family's default pin follows the part's choice. Explicitly pinned
                 // variants remain exact commands, including in customised toolbars.
                 let family = crate::sketch_families::family(c.id).filter(|f| sketch_create && f.commands.first().copied() == Some(c.id));
-                let selected = family.and_then(|f| app.sketch_choices.selected(f)).unwrap_or(c);
+                let selected = family.and_then(|f| app.preferences.sketch_variants.selected(f)).unwrap_or(c);
                 let whole = Rect::from_min_size(pos2(button_x, top + 2.0), vec2(button_width, BUTTON_HEIGHT));
                 button_x += button_width + BUTTON_GAP;
                 let mut br = whole;
@@ -1436,7 +1436,7 @@ fn assistant_button(app: &mut SolveApp, ui: &mut egui::Ui, at: Rect) {
         AssistantMark::Stopped => crate::ui_kit::AssistantEntryState::Stopped,
         AssistantMark::Waiting(count) => crate::ui_kit::AssistantEntryState::Waiting(count),
     };
-    crate::ui_kit::assistant_entry(ui, &resp, state, app.agent_chat.open, app.preferences.look_at_anim);
+    crate::ui_kit::assistant_entry(ui, &resp, state, app.agent_chat.open, ui.ctx().global_style().animation_time > 0.0);
     if resp.on_hover_text(tip).clicked() {
         crate::agent_chat::toggle(app);
     }

@@ -688,7 +688,7 @@ fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         .show(ui, |ui| {
             browser_contents(app, ui, &mut acts, false);
         });
-    resize_browser(app, ui, panel.response.rect, width);
+    resize_column(app, ui, panel.response.rect, width, "left-browser-rail");
     finish_browser(app, ui, acts);
 }
 
@@ -696,16 +696,18 @@ pub(crate) fn browser_width(remembered: f32) -> f32 {
     if remembered.is_finite() { remembered.clamp(MIN_BROWSER_WIDTH, MAX_BROWSER_WIDTH) } else { crate::prefs::DEFAULT_BROWSER_WIDTH }
 }
 
-fn resize_browser(app: &mut SolveApp, ui: &egui::Ui, rect: Rect, width: f32) {
+/// Either card in a stacked column changes the same remembered width.
+pub(crate) fn resize_column(app: &mut SolveApp, ui: &egui::Ui, rect: Rect, width: f32, handle: &'static str) {
     let rail = Rect::from_x_y_ranges(rect.right() - BROWSER_RAIL..=rect.right(), rect.y_range());
-    let response = ui.interact(rail, egui::Id::new("sc_browser_rail"), Sense::drag()).on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
+    let response =
+        ui.interact(rail, egui::Id::new(("sc_shared_column_rail", handle)), Sense::drag()).on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
     if response.dragged() {
         let delta = ui.input(|input| input.pointer.delta().x);
         if delta.is_finite() {
             app.preferences.browser_width = (width + delta).clamp(MIN_BROWSER_WIDTH, MAX_BROWSER_WIDTH);
         }
     }
-    crate::scenario::publish_handle("left-browser-rail", pos2(rect.right() - BROWSER_RAIL / 2.0, rect.center().y));
+    crate::scenario::publish_handle(handle, pos2(rect.right() - BROWSER_RAIL / 2.0, rect.center().y));
 }
 
 /// One browser card for the floating shell and the docked shell's optional overlay.
@@ -759,7 +761,7 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
                 }
             });
             if !collapsed {
-                resize_browser(app, ui, response.response.rect, width);
+                resize_column(app, ui, response.response.rect, width, "left-browser-rail");
             }
         });
         let rect = card.response.rect;

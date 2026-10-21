@@ -120,8 +120,8 @@ or command selects these layouts. The seam snaps between 56 and 130 pt; widths f
 through 624 pt remain continuous and persist as `timeline_left_width`.
 
 Drag the grip or title to dock along the bottom, at the full-height left edge, or beneath
-the browser. The last position shares the browser's width and divides available column
-height equally. Folding either card leaves its header visible and gives the remainder to
+the browser. Either card's right edge resizes their shared width. This position divides
+available column height equally. Folding either card leaves its header visible and gives the remainder to
 the other. If both are folded, their headers sit together at the top of the column.
 Expansion and collapse share a smooth cubic transition capped at 120 ms, respecting
 the interface’s instant-animation setting. Their collapse controls share the same active-tab blue hover tint. Browser resizing also resizes History.

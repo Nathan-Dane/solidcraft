@@ -181,12 +181,16 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         let frame = crate::frame::shell_card(t.panel).inner_margin(t.space_4);
         let inner = (bounds.size() - frame.total_margin().sum()).max(egui::Vec2::ZERO);
         let card = crate::frame::area(egui::Id::new("sc_timeline_left_card")).fixed_pos(bounds.min).order(egui::Order::Middle).show(ui.ctx(), |ui| {
-            frame.show(ui, |ui| {
+            let response = frame.show(ui, |ui| {
                 ui.set_min_size(inner);
                 ui.set_max_size(inner);
                 ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
                 left_timeline(app, ui);
             });
+            if stacked(app) {
+                let width = crate::browser::browser_width(app.preferences.browser_width);
+                crate::browser::resize_column(app, ui, response.response.rect, width, "left-history-rail");
+            }
         });
         app.shell.history = Some(card.response.rect);
         crate::scenario::publish_rect("history:vertical", card.response.rect);
