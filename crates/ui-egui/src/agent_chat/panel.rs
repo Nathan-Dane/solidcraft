@@ -151,6 +151,24 @@ pub(crate) fn left_inset(app: &SolveApp, available: Rect) -> f32 {
     }
 }
 
+/// Assistant-specific precedence over tool sheets. Keep this out of the shared container:
+/// ordinary tool panels never reserve an outside rail for themselves.
+pub(crate) fn tool_space(app: &SolveApp, mut available: Rect) -> Rect {
+    if app.ui.layout == crate::shell::LayoutMode::Floating
+        && shown(app)
+        && app.agent_chat.open
+        && !app.preferences.agent_chat_popped
+        && let Some(chat) = app.agent_chat.panel_rect.filter(|r| r.is_finite() && r.is_positive())
+    {
+        if app.preferences.agent_chat_side == "left" {
+            available.min.x = (chat.right() + crate::shell::SHELL_GAP).clamp(available.left(), available.right());
+        } else {
+            available.max.x = (chat.left() - crate::shell::SHELL_GAP).clamp(available.left(), available.right());
+        }
+    }
+    available
+}
+
 /// The same outer rectangle is used for the floating sheet and its docking preview.
 fn floating_bounds(app: &SolveApp, available: Rect, left: bool) -> Rect {
     let t = Tokens::get();
@@ -161,16 +179,8 @@ fn floating_bounds(app: &SolveApp, available: Rect, left: bool) -> Rect {
     if let Some(history) = app.shell.history.filter(|_| app.ui.show_timeline && !app.preferences.timeline_left) {
         bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
     }
-    // Left docking always starts at the outer edge; history and browser follow it.
-    // A right sheet leaves room beside an existing feature sheet or sketch palette.
+    // Assistant owns the outside edge on either side. Tool sheets reserve space beside it.
     if !left {
-        let dialog = app.viewport.dialog_rect.filter(|_| app.dialog.is_some() || app.tree.redefine.is_some());
-        let palette = app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some());
-        for obstacle in [dialog, palette].into_iter().flatten().filter(|r| r.is_finite() && r.is_positive()) {
-            if obstacle.center().x >= available.center().x {
-                bounds.max.x = (obstacle.left() - gap).min(bounds.right()).max(bounds.left());
-            }
-        }
         // Match the shared Panel's right-edge clearance.
         bounds.max.x = bounds.right().min(available.right() - t.space_8).max(bounds.left());
     }

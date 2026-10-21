@@ -136,7 +136,7 @@ pub fn panel(app: &mut SolveApp, ctx: &egui::Context) {
     let mut apply = false;
     let mut cancel = false;
     let t = Tokens::get();
-    let viewport = crate::shell::content_rect(app, app.viewport.rect.unwrap_or_else(|| ctx.content_rect()));
+    let viewport = crate::agent_chat::tool_space(app, crate::shell::content_rect(app, app.viewport.rect.unwrap_or_else(|| ctx.content_rect())));
     if !viewport.is_finite() || !viewport.is_positive() {
         app.tree.redefine_draft = Some(draft);
         return;
