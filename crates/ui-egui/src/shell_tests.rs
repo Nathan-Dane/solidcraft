@@ -310,3 +310,55 @@ fn left_history_and_browser_share_the_left_edge_without_moving_right_controls() 
         }
     }
 }
+
+#[test]
+fn assistant_floats_without_changing_projection_and_shields_the_model() {
+    for dark in [false, true] {
+        for side in ["left", "right"] {
+            let mut h = crate::scenario::Harness::new();
+            h.app.home.open = false;
+            h.call("ui.resize", serde_json::json!({"width":1400,"height":1000}));
+            h.call("ui.set", serde_json::json!({"dark":dark,"layout":"floating"}));
+            h.frames(4);
+            let projection = h.app.viewport.rect.expect("viewport");
+            h.call("ui.agent_chat", serde_json::json!({"open":true,"picker":false,"side":side,"width":440}));
+            h.frames(6);
+            let card = crate::scenario::rect_of("agent_chat:panel").expect("floating Assistant");
+            assert_eq!(h.app.viewport.rect, Some(projection), "opening the card preserves projection");
+            assert!(card.left() > projection.left() && card.right() < projection.right());
+            assert!(card.bottom() < projection.bottom());
+            assert!(covered(&h.app, card.center()), "chat shields viewport input");
+            if side == "right" {
+                let compass = h.app.viewport.layout.as_ref().expect("layout").axis_view;
+                assert!(!card.intersect(compass).is_positive(), "card clears compass");
+            } else {
+                let browser = h.app.shell.browser.expect("browser card");
+                assert!(card.left() > browser.right(), "left Assistant clears browser");
+            }
+            let camera = h.app.cam;
+            let at = card.center();
+            h.call("ui.move", json!({"x":at.x,"y":at.y}));
+            h.call("ui.scroll", json!({"x":at.x,"y":at.y,"delta":120}));
+            h.call("ui.drag", json!({"x0":at.x,"y0":at.y,"x1":at.x-30.0,"y1":at.y+15.0,"button":"middle","steps":6}));
+            assert_eq!(h.app.cam, camera, "chat consumes wheel and orbit input");
+            assert!(h.app.viewport.boxsel.is_none());
+            h.app.start("solid.extrude");
+            h.frames(5);
+            let feature = h.app.viewport.dialog_rect.expect("feature panel");
+            let beside = crate::scenario::rect_of("agent_chat:panel").expect("Assistant beside feature");
+            assert!(!beside.intersect(feature).is_positive(), "feature and Assistant coexist: {beside:?} {feature:?}");
+            h.app.dialog = None;
+            h.app.tool = None;
+            h.frames(3);
+            h.call("ui.agent_chat", serde_json::json!({"minimized":true}));
+            h.frames(4);
+            let folded = crate::scenario::rect_of("agent_chat:panel").expect("floating folded card");
+            assert!(folded.width() < 60.0 && folded.height() < 120.0);
+            assert!(covered(&h.app, folded.center()));
+            assert_eq!(h.app.viewport.rect, Some(projection));
+            h.call("ui.agent_chat", serde_json::json!({"open":false}));
+            h.frames(3);
+            assert!(!covered(&h.app, card.center()), "closed chat leaves no stale obstruction");
+        }
+    }
+}

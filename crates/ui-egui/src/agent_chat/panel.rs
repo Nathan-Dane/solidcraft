@@ -60,6 +60,10 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     poll(app, &ctx);
     // Set again below if the chat is drawn this frame.
     app.agent_chat.drop_rect = None;
+    // Retain the previous card for shortcut hover routing below; clear it when hidden.
+    if !shown(app) || !app.agent_chat.open {
+        app.agent_chat.panel_rect = None;
+    }
     // With AI features off nothing of the chat is drawn, and the shortcut does nothing.
     if !shown(app) {
         return;
@@ -89,6 +93,11 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     #[cfg(not(target_arch = "wasm32"))]
     if app.preferences.agent_chat_popped {
         window(app, &ctx);
+        show_drop_hint(app, &ctx);
+        return;
+    }
+    if app.ui.layout == crate::shell::LayoutMode::Floating {
+        floating(app, ui);
         show_drop_hint(app, &ctx);
         return;
     }
@@ -122,6 +131,82 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if w.is_finite() && (MIN_WIDTH..=MAX_WIDTH).contains(&w) {
         app.preferences.agent_chat_width = w;
     }
+}
+
+/// Use the same bounded, rounded floating surface as feature panels. The sheet overlays
+/// the viewport, leaving the model's rendering and picking projection unchanged.
+fn floating(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let ctx = ui.ctx().clone();
+    let t = Tokens::get();
+    let gap = crate::shell::SHELL_GAP;
+    let available = ui.available_rect_before_wrap();
+    let left = app.preferences.agent_chat_side == "left";
+    let side = if left { crate::frame::Side::Left } else { crate::frame::Side::Right };
+    let minimized = app.preferences.agent_chat_minimized;
+    let mut bounds = available.shrink(gap);
+    if left {
+        if let Some(browser) = app.shell.browser {
+            bounds.min.x = (browser.right() + gap).max(bounds.left()).min(bounds.right());
+        }
+        if let Some(history) = app.shell.history.filter(|_| app.preferences.timeline_left) {
+            bounds.min.x = (history.right() + gap).max(bounds.left()).min(bounds.right());
+        }
+    }
+    if let Some(history) = app.shell.history.filter(|_| !app.preferences.timeline_left) {
+        bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
+    }
+    // Feature sheets and the sketch palette keep their existing anchor. Leave room beside
+    // them rather than reserving viewport width or moving the navigation controls.
+    let dialog = app.viewport.dialog_rect.filter(|_| app.dialog.is_some() || app.tree.redefine.is_some());
+    let palette = app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some());
+    for obstacle in [dialog, palette].into_iter().flatten().filter(|r| r.is_finite() && r.is_positive()) {
+        if left && obstacle.center().x < available.center().x {
+            bounds.min.x = (obstacle.right() + gap).max(bounds.left()).min(bounds.right());
+        } else if !left && obstacle.center().x >= available.center().x {
+            bounds.max.x = (obstacle.left() - gap).min(bounds.right()).max(bounds.left());
+        }
+    }
+    let top = crate::shell::panel_top(app, available, bounds.bottom(), side).max(bounds.top());
+    bounds.min.y = top;
+    if !bounds.is_positive() {
+        app.agent_chat.panel_rect = None;
+        return;
+    }
+    let width = if minimized { STRIP } else { app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH) }.min(bounds.width());
+    let height = if minimized { (t.space_24 * 3.0 + t.space_16).min(bounds.height()) } else { bounds.height() };
+    let anchor = pos2(if left { bounds.left() } else { bounds.right() }, top);
+    let frame = ui_kit::Panel::feature_frame(&ctx, crate::shell::LayoutMode::Floating, side);
+    let inner = (vec2(width, height) - frame.total_margin().sum()).max(egui::Vec2::ZERO);
+    let panel = ui_kit::Panel::new(tr("ui.assistant"), Id::new("sc_agent_chat_floating"), anchor, available, side, frame).width(width);
+    if let Some(card) = panel.window().fixed_size(inner).show(&ctx, |ui| {
+        ui.set_min_size(inner);
+        ui.set_max_size(inner);
+        ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
+        ui_kit::scope(ui, |ui| if minimized { strip(app, ui) } else { body(app, ui, left) });
+        if !minimized {
+            let rect = ui.max_rect();
+            let rail = if left {
+                Rect::from_x_y_ranges(rect.right() - t.space_4..=rect.right(), rect.y_range())
+            } else {
+                Rect::from_x_y_ranges(rect.left()..=rect.left() + t.space_4, rect.y_range())
+            };
+            let response = ui.interact(rail, Id::new("sc_agent_chat_resize"), Sense::drag()).on_hover_cursor(egui::CursorIcon::ResizeHorizontal);
+            crate::scenario::publish_handle("agent_chat:resize", rail.center());
+            if response.dragged() {
+                let delta = ui.input(|i| i.pointer.delta().x) * if left { 1.0 } else { -1.0 };
+                if delta.is_finite() {
+                    app.preferences.agent_chat_width = (width + delta).clamp(MIN_WIDTH, MAX_WIDTH);
+                }
+            }
+        }
+    }) {
+        let rect = card.response.rect;
+        app.agent_chat.panel_rect = Some(rect);
+        app.agent_chat.drop_rect = Some(rect);
+        crate::scenario::publish_rect("agent_chat:panel", rect);
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    gallery_window(app, &ctx);
 }
 
 /// The pictures of a message as small thumbnails in a row. Hovering one shows it bigger for as long

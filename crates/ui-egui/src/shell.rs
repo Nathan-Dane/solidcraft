@@ -92,6 +92,9 @@ pub(crate) fn covered_rects(app: &SolveApp) -> Vec<Rect> {
         rects.extend(app.shell.cards.iter().copied());
         rects.extend(app.shell.panels.iter().copied());
         rects.extend(app.shell.history);
+        if crate::agent_chat::shown(app) && app.agent_chat.open && !app.preferences.agent_chat_popped {
+            rects.extend(app.agent_chat.panel_rect);
+        }
     }
     if app.ui.show_timeline && app.preferences.timeline_left {
         rects.extend(app.shell.history.map(|card| crate::ui_kit::HistorySeam::new(card).pill));

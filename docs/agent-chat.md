@@ -32,6 +32,10 @@ when you send a message or press **Connect**.
 
 ## The panel
 
+In the floating layout, Assistant sits in the shared rounded panel below the compass, with
+space around its edges. It overlays the model without changing the viewport projection;
+clicks and scrolling over the panel stay in the chat. The docked layout retains its side panel.
+
 - **Docking:** drag the panel's header (the dotted grip and the title) to the other half of the
   window and let go. The side it would land on lights up while you drag. You can also pick
   **Left** or **Right** under Preferences → AI → Panel. SolidCraft remembers the side.
@@ -42,7 +46,7 @@ when you send a message or press **Connect**.
   time; **Dock** (the same place in its header) puts it back in the side panel. You can also
   pick **Own window** under Preferences → AI → Panel. SolidCraft remembers where the window
   was and how big.
-- **Minimise** (the line in the header) folds the panel into a thin strip that keeps the chat
+- **Minimise** (the line in the header) folds the panel into a small floating strip (a side strip in the docked layout) that keeps the chat
   icon, the agent's state, and a count of anything waiting for your answer. Click the icon to
   unfold it. **Close** (×) hides the panel. Neither stops the agent; **Stop** does.
 - **The agent switcher** under the title picks the agent for this conversation; switching stops

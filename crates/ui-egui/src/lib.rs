@@ -1600,11 +1600,16 @@ impl SolveApp {
         if render_workspace::active(self) {
             render_workspace::panel(self, ui);
         }
-        agent_chat::show(self, ui);
+        if !floating {
+            agent_chat::show(self, ui);
+        }
         if browser_float {
             // The remaining content starts below the ribbon in either shell layout.
             let viewport = ui.available_rect_before_wrap();
             browser::floating(self, ui, viewport);
+        }
+        if floating {
+            agent_chat::show(self, ui);
         }
         egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| {
             if floating {

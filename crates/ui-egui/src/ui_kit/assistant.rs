@@ -288,7 +288,11 @@ pub(crate) fn assistant_send(ui: &mut Ui, enabled: bool, busy: bool, label: &str
 #[cfg(any(not(target_arch = "wasm32"), test))]
 pub(crate) fn assistant_composer_footer<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
     let t = Tokens::get();
-    let output = egui::Frame::NONE.fill(t.dialog_footer).inner_margin(t.space_10).show(ui, add);
+    let output = egui::Frame::NONE
+        .fill(t.dialog_footer)
+        .corner_radius(egui::CornerRadius { nw: 0, ne: 0, sw: t.radius_xl.saturating_sub(1), se: t.radius_xl.saturating_sub(1) })
+        .inner_margin(t.space_10)
+        .show(ui, add);
     ui.painter().hline(output.response.rect.x_range(), output.response.rect.top(), egui::Stroke::new(1.0, t.dialog_rule));
     output
 }
