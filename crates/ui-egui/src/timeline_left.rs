@@ -74,27 +74,49 @@ fn header_outer_height() -> f32 {
     crate::ui_kit::TREE_ROW_HEIGHT + t.space_8 + t.space_2
 }
 
-/// A single pair of eased progress values keeps both cards and the input geometry in sync.
+/// Small, allocation-free transition. Wall-clock progress avoids accumulating lag when
+/// a frame is delayed; retargeting starts at the visible value, including mid-flight.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct FoldMotion {
+    from: f32,
+    to: f32,
+    started: f64,
+}
+
+impl FoldMotion {
+    fn value(self, now: f64, duration: f32) -> f32 {
+        if duration <= 0.0 {
+            return self.to;
+        }
+        let elapsed = ((now - self.started) / f64::from(duration)).clamp(0.0, 1.0) as f32;
+        egui::lerp(self.from..=self.to, egui::emath::easing::cubic_out(elapsed))
+    }
+
+    fn advance(&mut self, target: f32, now: f64, duration: f32) -> f32 {
+        let value = self.value(now, duration);
+        if self.to != target {
+            *self = Self { from: value, to: target, started: now };
+        }
+        self.value(now, duration)
+    }
+}
+
+/// Calculate only two scalars per frame; cards and input geometry share the result.
 pub(crate) fn animate_folds(app: &mut SolveApp, ctx: &egui::Context) {
-    app.shell.history_folding = if stacked(app) {
-        let duration = ctx.global_style().animation_time.clamp(0.0, 0.12);
-        Some([
-            ctx.animate_bool_with_time_and_easing(
-                egui::Id::new("history_browser_fold"),
-                app.preferences.timeline_left_browser_collapsed,
-                duration,
-                egui::emath::easing::cubic_in_out,
-            ),
-            ctx.animate_bool_with_time_and_easing(
-                egui::Id::new("history_panel_fold"),
-                app.preferences.timeline_collapsed,
-                duration,
-                egui::emath::easing::cubic_in_out,
-            ),
-        ])
-    } else {
-        None
-    };
+    if !stacked(app) {
+        app.shell.history_folding = None;
+        app.shell.history_fold_motion = None;
+        return;
+    }
+    let duration = ctx.global_style().animation_time.clamp(0.0, 0.12);
+    let now = ctx.input(|input| input.time);
+    let targets = [f32::from(app.preferences.timeline_left_browser_collapsed), f32::from(app.preferences.timeline_collapsed)];
+    let motions = app.shell.history_fold_motion.get_or_insert_with(|| targets.map(|to| FoldMotion { from: to, to, started: now }));
+    let progress = [motions[0].advance(targets[0], now, duration), motions[1].advance(targets[1], now, duration)];
+    app.shell.history_folding = Some(progress);
+    if progress != targets {
+        ctx.request_repaint();
+    }
 }
 
 /// Shared bounds keep browser and history at exactly the same width. Their split is half

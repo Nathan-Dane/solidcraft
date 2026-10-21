@@ -86,6 +86,7 @@ pub(crate) struct State {
     pub history_dock_space: Option<Rect>,
     /// Browser/history collapse progress shared by both cards for this frame.
     pub history_folding: Option<[f32; 2]>,
+    pub history_fold_motion: Option<[crate::timeline_left::FoldMotion; 2]>,
     pub content: Option<Rect>,
 }
 
