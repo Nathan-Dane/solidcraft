@@ -355,6 +355,13 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             let feature = h.app.viewport.dialog_rect.expect("feature panel");
             let beside = crate::scenario::rect_of("agent_chat:panel").expect("Assistant beside feature");
             assert!(!beside.intersect(feature).is_positive(), "feature and Assistant coexist: {beside:?} {feature:?}");
+            assert!(
+                (beside.min - card.min).length() < 1.0 && (beside.max - card.max).length() < 1.0,
+                "opening a tool must not move Assistant: {card:?} -> {beside:?}"
+            );
+            if side == "right" {
+                assert!(feature.right() + SHELL_GAP <= beside.left() + 1.0, "tool stays inside Assistant's rail");
+            }
             h.app.dialog = None;
             h.app.tool = None;
             h.frames(3);
@@ -442,5 +449,37 @@ fn assistant_left_dock_precedes_history_and_drag_hints_match_the_result() {
             h.frames(6);
             assert!(h.app.shell.history.expect("history returns to outer edge").left() < strip.right());
         }
+    }
+}
+
+#[test]
+fn assistant_right_edge_survives_palette_tool_resize_and_minimize() {
+    for layout in ["floating", "docked"] {
+        let mut h = Harness::new();
+        h.app.home.open = false;
+        h.call("ui.resize", json!({"width":1800,"height":1000}));
+        h.call("ui.set", json!({"layout":layout}));
+        h.call("ui.agent_chat", json!({"open":true,"side":"right","width":380,"picker":false}));
+        h.frames(5);
+        let right = h.app.agent_chat.panel_rect.unwrap().right();
+        h.app.run("sketch.create", json!({"plane":"XY"})).unwrap();
+        h.frames(6);
+        for width in [380.0, 480.0] {
+            h.call("ui.agent_chat", json!({"width":width}));
+            h.frames(6);
+            let chat = h.app.agent_chat.panel_rect.unwrap();
+            let palette = h.app.viewport.palette_rect.unwrap();
+            assert!((chat.right() - right).abs() < 1.0, "{layout}: Assistant stays outside the palette");
+            assert!(palette.right() + SHELL_GAP <= chat.left() + 1.0, "{layout}: {palette:?}, {chat:?}");
+        }
+        h.call("ui.agent_chat", json!({"minimized":true}));
+        h.frames(5);
+        let strip = h.app.agent_chat.drop_rect.unwrap();
+        let palette = h.app.viewport.palette_rect.unwrap();
+        assert!((strip.right() - right).abs() < 1.0);
+        assert!(palette.right() <= strip.left(), "palette clears the minimized Assistant too");
+        h.call("ui.agent_chat", json!({"open":false}));
+        h.frames(5);
+        assert!(h.app.viewport.palette_rect.unwrap().right() > palette.right(), "closing Assistant reclaims its rail");
     }
 }

@@ -45,7 +45,7 @@ use crate::i18n::{format as trf, tr};
 use crate::{ControlRequest, SolveApp};
 use backend::{ChatBackend, Event, PermissionOption, PromptPart, ToolStatus};
 
-pub(crate) use panel::left_inset;
+pub(crate) use panel::{left_inset, tool_space};
 pub use panel::{show, tip as panel_tip, toggle};
 
 /// Most entries kept in the conversation; older ones are dropped.

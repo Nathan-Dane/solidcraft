@@ -140,7 +140,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     }
     let Some(mut d) = app.params.take() else { return };
     ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Enter));
-    let viewport = crate::shell::content_rect(app, app.viewport.rect.unwrap_or_else(|| ctx.content_rect()));
+    let viewport = crate::agent_chat::tool_space(app, crate::shell::content_rect(app, app.viewport.rect.unwrap_or_else(|| ctx.content_rect())));
     if !viewport.is_finite() || !viewport.is_positive() {
         app.params = Some(d);
         return;
