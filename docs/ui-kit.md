@@ -120,7 +120,8 @@ Drag the grip or title to dock along the bottom, at the full-height left edge, o
 the browser. The last position shares the browser's width and divides available column
 height equally. Folding either card leaves its header visible and gives the remainder to
 the other. If both are folded, their headers sit together at the top of the column.
-Their collapse controls share the same active-tab blue hover tint. Browser resizing also resizes History.
+Expansion and collapse share a smooth cubic transition capped at 120 ms, respecting
+the interface’s instant-animation setting. Their collapse controls share the same active-tab blue hover tint. Browser resizing also resizes History.
 The `view.history_layout` command validates width, docking and collapse requests without
 altering the design or opening dialogs. Floating mode preserves viewport projection.
 

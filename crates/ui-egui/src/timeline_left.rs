@@ -74,37 +74,60 @@ fn header_outer_height() -> f32 {
     crate::ui_kit::TREE_ROW_HEIGHT + t.space_8 + t.space_2
 }
 
+/// A single pair of eased progress values keeps both cards and the input geometry in sync.
+pub(crate) fn animate_folds(app: &mut SolveApp, ctx: &egui::Context) {
+    app.shell.history_folding = if stacked(app) {
+        let duration = ctx.global_style().animation_time.clamp(0.0, 0.12);
+        Some([
+            ctx.animate_bool_with_time_and_easing(
+                egui::Id::new("history_browser_fold"),
+                app.preferences.timeline_left_browser_collapsed,
+                duration,
+                egui::emath::easing::cubic_in_out,
+            ),
+            ctx.animate_bool_with_time_and_easing(
+                egui::Id::new("history_panel_fold"),
+                app.preferences.timeline_collapsed,
+                duration,
+                egui::emath::easing::cubic_in_out,
+            ),
+        ])
+    } else {
+        None
+    };
+}
+
 /// Shared bounds keep browser and history at exactly the same width. Their split is half
 /// the available height. One folded header gives the other the remainder; two folded
 /// headers sit together at the top.
 pub(crate) fn stacked_rects(app: &SolveApp, available: Rect) -> (Rect, Rect) {
-    column_rects(app, available, app.preferences.timeline_left_browser_collapsed, app.preferences.timeline_collapsed)
+    let progress = app
+        .shell
+        .history_folding
+        .unwrap_or([f32::from(app.preferences.timeline_left_browser_collapsed), f32::from(app.preferences.timeline_collapsed)]);
+    column_rects_at(app, available, progress[0], progress[1])
 }
 
 fn column_rects(app: &SolveApp, available: Rect, browser_collapsed: bool, history_collapsed: bool) -> (Rect, Rect) {
+    column_rects_at(app, available, f32::from(browser_collapsed), f32::from(history_collapsed))
+}
+
+fn column_rects_at(app: &SolveApp, available: Rect, browser_fold: f32, history_fold: f32) -> (Rect, Rect) {
     let gap = crate::shell::SHELL_GAP;
     let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
     let column = crate::browser::floating_bounds(available, None, crate::browser::browser_width(app.preferences.browser_width), top_gap);
     if !app.ui.show_browser {
-        let history = if history_collapsed {
-            Rect::from_min_size(column.min, vec2(column.width(), header_outer_height().min(column.height())))
-        } else {
-            column
-        };
+        let height = egui::lerp(column.height()..=header_outer_height().min(column.height()), history_fold);
+        let history = Rect::from_min_size(column.min, vec2(column.width(), height));
         return (Rect::NOTHING, history);
     }
     let budget = (column.height() - gap).max(0.0);
     let header = header_outer_height().min(budget / 2.0);
-    let browser_height = if browser_collapsed {
-        header
-    } else if history_collapsed {
-        (budget - header).max(0.0)
-    } else {
-        budget / 2.0
-    };
+    let expanded_browser = egui::lerp(budget / 2.0..=(budget - header).max(0.0), history_fold);
+    let browser_height = egui::lerp(expanded_browser..=header, browser_fold);
     let browser = Rect::from_min_size(column.min, vec2(column.width(), browser_height));
     let history_top = (browser.bottom() + gap).min(column.bottom());
-    let history_height = if history_collapsed { header } else { (column.bottom() - history_top).max(0.0) };
+    let history_height = egui::lerp((column.bottom() - history_top).max(0.0)..=header, history_fold);
     let history = Rect::from_min_size(pos2(column.left(), history_top), vec2(column.width(), history_height));
     (browser, history)
 }
@@ -193,7 +216,7 @@ pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let names = names_fit(ui.available_width());
     timeline_transport(app, ui, names);
-    if stacked(app) && app.preferences.timeline_collapsed {
+    if stacked(app) && app.preferences.timeline_collapsed && app.shell.history_folding.is_none_or(|p| p[1] >= 1.0) {
         return;
     }
     ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0, t.border));

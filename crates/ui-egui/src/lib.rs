@@ -1546,6 +1546,7 @@ impl SolveApp {
         let floating = self.ui.layout == shell::LayoutMode::Floating;
         let show_timeline = self.ui.show_timeline && !render_workspace::active(self);
         let left_timeline = show_timeline && self.preferences.timeline_left;
+        timeline_left::animate_folds(self, ui.ctx());
         if !floating {
             toolbar::toolbar(self, ui);
         }

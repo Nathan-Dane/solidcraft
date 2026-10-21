@@ -810,7 +810,7 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, c
     let stacked = crate::timeline_left::stacked(app);
     if collapsible
         && (if stacked {
-            app.preferences.timeline_left_browser_collapsed
+            app.preferences.timeline_left_browser_collapsed && app.shell.history_folding.is_none_or(|p| p[0] >= 1.0)
         } else {
             app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left)
         })

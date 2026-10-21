@@ -84,6 +84,8 @@ pub(crate) struct State {
     pub history_drag_width: Option<f32>,
     /// Unreserved canvas bounds used by History docking targets.
     pub history_dock_space: Option<Rect>,
+    /// Browser/history collapse progress shared by both cards for this frame.
+    pub history_folding: Option<[f32; 2]>,
     pub content: Option<Rect>,
 }
 
