@@ -112,10 +112,11 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | `progress` | Clamped determinate progress | `space_3/6`, `dialog_rule`, `accent` |
 
 History contents are selected from measured panel width. A 56 pt thin strip shows icons
-and vertical playback controls. The minimum named width is 112 pt; it adds horizontal
-playback and the same six-dot window grip as Assistant. When the remaining header space
-fits its measured text, **History** appears between grip and playback. No names-mode flag
-or command selects these layouts. The seam snaps between 56 and 112 pt; widths from 112
+and four vertical transport controls: beginning, back, forward and end. The minimum named
+width is 130 pt; it adds horizontal transport and the same six-dot window grip as Assistant.
+When the remaining header space fits its measured text, **History** appears between grip
+and transport. No names-mode flag
+or command selects these layouts. The seam snaps between 56 and 130 pt; widths from 130
 through 624 pt remain continuous and persist as `timeline_left_width`.
 
 Drag the grip or title to dock along the bottom, at the full-height left edge, or beneath

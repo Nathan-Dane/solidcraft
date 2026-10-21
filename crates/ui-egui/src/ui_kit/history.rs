@@ -145,10 +145,58 @@ pub(crate) fn history_marker(p: &Painter, rect: Rect, vertical: bool, accent: Ta
     p.circle(centre, outer_radius - t.space_2 / 2.0, if vertical { t.panel } else { t.timeline }, Stroke::new(t.space_2, accent.color));
 }
 
+/// The same four rollback controls are used in every History orientation.
+#[derive(Clone, Copy)]
+pub(crate) enum HistoryTransport {
+    First,
+    Back,
+    Forward,
+    Last,
+}
+
+impl HistoryTransport {
+    pub const ALL: [Self; 4] = [Self::First, Self::Back, Self::Forward, Self::Last];
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::First => "first",
+            Self::Back => "back",
+            Self::Forward => "forward",
+            Self::Last => "last",
+        }
+    }
+
+    fn label(self) -> &'static str {
+        crate::i18n::tr(match self {
+            Self::First => "ui.history_first",
+            Self::Back => "ui.history_back",
+            Self::Forward => "ui.history_forward",
+            Self::Last => "ui.history_last",
+        })
+    }
+
+    pub fn show(self, ui: &mut egui::Ui, rect: Rect) -> egui::Response {
+        let t = Tokens::get();
+        let response = ui.interact(rect, ui.id().with(("history_transport", self.id())), egui::Sense::click());
+        crate::scenario::publish_target(&format!("history:{}", self.id()), rect);
+        if response.hovered() {
+            ui.painter().rect_filled(rect, t.radius_sm, t.hover);
+        }
+        icons::glyphs::transport_glyph(ui.painter(), rect.center(), self.id(), t.icon);
+        response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), self.label()));
+        response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(self.label())
+    }
+}
+
+pub(crate) fn history_transport_width() -> f32 {
+    let t = Tokens::get();
+    t.space_24 * HistoryTransport::ALL.len() as f32 + t.space_2 * (HistoryTransport::ALL.len() - 1) as f32
+}
+
 /// Thin and minimum named widths; wider named panels retain their measured width.
 pub(crate) fn history_width(names: bool) -> f32 {
     let t = Tokens::get();
-    if names { t.space_16 * 7.0 } else { t.control_height * 2.0 }
+    if names { history_transport_width() + t.space_10 * 2.0 + t.space_8 } else { t.control_height * 2.0 }
 }
 
 pub(crate) fn history_clamp_width(width: f32) -> f32 {

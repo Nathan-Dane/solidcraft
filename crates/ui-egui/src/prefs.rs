@@ -415,7 +415,7 @@ preference_settings! {
     /// Put the feature history to the left of the browser instead of below the viewport.
     timeline_left: bool = false, 0;
     /// Measured outer width; the contents react to this width without a names mode.
-    timeline_left_width: f32 = 112.0, 0;
+    timeline_left_width: f32 = 130.0, 0;
     /// Share the browser column, vertically, instead of a separate left column.
     timeline_under_browser: bool = false, 0;
     /// Fold the shared-column history to its header.
