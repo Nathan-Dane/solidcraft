@@ -32,8 +32,8 @@ when you send a message or press **Connect**.
 
 ## The panel
 
-In the floating layout, Assistant sits in the shared rounded panel below the compass, with
-space around its edges. It overlays the model without changing the viewport projection;
+In the floating layout, Assistant fills the viewport height in the shared rounded panel, with
+space around its edges. The compass and navigation bar move into the remaining space beside it. It overlays the model without changing the viewport projection;
 clicks and scrolling over the panel stay in the chat. The docked layout retains its side panel.
 
 - **Docking:** drag the panel's header (the dotted grip and the title) to the other half of the

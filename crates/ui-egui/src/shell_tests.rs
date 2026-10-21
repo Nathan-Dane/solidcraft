@@ -321,16 +321,23 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             h.call("ui.set", serde_json::json!({"dark":dark,"layout":"floating"}));
             h.frames(4);
             let projection = h.app.viewport.rect.expect("viewport");
+            let original_controls = h.app.viewport.layout.clone().expect("layout");
             h.call("ui.agent_chat", serde_json::json!({"open":true,"picker":false,"side":side,"width":440}));
             h.frames(6);
             let card = crate::scenario::rect_of("agent_chat:panel").expect("floating Assistant");
             assert_eq!(h.app.viewport.rect, Some(projection), "opening the card preserves projection");
             assert!(card.left() > projection.left() && card.right() < projection.right());
             assert!(card.bottom() < projection.bottom());
+            let content = h.app.shell.content.expect("content");
+            assert!((card.top() - content.top() - SHELL_GAP).abs() < 1.0, "full-height top: {card:?} {content:?}");
+            assert!((card.bottom() - content.bottom()).abs() < 1.0, "full-height bottom: {card:?} {content:?}");
             assert!(covered(&h.app, card.center()), "chat shields viewport input");
             if side == "right" {
-                let compass = h.app.viewport.layout.as_ref().expect("layout").axis_view;
-                assert!(!card.intersect(compass).is_positive(), "card clears compass");
+                let layout = h.app.viewport.layout.as_ref().expect("layout");
+                assert!(!card.intersect(layout.axis_view).is_positive(), "card clears compass");
+                assert!(!card.intersect(layout.navigation).is_positive(), "card clears navigation");
+                assert!(layout.axis_view.right() < original_controls.axis_view.right(), "compass moves left");
+                assert!(layout.navigation.center().x < original_controls.navigation.center().x, "navigation moves left");
             } else {
                 let browser = h.app.shell.browser.expect("browser card");
                 assert!(card.left() > browser.right(), "left Assistant clears browser");
@@ -356,6 +363,9 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             assert!(folded.width() < 60.0 && folded.height() < 120.0);
             assert!(covered(&h.app, folded.center()));
             assert_eq!(h.app.viewport.rect, Some(projection));
+            let folded_controls = h.app.viewport.layout.as_ref().expect("layout");
+            assert_eq!(folded_controls.axis_view, original_controls.axis_view);
+            assert_eq!(folded_controls.navigation, original_controls.navigation);
             h.call("ui.agent_chat", serde_json::json!({"open":false}));
             h.frames(3);
             assert!(!covered(&h.app, card.center()), "closed chat leaves no stale obstruction");

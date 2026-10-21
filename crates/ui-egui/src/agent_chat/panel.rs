@@ -156,7 +156,7 @@ fn floating(app: &mut SolveApp, ui: &mut egui::Ui) {
         bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
     }
     // Feature sheets and the sketch palette keep their existing anchor. Leave room beside
-    // them rather than reserving viewport width or moving the navigation controls.
+    // them rather than reserving model projection width.
     let dialog = app.viewport.dialog_rect.filter(|_| app.dialog.is_some() || app.tree.redefine.is_some());
     let palette = app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some());
     for obstacle in [dialog, palette].into_iter().flatten().filter(|r| r.is_finite() && r.is_positive()) {
@@ -166,8 +166,7 @@ fn floating(app: &mut SolveApp, ui: &mut egui::Ui) {
             bounds.max.x = (obstacle.left() - gap).min(bounds.right()).max(bounds.left());
         }
     }
-    let top = crate::shell::panel_top(app, available, bounds.bottom(), side).max(bounds.top());
-    bounds.min.y = top;
+    let top = bounds.top();
     if !bounds.is_positive() {
         app.agent_chat.panel_rect = None;
         return;
