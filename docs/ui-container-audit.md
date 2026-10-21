@@ -13,7 +13,8 @@ one definition of floating/docked chrome in `ui_kit/container.rs`.
 
 The shell still owns ordering, viewport reservations and shared-column geometry.
 A container does not infer geometry from a title or panel ID. Browser and History
-share a column width; Assistant remains outermost on the left. Those relationships
+share a column width; Assistant remains outermost on either side. Tool sheets may overlap Browser and History,
+but cannot enter Assistant’s reserved rail or cover the ribbon/workspace selector. Those relationships
 must survive the compact composition. Existing `Panel`, `Window`, `Confirm` and
 `Menu` are content compositions over the universal container, not alternative hosts.
 
@@ -47,14 +48,23 @@ viewport creation remain host services, not in-app panels.
 
 ## Enforcement for additions
 
-`all_outer_hosts_use_the_universal_container` recursively parses every Rust file in
-`crates/ui-egui/src`, `apps/solidcraft/src` and `apps/solidcraft-web/src`, including
-kit implementation modules. The sole constructor implementation exception is the
-exact `ui_kit/container.rs` path, not a list of panel names or allowed callers.
-It rejects raw Area, Panel, Window, Modal, CentralPanel, Popup and SubMenu
-constructors, their imported aliases, outer popup/window frames, shadows and
-Response/Ui popup shortcuts. State queries and test-only fixtures remain valid.
-Guard regression tests include nested modules, renamed imports and type aliases.
+`cargo xtask ui-containers` is the mandatory repository gate, implemented once in
+`xtask/src/ui_containers.rs`. The fast CI job runs it and its regression tests before
+approval for heavy UI tests; `cargo xtask ci` runs it too. Draft PRs retain the repository’s
+normal CI policy. It recursively parses Rust source and examples under every crate and
+app, so new packages and nested modules are included automatically. The sole constructor
+implementation exception is the exact `ui_kit/container.rs` path.
+
+The gate rejects raw Area, Panel, Window, Modal, CentralPanel, Popup and SubMenu
+constructors, imported/module/type aliases and re-exports, constructor function references,
+qualified default constructors, struct literals, macro-hidden hosts and popup shortcuts.
+Host APIs are default-denied except for explicit popup-state operations, so new egui
+constructors are rejected automatically. Private raw host/module imports are rejected too,
+preventing aliases from escaping into another source file.
+It also rejects raw outer popup/window frames and custom outer shadows. Invalid Rust
+fails closed. Read-only state queries, content-only frames, and test-only fixtures remain
+valid; there are no per-feature allowances. This enforces the construction boundary;
+surface purpose and hand-painted content still need ordinary review.
 
 New workspace panels must declare an adaptive `Surface` and use this policy for
 host choice and outer chrome. Do not introduce another layout bool, raw host,

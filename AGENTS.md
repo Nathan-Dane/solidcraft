@@ -92,7 +92,8 @@ People trust SolidCraft with their designs; a crash loses their work. **This out
   windows use `ui_kit::Container` (directly or through `Panel`, `Window`, `Confirm`, `Menu`).
   Declare the semantic `Surface`; workspace panels use its shared layout policy and chrome.
   Do not construct raw egui hosts, outer popup/window frames or shadows in feature modules.
-  The recursive source guard covers the UI crate and desktop/web apps with no caller allowances.
+  `cargo xtask ui-containers` recursively checks source/examples in all current and future crates
+  and apps. It runs in the fast repository CI job and `cargo xtask ci`, with no caller allowances.
   See `docs/ui-container-audit.md` for the inventory and legitimate content/native exceptions.
 - **One set of camera controls**: every page or canvas with a camera (viewport, Render
   preview, future flat pattern or drawing pages) calls `navigation::handle` with its `NavCaps`

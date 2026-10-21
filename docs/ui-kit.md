@@ -10,7 +10,8 @@ preferences, manager cards, prompts, context menus and the sketch palette. Impor
   publishes the layout once per frame; `Container::floating()` and `frame()` own
   adaptive placement policy and chrome. `Panel`, `Window`, `Confirm` and `Menu`
   compose it. Raw egui hosts and outer shadows are rejected recursively, including
-  platform apps. See the [container audit and migration inventory](ui-container-audit.md).
+  platform apps. The mandatory `cargo xtask ui-containers` gate runs in fast CI and
+  scans new crates/apps automatically, including macro bodies and alias chains. See the [container audit and migration inventory](ui-container-audit.md).
 
 - Colours, typography, dimensions and spacing come from `theme::Tokens`.
 - Sliders only via `ui_kit::slider`; `Slider` options change behaviour, never appearance.
