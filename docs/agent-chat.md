@@ -53,6 +53,13 @@ when you send a message or press **Connect**.
   endpoint's agent also keeps it as its default model. An agent that reports no models shows no
   drop-down.
 
+Messages use right-aligned user bubbles and plain assistant text. Consecutive tool calls share
+an activity group: click a row to inspect its output; failed calls have an error tint. Approval
+cards retain the agent’s permission choices, and SolidCraft’s own approvals offer Deny, Always
+allow and Allow once. The composer’s permission menu uses the same Ask / Edits / All policy as
+Preferences, for the selected agent, and shows the actual changes used against the configured
+turn limit. Queue, Send now and Stop keep their existing behavior.
+
 ## Files and pictures
 
 A message can carry up to eight files, to show the agent what you mean: a concept picture, a

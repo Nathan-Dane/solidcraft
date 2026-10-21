@@ -28,6 +28,121 @@ macro_rules! element {
 
 // One entry per element/variant: names, rendering and geometry expectations stay together.
 const ELEMENTS: &[Element] = &[
+    element!("assistant_entry", |ui, _| {
+        let t = Tokens::get();
+        egui::Frame::NONE.fill(t.app_bar).show(ui, |ui| {
+            ui.horizontal(|ui| {
+                for state in [
+                    AssistantEntryState::Quiet,
+                    AssistantEntryState::Ready,
+                    AssistantEntryState::Busy,
+                    AssistantEntryState::NeedsAuth,
+                    AssistantEntryState::Stopped,
+                    AssistantEntryState::Waiting(3),
+                ] {
+                    let (_, response) = ui.allocate_exact_size(vec2(t.space_24 + t.space_8, t.space_24 + t.space_8), egui::Sense::click());
+                    assistant_entry(ui, &response, state, false, false);
+                }
+            });
+        });
+    }),
+    element!("assistant_header", |ui, _| {
+        assistant_header(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Assistant");
+                assistant_badge(ui, "Ready", AssistantTone::Success);
+            });
+        });
+    }),
+    element!("assistant_controls", |ui, _| {
+        assistant_controls(ui, |ui| {
+            button(ui, "Connect", Button::Normal);
+        });
+    }),
+    element!("assistant_badge", |ui, _| {
+        ui.horizontal(|ui| {
+            for (label, tone) in [
+                ("Ready", AssistantTone::Success),
+                ("Working", AssistantTone::Working),
+                ("Waiting", AssistantTone::Warning),
+                ("Error", AssistantTone::Error),
+                ("Offline", AssistantTone::Neutral),
+            ] {
+                assistant_badge(ui, label, tone);
+            }
+        });
+    }),
+    element!("assistant_bubble", |ui, _| {
+        assistant_bubble(ui, |ui| {
+            ui.label("Set the plate thickness to 8 mm.");
+        });
+    }),
+    element!("assistant_prose", |ui, _| {
+        assistant_prose(ui, |ui| {
+            ui.label("The thickness is now 8 mm. The design rebuilt successfully.");
+        });
+    }),
+    element!("assistant_tool_status", |ui, _| {
+        ui.horizontal(|ui| {
+            for state in [AssistantToolState::Pending, AssistantToolState::Running, AssistantToolState::Done, AssistantToolState::Failed] {
+                assistant_tool_status(ui, state);
+            }
+        });
+    }),
+    element!("assistant_tool", |ui, _| {
+        assistant_tool_frame(ui, false, |ui| {
+            ui.monospace("parameters.set");
+            assistant_tool_detail(ui, |ui| {
+                ui.monospace("thickness = 8 mm");
+            });
+        });
+    }),
+    element!("assistant_tool_failed", |ui, _| {
+        assistant_tool_frame(ui, false, |ui| {
+            assistant_tool_row(ui, true, |ui| {
+                ui.monospace("solid.fillet");
+            });
+        });
+    }),
+    element!("assistant_approval", |ui, _| {
+        assistant_approval(ui, "Allow the Assistant to run this?", |ui| {
+            ui.label("Change the design parameter.");
+            assistant_actions(ui, |ui| {
+                primary_button(ui, "Allow once");
+                button(ui, "Always allow", Button::Normal);
+                button(ui, "Deny", Button::Normal);
+            });
+        });
+    }),
+    element!("assistant_composer", |ui, s| {
+        assistant_composer_footer(ui, |ui| {
+            assistant_composer(ui, false, |ui| {
+                assistant_input(ui, ui.id().with("assistant_gallery"), &mut s.value, "Ask for a change…");
+            });
+        });
+    }),
+    element!("assistant_composer_focused", |ui, _| {
+        assistant_composer(ui, true, |ui| {
+            ui.label("Ask for a change…");
+        });
+    }),
+    element!("assistant_send", |ui, _| {
+        ui.horizontal(|ui| {
+            assistant_send(ui, true, false, "Send");
+            assistant_send(ui, true, true, "Stop");
+            assistant_send(ui, false, false, "Send");
+        });
+    }),
+    element!("assistant_empty", |ui, _| {
+        assistant_empty(ui, "Set up an assistant", "Choose an installed agent in Preferences.", |ui| {
+            button(ui, "Open Preferences", Button::Normal);
+        });
+    }),
+    element!("assistant_banner", |ui, _| {
+        assistant_banner(ui, AssistantTone::Warning, |ui| {
+            ui.label("Paused after the configured step limit.");
+        });
+    }),
     element!("history_marker", |ui, _| {
         let t = Tokens::get();
         let accent = crate::theme::TabAccent::for_tab(&t, "SURFACE");
