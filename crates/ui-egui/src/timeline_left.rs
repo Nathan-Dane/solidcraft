@@ -240,7 +240,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
         let galley = ui.painter().layout_no_wrap(title.to_owned(), crate::fonts::semibold(t.font_heading), t.text);
         let text_left = handle.right() + t.space_8;
         let text_right = controls_right - controls_width - t.space_8;
-        let drag_rect = if text_right - text_left >= galley.size().x + t.space_24 {
+        let drag_rect = if text_right - text_left >= galley.size().x {
             let title_rect = Rect::from_min_max(pos2(text_left, header.top()), pos2(text_right, header.bottom()));
             ui.painter().galley(pos2(text_left, header.center().y - galley.size().y / 2.0), galley, t.text);
             crate::scenario::publish_rect("history:title", title_rect);
@@ -1275,7 +1275,7 @@ mod tests {
 
     #[test]
     fn contents_follow_measured_width_without_a_names_setting() {
-        for width in [56.0, 112.0, 213.0, 320.0] {
+        for width in [56.0, 112.0, 168.0, 213.0, 320.0] {
             let mut h = Harness::new();
             h.app.preferences.timeline_left = true;
             h.app.preferences.timeline_left_width = width;
@@ -1290,7 +1290,7 @@ mod tests {
             if width == crate::ui_kit::history_width(true) {
                 assert!(crate::scenario::rect_of("history:title").is_none());
             }
-            if width == 320.0 {
+            if width >= 168.0 {
                 assert!(crate::scenario::rect_of("history:title").is_some());
             }
             assert!(!crate::shortcut_box::search(&h.app, "history names").iter().any(|row| row.0 == "view.history_names"));
