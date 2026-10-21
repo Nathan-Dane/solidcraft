@@ -174,6 +174,13 @@ fn legacy_declarations(source: &str, removed: &[&str]) -> Vec<String> {
             }
             visit::visit_item_fn(self, item);
         }
+        fn visit_impl_item_fn(&mut self, item: &'ast syn::ImplItemFn) {
+            let name = item.sig.ident.to_string();
+            if self.removed.contains(&name.as_str()) {
+                self.found.push(name);
+            }
+            visit::visit_impl_item_fn(self, item);
+        }
     }
     let mut guard = Declarations { removed, found: Vec::new() };
     guard.visit_file(&syn::parse_file(source).unwrap());
@@ -184,6 +191,7 @@ fn legacy_declarations(source: &str, removed: &[&str]) -> Vec<String> {
 fn removed_legacy_helpers_stay_removed() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let files: &[(&str, &[&str])] = &[
+        ("ui_kit/container.rs", &["report"]),
         ("frame.rs", &["docked", "docked_on", "heading", "add_outlined", "content_width", "remember_width", "right_aligned"]),
         ("dialogs.rs", &["form_row", "publish_row"]),
         ("dialogs_appearance.rs", &["swatch", "swatch_rows"]),
@@ -223,6 +231,7 @@ fn guard_detects_editor_constructors_aliases_and_legacy_declarations() {
         5
     );
     assert_eq!(legacy_declarations("fn docked_on() {}", &["docked_on"]), ["docked_on"]);
+    assert_eq!(legacy_declarations("impl Host { fn report() {} }", &["report"]), ["report"]);
 }
 
 /// Broader than the dense-panel guard: sliders and numeric fields have no caller exceptions,

@@ -229,17 +229,10 @@ mod web {
             if !self.files.panel.get() {
                 return;
             }
-            let mut open = true;
             let mut act: Option<(&'static str, String)> = None;
-            solidcraft_ui_egui::ui_kit::Container::new(ctx, solidcraft_ui_egui::ui_kit::Surface::Window)
-                .window("Files in this browser")
-                .open(&mut open)
-                .collapsible(false)
-                .resizable(true)
-                .default_width(520.0)
-                .pivot(egui::Align2::CENTER_CENTER)
-                .default_pos(ctx.content_rect().center())
-                .show(ctx, |ui| {
+            let closed = solidcraft_ui_egui::ui_kit::Window::new(egui::Id::new("sc_browser_files"), "folder", "Files in this browser")
+                .cards(3.0)
+                .show_body(ctx, |ui| {
                     ui.horizontal(|ui| {
                         if ui.button("Open from computer…").clicked() {
                             files::pick_from_disk(&self.files, Intent::Open);
@@ -319,7 +312,7 @@ mod web {
                         });
                     });
                 });
-            if !open {
+            if closed {
                 self.files.panel.set(false);
                 self.renaming = None;
             }
@@ -387,12 +380,9 @@ mod web {
         fn recovery_prompt(&mut self, ctx: &egui::Context) {
             let Some((name, path)) = self.files.recovery.borrow().clone() else { return };
             let mut answer = None;
-            solidcraft_ui_egui::ui_kit::Container::new(ctx, solidcraft_ui_egui::ui_kit::Surface::Window)
-                .window("Recover unsaved work?")
-                .collapsible(false)
-                .resizable(false)
-                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
-                .show(ctx, |ui| {
+            let _ = solidcraft_ui_egui::ui_kit::Window::new(egui::Id::new("sc_browser_recovery"), "restore", "Recover unsaved work?")
+                .required()
+                .show_body(ctx, |ui| {
                     ui.label(format!("“{name}” had unsaved changes when this page last closed."));
                     ui.horizontal(|ui| {
                         if ui.button("Recover").clicked() {

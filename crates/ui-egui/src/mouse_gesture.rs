@@ -580,7 +580,9 @@ pub(crate) fn nav_rows(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
     ui.label(crate::i18n::tr_label("Mouse gestures"));
     ui.horizontal(|ui| {
         crate::ui_kit::checkbox(ui, crate::i18n::tr_label("Ring of tools on the right button"), &mut app.preferences.mouse_gestures.enabled);
-        if crate::ui_kit::button(ui, crate::i18n::tr_label("Customize…"), crate::ui_kit::Button::Normal).clicked() {
+        let customize = crate::ui_kit::button(ui, crate::i18n::tr_label("Customize…"), crate::ui_kit::Button::Normal);
+        crate::scenario::publish_handle("gestures:customize", customize.rect.center());
+        if customize.clicked() {
             app.gesture.editor.open = true;
             app.gesture.editor.studio = Studio::of(app);
         }
@@ -614,14 +616,11 @@ fn editor(app: &mut SolveApp, ctx: &egui::Context) {
         return;
     }
     let t = Tokens::get();
-    let mut open = true;
     let mut studio = app.gesture.editor.studio;
     let mut config = app.preferences.mouse_gestures.clone();
-    Container::new(ctx, Surface::Window)
-        .report(ctx, crate::i18n::tr_label("Mouse gestures"), crate::frame::Width::Wide)
-        .id(egui::Id::new("sc_gesture_editor"))
-        .open(&mut open)
-        .show(ctx, |ui| {
+    let closed = crate::ui_kit::Window::new(egui::Id::new("sc_gesture_editor"), "settings", crate::i18n::tr_label("Mouse gestures"))
+        .cards(3.0)
+        .show_body(ctx, |ui| {
             crate::ui_kit::checkbox(ui, crate::i18n::tr_label("Ring of tools on the right button"), &mut config.enabled);
             if app.preferences.nav != MOUSE_MODE {
                 ui.colored_label(
@@ -731,7 +730,7 @@ fn editor(app: &mut SolveApp, ctx: &egui::Context) {
         });
     app.gesture.editor.studio = studio;
     app.preferences.mouse_gestures = config;
-    app.gesture.editor.open = open;
+    app.gesture.editor.open = !closed;
 }
 
 #[cfg(test)]
@@ -947,6 +946,45 @@ mod tests {
             serde_json::from_str::<Config>(r#"{"enabled":true,"wheels":{"part":["undo"],"future":["x"]}}"#).is_ok(),
             "unknown studios are kept, not fatal"
         );
+    }
+
+    #[test]
+    fn customization_uses_the_shared_header_keeps_edits_and_has_no_resize_edges() {
+        use crate::scenario::{Harness, handle_at, rect_of};
+        use serde_json::json;
+        for dark in [false, true] {
+            let mut h = Harness::new();
+            h.app.home.open = false;
+            h.call("ui.resize", json!({"width":1400,"height":900}));
+            h.call("ui.set", json!({"dark":dark}));
+            h.app.preferences.mouse_gestures.set_tools(Studio::Part, vec!["undo".into(), "solid.extrude".into()]);
+            h.app.gesture.editor.open = true;
+            h.app.gesture.editor.studio = Studio::Part;
+            h.frames(6);
+            let header = rect_of("dialog:header").unwrap();
+            assert_eq!(header.height(), Tokens::get().form_header_height);
+            assert_eq!(h.app.preferences.mouse_gestures.tools(Studio::Part).len(), 2);
+            h.step(&json!({"widget":"Add a tool"})).unwrap();
+            h.frames(4);
+            assert_eq!(h.app.preferences.mouse_gestures.tools(Studio::Part).len(), 3);
+            let window = rect_of("dialog:window").unwrap();
+            for at in [window.left_center(), window.right_center(), window.right_bottom()] {
+                h.call("ui.move", json!({"x":at.x,"y":at.y}));
+                h.frames(2);
+                assert!(!matches!(
+                    h.output.cursor_icon,
+                    egui::CursorIcon::ResizeHorizontal
+                        | egui::CursorIcon::ResizeVertical
+                        | egui::CursorIcon::ResizeNwSe
+                        | egui::CursorIcon::ResizeNeSw
+                ));
+            }
+            let close = handle_at("dialog:close").unwrap();
+            h.call("ui.click", json!({"x":close.x,"y":close.y}));
+            h.frames(2);
+            assert!(!h.app.gesture.editor.open);
+            assert_eq!(h.app.preferences.mouse_gestures.tools(Studio::Part).len(), 3, "closing retains edits");
+        }
     }
 
     #[test]

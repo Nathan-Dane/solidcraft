@@ -584,3 +584,20 @@ fn universal_containers_follow_one_layout_without_changing_transient_surfaces() 
     }
     crate::theme::set_dark(previous);
 }
+
+#[test]
+fn required_platform_window_keeps_recovery_pending_until_an_explicit_choice() {
+    let ctx = crate::fonts::test_context();
+    for _ in 0..3 {
+        scenario::clear_handles();
+        frame(&ctx, vec![], |ui| {
+            assert!(!Window::new(ui.id().with("required_recovery"), "restore", "Recover unsaved work?").required().show_body(ui.ctx(), |ui| {
+                button(ui, "Recover", Button::Normal);
+                button(ui, "Discard", Button::Normal);
+            }));
+        });
+    }
+    assert!(scenario::handle_at("dialog:close").is_none(), "recovery cannot be dismissed through the header");
+    assert!(scenario::rect_of("dialog:header").is_some());
+    assert!(scenario::rect_of("dialog:footer").is_none());
+}

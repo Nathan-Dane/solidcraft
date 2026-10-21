@@ -5,18 +5,6 @@ use egui::{Pos2, Ui};
 /// Width limits of a docked command dialog.
 pub const DIALOG_MIN_W: f32 = 260.0;
 pub const DIALOG_MAX_W: f32 = 380.0;
-/// Floating windows: prompts and panels, and those holding a table (Parameters, Keyboard
-/// Shortcuts).
-pub const WINDOW_MAX_W: f32 = 460.0;
-pub const WINDOW_WIDE_MAX_W: f32 = 760.0;
-
-/// How wide a window may get.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Width {
-    Normal,
-    Wide,
-}
-
 /// Which edge of the viewport a docked panel sits against. The Sketch Palette holds the right
 /// edge while a sketch is open, so a dialog started there takes the left.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

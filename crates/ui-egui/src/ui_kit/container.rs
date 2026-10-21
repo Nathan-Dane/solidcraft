@@ -100,21 +100,8 @@ impl Container {
         }
     }
 
-    pub fn window<'a>(self, title: impl Into<WidgetText>) -> egui::Window<'a> {
+    pub(super) fn window<'a>(self, title: impl Into<WidgetText>) -> egui::Window<'a> {
         egui::Window::new(title).enabled(self.input_enabled())
-    }
-
-    /// Bounded report/tool window. Callers retain table resizing and open-state handling.
-    pub fn report<'a>(self, ctx: &Context, title: impl Into<WidgetText>, width: crate::frame::Width) -> egui::Window<'a> {
-        let max = match width {
-            crate::frame::Width::Normal => crate::frame::WINDOW_MAX_W,
-            crate::frame::Width::Wide => crate::frame::WINDOW_WIDE_MAX_W,
-        };
-        self.window(title)
-            .collapsible(false)
-            .pivot(egui::Align2::CENTER_CENTER)
-            .default_pos(ctx.content_rect().center() - egui::vec2(0.0, Tokens::get().space_24 * 2.0 + Tokens::get().space_12))
-            .max_width(max)
     }
 
     /// Anchored editors inherit their containing widget's local style. Their host stays a
