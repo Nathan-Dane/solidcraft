@@ -1302,6 +1302,40 @@ mod tests {
     }
 
     #[test]
+    fn folding_cards_follow_their_bounds_through_the_last_animation_frame() {
+        for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+            let mut h = Harness::new();
+            h.app.home.open = false;
+            h.app.ui.layout = mode;
+            h.app.preferences.timeline_left = true;
+            h.app.preferences.timeline_under_browser = true;
+            h.app.preferences.browser_width = 220.0;
+            h.app.run("solid.box", json!({"length":10,"width":10,"height":10})).unwrap();
+            h.frames(6);
+            // Both closing orders, expansion, and reversal before a transition completes.
+            for (browser, history, frames) in
+                [(true, false, 12), (true, true, 12), (false, true, 12), (false, false, 12), (true, true, 3), (false, false, 12)]
+            {
+                h.app.preferences.timeline_left_browser_collapsed = browser;
+                h.app.preferences.timeline_collapsed = history;
+                for frame in 0..frames {
+                    h.frame();
+                    let available = h.app.shell.history_dock_space.unwrap();
+                    let expected = stacked_rects(&h.app, available);
+                    for (name, actual, target) in
+                        [("Browser", h.app.shell.browser.unwrap(), expected.0), ("History", h.app.shell.history.unwrap(), expected.1)]
+                    {
+                        assert!(
+                            (actual.min - target.min).length() < 1.0 && (actual.max - target.max).length() < 1.0,
+                            "{mode:?} {name}, frame {frame}, folds ({browser}, {history}): {actual:?} != {target:?}"
+                        );
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
     fn seam_snaps_only_between_thin_and_medium_and_persists_free_widths() {
         for (width, delta, expected) in [(56.0, 40.0, 112.0), (112.0, -40.0, 56.0), (112.0, 63.0, 175.0), (320.0, -41.0, 279.0)] {
             let mut h = Harness::new();
