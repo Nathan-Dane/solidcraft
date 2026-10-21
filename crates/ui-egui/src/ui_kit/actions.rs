@@ -68,6 +68,8 @@ pub(crate) struct Footer<'a> {
     pub selected: Option<Action>,
     pub danger: bool,
     pub confirm: bool,
+    /// Parent surface corners; the footer inherits only its two bottom corners.
+    pub corners: Option<egui::CornerRadius>,
 }
 
 pub(crate) fn footer(ui: &mut Ui, ok_label: &str, cancel_label: &str, ok_enabled: bool, options: Footer<'_>) -> Action {
@@ -82,7 +84,7 @@ pub(super) fn footer_with_left(
     options: Footer<'_>,
     left: impl FnOnce(&mut Ui),
 ) -> Action {
-    let Footer { apply: apply_label, status, selected, danger, confirm } = options;
+    let Footer { apply: apply_label, status, selected, danger, confirm, corners } = options;
     let t = Tokens::get();
     let ok_enabled = ok_enabled && !ok_label.is_empty();
     // The footer is a full-width band (the card has no margin of its own): its own fill, a rule
@@ -91,8 +93,12 @@ pub(super) fn footer_with_left(
         vec2(dimension(ui.available_width()), t.form_footer_height + if confirm { t.space_4 } else { 0.0 }),
         egui::Sense::hover(),
     );
-    let corner = t.radius_xl.saturating_sub(1);
-    ui.painter().rect_filled(band, egui::CornerRadius { nw: 0, ne: 0, sw: corner, se: corner }, t.dialog_footer);
+    let corners = corners.unwrap_or(egui::CornerRadius::same(t.radius_xl));
+    ui.painter().rect_filled(
+        band,
+        egui::CornerRadius { nw: 0, ne: 0, sw: corners.sw.saturating_sub(1), se: corners.se.saturating_sub(1) },
+        t.dialog_footer,
+    );
     ui.painter().hline(band.x_range(), band.top(), egui::Stroke::new(1.0, t.dialog_rule));
     scenario::publish_rect("dialog:footer", band);
     scenario::publish_count("dialog:ok:enabled", f64::from(ok_enabled && ui.is_enabled()));

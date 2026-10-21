@@ -568,13 +568,22 @@ fn universal_containers_follow_one_layout_without_changing_transient_surfaces() 
             LayoutMode::Docked.publish(&ctx);
             let docked = Container::new(&ctx, surface);
             assert!(!docked.floating());
+            assert_eq!(docked.gap(), 0.0);
             let docked = docked.frame(&ctx, t.panel, Side::Left);
             assert_eq!(docked.corner_radius.nw, 0, "{surface:?}: flush with left edge");
             assert_eq!(docked.fill, floating.fill);
+            assert_eq!(docked.shadow, egui::Shadow::NONE, "compact surfaces meet their edge without shadows");
         }
-        for surface in
-            [Surface::Window, Surface::Popup, Surface::Canvas, Surface::Toast, Surface::Navigation, Surface::Viewport, Surface::InputShield]
-        {
+        for surface in [
+            Surface::ApplicationBar,
+            Surface::Window,
+            Surface::Popup,
+            Surface::Canvas,
+            Surface::Toast,
+            Surface::Navigation,
+            Surface::Viewport,
+            Surface::InputShield,
+        ] {
             LayoutMode::Floating.publish(&ctx);
             let floating = Container::new(&ctx, surface).frame(&ctx, t.panel, Side::Left);
             LayoutMode::Docked.publish(&ctx);
@@ -600,4 +609,37 @@ fn required_platform_window_keeps_recovery_pending_until_an_explicit_choice() {
     assert!(scenario::handle_at("dialog:close").is_none(), "recovery cannot be dismissed through the header");
     assert!(scenario::rect_of("dialog:header").is_some());
     assert!(scenario::rect_of("dialog:footer").is_none());
+}
+
+#[test]
+fn adjoining_compact_frames_share_one_stroke_and_only_exposed_corners_round() {
+    use crate::ui_kit::DockEdges;
+    use crate::{frame::Side, shell::LayoutMode};
+    let ctx = crate::fonts::test_context();
+    LayoutMode::Docked.publish(&ctx);
+    let t = Tokens::get();
+    let browser = Container::new(&ctx, Surface::Panel).joined(DockEdges { left: true, top: true, ..Default::default() });
+    let frame = browser.frame(&ctx, t.panel, Side::Left);
+    assert_eq!(frame.corner_radius, egui::CornerRadius { nw: 0, ne: 0, sw: 0, se: t.radius_lg });
+    let joined = browser.joined(DockEdges { left: true, top: true, bottom: true, ..Default::default() });
+    assert_eq!(joined.frame(&ctx, t.panel, Side::Left).corner_radius, egui::CornerRadius::ZERO);
+    let a = egui::Rect::from_min_max(egui::Pos2::ZERO, egui::pos2(100.0, 60.0));
+    let allocation = frame.outer_rect(a);
+    let below = egui::Rect::from_min_size(egui::pos2(a.left(), allocation.bottom()), a.size());
+    let beside = egui::Rect::from_min_size(egui::pos2(allocation.right(), a.top()), a.size());
+    assert_eq!(frame.outer_rect(below).top(), allocation.bottom(), "vertical allocations touch");
+    assert_eq!(frame.outer_rect(beside).left(), allocation.right(), "horizontal allocations touch");
+    assert_eq!(frame.widget_rect(a).bottom() - frame.stroke.width, frame.widget_rect(below).top(), "one shared horizontal border");
+    assert_eq!(frame.widget_rect(a).right() - frame.stroke.width, frame.widget_rect(beside).left(), "one shared vertical border");
+}
+
+#[test]
+fn compact_tool_sheet_corners_follow_its_right_edge_contact() {
+    let ctx = crate::fonts::test_context();
+    crate::shell::LayoutMode::Docked.publish(&ctx);
+    let t = Tokens::get();
+    let container = Container::new(&ctx, Surface::Feature);
+    let frame = container.frame(&ctx, t.dialog_body, crate::frame::Side::Right);
+    assert_eq!(container.tool_frame(frame, false).corner_radius, egui::CornerRadius::same(t.radius_lg));
+    assert_eq!(container.tool_frame(frame, true).corner_radius, egui::CornerRadius { nw: t.radius_lg, ne: 0, sw: t.radius_lg, se: 0 });
 }

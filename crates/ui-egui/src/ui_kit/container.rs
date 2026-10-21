@@ -16,6 +16,8 @@ pub enum Surface {
     Palette,
     /// Workspace switcher and ribbon cards.
     Chrome,
+    /// Native application/title bar; its presentation is independent of workspace layout.
+    ApplicationBar,
     /// Movable system windows and modal dialogs; never become workspace docks.
     Window,
     /// Anchored menus, completion lists and rename editors.
@@ -40,12 +42,26 @@ pub enum Edge {
     Bottom,
 }
 
+/// Edges that meet the window or another docked surface. Only exposed corners round.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct DockEdges {
+    pub left: bool,
+    pub right: bool,
+    pub top: bool,
+    pub bottom: bool,
+}
+
+impl DockEdges {
+    pub const ALL: Self = Self { left: true, right: true, top: true, bottom: true };
+}
+
 /// Universal outer host and surface policy. Both host geometry and frame construction must go
 /// through this API, including code in nested modules and platform apps.
 #[derive(Clone, Copy)]
 pub struct Container {
     surface: Surface,
     layout: LayoutMode,
+    joined: Option<DockEdges>,
 }
 
 impl Container {
@@ -54,7 +70,13 @@ impl Container {
     }
 
     pub(crate) fn for_layout(layout: LayoutMode, surface: Surface) -> Self {
-        Self { surface, layout }
+        Self { surface, layout, joined: None }
+    }
+
+    /// Declare contacts from shell geometry; styling remains entirely in the container.
+    pub fn joined(mut self, edges: DockEdges) -> Self {
+        self.joined = Some(edges);
+        self
     }
 
     /// Shell-owned placement policy, shared by current and future adaptive panels.
@@ -62,13 +84,21 @@ impl Container {
         matches!(self.surface, Surface::Panel | Surface::Feature | Surface::Palette | Surface::Chrome) && self.layout == LayoutMode::Floating
     }
 
+    /// Separation between adaptive workspace surfaces; compact surfaces meet their edge.
+    pub fn gap(self) -> f32 {
+        if self.floating() { crate::shell::SHELL_GAP } else { 0.0 }
+    }
+
     /// Tokenised outer chrome. Callers may supply content padding, not another card surface.
     pub fn frame(self, ctx: &Context, fill: Color32, side: crate::frame::Side) -> Frame {
         let t = Tokens::get();
         let flat = Frame::NONE.fill(fill);
         match self.surface {
-            Surface::Feature | Surface::Palette if !self.floating() => dock_frame(ctx, side).fill(fill).inner_margin(0.0),
-            Surface::Panel | Surface::Chrome if !self.floating() => flat.stroke(egui::Stroke::new(1.0, t.border)),
+            Surface::Feature | Surface::Palette if !self.floating() => {
+                let edges = self.joined.unwrap_or(DockEdges { left: side == Side::Left, right: side == Side::Right, ..Default::default() });
+                Self::compact_frame(fill, t.dialog_border, edges)
+            }
+            Surface::Panel | Surface::Chrome if !self.floating() => Self::compact_frame(fill, t.border, self.joined.unwrap_or(DockEdges::ALL)),
             Surface::Feature | Surface::Window => {
                 flat.stroke(egui::Stroke::new(1.0, t.dialog_border)).corner_radius(t.radius_xl).shadow(t.shell_shadow())
             }
@@ -77,14 +107,74 @@ impl Container {
             Surface::Navigation => flat.stroke(egui::Stroke::new(1.0, t.border)).corner_radius(t.radius_md),
             Surface::Toast => flat.stroke(egui::Stroke::new(1.0, t.border)).corner_radius(t.radius_md).shadow(t.shell_shadow()),
             Surface::Popup => Self::popup_frame(&ctx.global_style()).fill(fill),
-            Surface::Canvas | Surface::Viewport | Surface::InputShield => flat,
+            Surface::ApplicationBar | Surface::Canvas | Surface::Viewport | Surface::InputShield => flat,
         }
+    }
+
+    /// Movable tool sheets round all exposed corners, joining only their right dock edge.
+    pub(crate) fn tool_frame(self, mut frame: Frame, right_docked: bool) -> Frame {
+        if self.surface == Surface::Feature && !self.floating() {
+            frame.corner_radius = Self::compact_rounding(DockEdges { right: right_docked, ..Default::default() });
+        }
+        frame
     }
 
     /// Surface of an allocated dock or internal pinned band. Floating card decoration is
     /// supplied by `frame`; edge-hosted panes must not acquire outer shadows or card gaps.
     pub fn edge_frame(self, fill: Color32) -> Frame {
-        Frame::NONE.fill(fill)
+        if self.adaptive() && !self.floating() {
+            Self::compact_frame(fill, Tokens::get().border, self.joined.unwrap_or(DockEdges::ALL))
+        } else {
+            Frame::NONE.fill(fill)
+        }
+    }
+
+    fn adaptive(self) -> bool {
+        matches!(self.surface, Surface::Panel | Surface::Feature | Surface::Palette | Surface::Chrome)
+    }
+
+    fn compact_rounding(edges: DockEdges) -> egui::CornerRadius {
+        let radius = Tokens::get().radius_lg;
+        egui::CornerRadius {
+            nw: if edges.left || edges.top { 0 } else { radius },
+            ne: if edges.right || edges.top { 0 } else { radius },
+            sw: if edges.left || edges.bottom { 0 } else { radius },
+            se: if edges.right || edges.bottom { 0 } else { radius },
+        }
+    }
+
+    fn compact_frame(fill: Color32, border: Color32, edges: DockEdges) -> Frame {
+        // Collapse adjoining borders onto the same one-point strip. North/west outlines
+        // sit outside the allocation; south/east outlines sit inside it. Logical panel
+        // rectangles still touch exactly, with neither gaps nor doubled strokes.
+        Frame::NONE
+            .fill(fill)
+            .stroke(Stroke::new(1.0, border))
+            .outer_margin(egui::Margin { left: -1, top: -1, right: 0, bottom: 0 })
+            .corner_radius(Self::compact_rounding(edges))
+    }
+
+    /// Measure content before rounding a compact card. Reaching a dock boundary joins
+    /// that edge, so a content-hugging card and a full-height card share one composition.
+    pub(crate) fn show_frame<R>(
+        self,
+        ui: &mut egui::Ui,
+        frame: Frame,
+        bounds: egui::Rect,
+        body: impl FnOnce(&mut egui::Ui) -> R,
+    ) -> egui::InnerResponse<R> {
+        let mut prepared = frame.begin(ui);
+        let inner = body(&mut prepared.content_ui);
+        if self.adaptive() && !self.floating() {
+            let rect = prepared.frame.outer_rect(prepared.content_ui.min_rect());
+            let mut edges = self.joined.unwrap_or(DockEdges::ALL);
+            edges.left |= rect.left() <= bounds.left();
+            edges.right |= rect.right() >= bounds.right();
+            edges.top |= rect.top() <= bounds.top();
+            edges.bottom |= rect.bottom() >= bounds.bottom();
+            prepared.frame.corner_radius = Self::compact_rounding(edges);
+        }
+        egui::InnerResponse { inner, response: prepared.end(ui) }
     }
 
     pub fn area(self, id: Id) -> egui::Area {
@@ -92,12 +182,13 @@ impl Container {
     }
 
     pub fn edge(self, id: impl Into<Id>, edge: Edge) -> egui::Panel {
-        match edge {
+        let panel = match edge {
             Edge::Left => egui::Panel::left(id),
             Edge::Right => egui::Panel::right(id),
             Edge::Top => egui::Panel::top(id),
             Edge::Bottom => egui::Panel::bottom(id),
-        }
+        };
+        if self.adaptive() && !self.floating() { panel.show_separator_line(false) } else { panel }
     }
 
     pub(super) fn window<'a>(self, title: impl Into<WidgetText>) -> egui::Window<'a> {
@@ -155,19 +246,4 @@ impl Container {
     fn input_enabled(self) -> bool {
         self.surface == Surface::InputShield || !crate::issue_report::cad_input_blocked()
     }
-}
-
-/// The window frame of a docked panel: the two corners away from its edge are rounded, and the
-/// shadow falls the same way, so a left dock mirrors a right one.
-fn dock_frame(ctx: &egui::Context, side: Side) -> egui::Frame {
-    let t = crate::theme::Tokens::get();
-    let (corner_radius, shadow_x) = match side {
-        Side::Right => (egui::CornerRadius { nw: t.radius_sm, sw: t.radius_sm, ne: 0, se: 0 }, -2),
-        Side::Left => (egui::CornerRadius { nw: 0, sw: 0, ne: t.radius_sm, se: t.radius_sm }, 2),
-    };
-    egui::Frame::window(&ctx.global_style())
-        .fill(t.dialog_bg)
-        .stroke(egui::Stroke::new(1.0, t.dialog_border))
-        .corner_radius(corner_radius)
-        .shadow(egui::Shadow { offset: [shadow_x, 2], blur: 8, spread: 0, color: t.shell_shadow().color })
 }

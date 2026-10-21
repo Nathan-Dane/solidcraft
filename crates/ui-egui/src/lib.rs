@@ -7,7 +7,7 @@
 //! right of the viewport, the command palette and a bottom or left-sidebar feature timeline.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 #![forbid(unsafe_code)]
-use crate::ui_kit::{Container, Edge, Surface};
+use crate::ui_kit::{Container, Surface};
 
 pub mod access;
 pub mod agent_chat;
@@ -247,7 +247,7 @@ pub use control::{ControlRequest, ControlResponse};
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct UiState {
-    /// Automation-only shell mode; never persisted in preferences.
+    /// Effective shell mode; automation can override the saved preference for this session.
     pub layout: shell::LayoutMode,
     /// Ribbon tab; SHEET METAL and the contextual SKETCH join the seven design tabs.
     pub tab: String,
@@ -716,6 +716,7 @@ impl SolveApp {
             if !prefs::MSAA.contains(&p.msaa) {
                 p.msaa = prefs::Prefs::default().msaa;
             }
+            self.ui.layout = p.layout;
             self.preferences = p;
         }
         // Saved before the theme was a preference: the Dark/Light flag says which.
@@ -744,6 +745,12 @@ impl SolveApp {
         let r = self.session.execute(id, &params).map_err(|e| e.to_string());
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         if let Ok(v) = &r {
+            if id == "view.layout" {
+                let layout =
+                    if v.get("mode").and_then(Value::as_str) == Some("compact") { shell::LayoutMode::Docked } else { shell::LayoutMode::Floating };
+                self.preferences.layout = layout;
+                self.ui.layout = layout;
+            }
             if id == "view.history_layout" {
                 if let Some(width) = v.get("width").and_then(Value::as_f64) {
                     self.preferences.timeline_left_width = ui_kit::history_snap_width(width as f32);
@@ -887,6 +894,11 @@ impl SolveApp {
             return;
         }
         // A display toggle leaves the current modelling tool and camera in place.
+        if id == "view.layout" {
+            let mode = if self.ui.layout == shell::LayoutMode::Floating { "compact" } else { "floating" };
+            let _ = self.run(id, json!({"mode":mode}));
+            return;
+        }
         if id == "view.history_layout" {
             let _ = self.run(id, json!({}));
             return;
@@ -1148,16 +1160,23 @@ impl SolveApp {
         v
     }
 
-    /// Is the origin widget shown? Origin planes and axes are drawn and pickable. While Create
-    /// Sketch picks its plane the Origin is always shown, drawn through the model (a plane
-    /// inside a body stays visible), even when the browser hides it.
+    /// Is the origin widget shown? Origin planes and axes are drawn and pickable. While a dialog
+    /// picks a plane ([`SolveApp::picking_plane`]) the Origin is always shown, drawn through the
+    /// model (a plane inside a body stays visible), even when the browser hides it.
     pub fn origin_visible(&self) -> bool {
-        self.ui.show_origin || self.picking_sketch_plane()
+        self.ui.show_origin || self.picking_plane()
     }
 
     /// Is Create Sketch open, waiting for its plane?
     pub fn picking_sketch_plane(&self) -> bool {
         self.dialog.as_ref().is_some_and(|d| matches!(d.kind, dialogs::Kind::Sketch))
+    }
+
+    /// Is a dialog waiting for a plane: Create Sketch, or a dialog whose active input takes origin
+    /// planes (Mirror's plane, Offset Plane, Midplane, the construct tools)? The origin planes are
+    /// shown for it, so they can be picked in the view rather than only in the browser (#2581).
+    pub fn picking_plane(&self) -> bool {
+        self.picking_sketch_plane() || self.dialog.as_ref().is_some_and(|d| d.inputs.get(d.active).is_some_and(|i| i.accept & selection::PLANES != 0))
     }
 
     /// Is the view drawn in perspective? The perspective preference, except while a sketch is
@@ -1554,12 +1573,14 @@ impl SolveApp {
             toolbar::toolbar(self, ui);
         }
         theme::TabAccent::publish(self, ui.ctx());
+        if !floating {
+            agent_chat::show(self, ui);
+        }
         if !floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
-        // A floating browser keeps the workspace the whole width and covers viewport input.
-        let browser_float = self.ui.show_browser && (self.preferences.browser_float || floating || left_timeline);
-        if !browser_float {
+        // Browser hugs its contents in either layout; it never becomes a full-height blank column.
+        if !self.ui.show_browser {
             self.shell.browser = None;
         }
         if floating || left_timeline || !show_timeline {
@@ -1567,7 +1588,7 @@ impl SolveApp {
         }
         let full = ui.available_rect_before_wrap();
         if floating {
-            let cards = shell::Cards::new(full, self.ui.layout);
+            let cards = shell::Cards::new(full, self.ui.layout, toolbar::ribbon_height(self.preferences.ribbon_labels));
             self.shell.cards = vec![cards.workspace, cards.ribbon];
             self.shell.history = if left_timeline {
                 let below_ribbon = egui::Rect::from_min_max(egui::pos2(full.left(), cards.bottom), full.max);
@@ -1600,56 +1621,25 @@ impl SolveApp {
         if floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
-        let chat_first = !floating && self.preferences.agent_chat_side == "left";
-        if chat_first {
-            agent_chat::show(self, ui);
-        }
         if left_timeline {
             timeline_left::left_panel(self, ui);
-        }
-        if self.ui.show_browser && !browser_float {
-            browser::browser(self, ui);
         }
         if render_workspace::active(self) {
             render_workspace::panel(self, ui);
         }
-        if !floating && !chat_first {
-            agent_chat::show(self, ui);
-        }
-        if browser_float {
-            // The remaining content starts below the ribbon in either shell layout.
-            let viewport = ui.available_rect_before_wrap();
-            browser::floating(self, ui, viewport);
+        if self.ui.show_browser {
+            browser::browser(self, ui);
         }
         if floating {
             agent_chat::show(self, ui);
-        }
-        if !floating && timeline_left::stacked(self) {
-            let width = browser::browser_width(self.preferences.browser_width) + shell::SHELL_GAP * 2.0;
-            Container::new(ui.ctx(), Surface::Panel)
-                .edge("sc_history_browser_column", Edge::Left)
-                .exact_size(width)
-                .resizable(false)
-                .frame(Container::new(ui.ctx(), Surface::Viewport).edge_frame(egui::Color32::TRANSPARENT))
-                .show(ui, |_| {});
         }
         Container::new(ui.ctx(), Surface::Viewport)
             .central()
             .frame(Container::new(ui.ctx(), Surface::Viewport).edge_frame(egui::Color32::TRANSPARENT))
             .show(ui, |ui| {
+                let panel_content = ui.max_rect();
+                self.shell.content = Some(shell::workspace_content(self, panel_content));
                 if floating {
-                    let panel_content = ui.max_rect();
-                    let mut content = panel_content;
-                    if let Some(history) = self.shell.history.filter(|_| !left_timeline) {
-                        content.max.y = (history.top() - shell::SHELL_GAP).max(content.top());
-                    }
-                    if left_timeline && let Some(history) = self.shell.history {
-                        content.min.x = (history.right() + shell::SHELL_GAP).min(content.right());
-                    }
-                    if let Some(browser) = self.shell.browser {
-                        content.min.x = (browser.right() + shell::SHELL_GAP).min(content.right());
-                    }
-                    self.shell.content = Some(content);
                     self.shell.panels = [
                         egui::Rect::from_min_max(egui::pos2(full.left(), panel_content.top()), egui::pos2(panel_content.left(), full.bottom())),
                         egui::Rect::from_min_max(egui::pos2(panel_content.right(), panel_content.top()), full.max),

@@ -54,8 +54,8 @@ pub fn offset_anchor(docked: Pos2, offset: egui::Vec2, vp: egui::Rect, side: Sid
 /// `moved` (as last frame left it; `applied` of it is where the dialog is now, after keeping
 /// it on screen). Called before the band's buttons are added, so they keep their clicks.
 pub fn drag_dock(ui: &Ui, band: egui::Rect, title: &str, moved: egui::Vec2, applied: egui::Vec2) {
-    let response = ui.interact(band, ui.id().with("sc_dock_drag"), egui::Sense::drag());
     crate::scenario::publish_handle("dialog:title", band.center());
+    let response = ui.interact(band, ui.id().with("sc_dock_drag"), egui::Sense::drag());
     // The drag runs from where the press started, so no movement is lost while egui decides
     // it is a drag, nor on the frame it ends.
     let base = egui::Id::new("sc_dock_drag_base");

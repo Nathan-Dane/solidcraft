@@ -46,7 +46,7 @@ fn both_modes_keep_their_geometry_and_fit_clear_of_covered_rects() {
             assert_eq!(viewport.top(), toolbar.bottom());
             assert_eq!(toolbar.height(), toolbar::RIBBON_HEIGHT);
             assert_eq!(workspace.left(), 0.0);
-            assert!(covered_rects(&h.app).is_empty());
+            assert_eq!(covered_rects(&h.app), vec![h.app.shell.history.unwrap(), rect_of("browser:card").unwrap()]);
         }
         h.app.fit_view();
         h.settle();
@@ -230,9 +230,9 @@ fn floating_browser_clears_cards_shields_input_and_can_dock_again() {
             assert!(crate::browser::drawn_rows().iter().any(|(name, _, _, open)| name == "Origin" && *open == Some(true)));
             h.app.preferences.browser_float = false;
             h.settle();
-            assert_eq!(h.app.shell.browser.is_some(), mode == LayoutMode::Floating || timeline_left);
+            assert!(h.app.shell.browser.is_some());
             assert!(rect_of("browser:float").is_none());
-            assert_eq!(rect_of("browser:card").is_some(), mode == LayoutMode::Floating || timeline_left);
+            assert!(rect_of("browser:card").is_some());
             // The saved width follows both the floating card and the docked column.
             let rail = crate::scenario::handle_at("left-browser-rail").unwrap();
             let width = h.app.preferences.browser_width;
@@ -294,12 +294,12 @@ fn left_history_and_browser_share_the_left_edge_without_moving_right_controls() 
         assert!(rect_of("history:card").is_none());
         let history = rect_of("history:vertical").unwrap();
         let browser = rect_of("browser:card").unwrap();
-        assert!(history.right() < browser.left());
+        assert!((browser.left() - history.right() - Container::for_layout(mode, Surface::Panel).gap()).abs() < 1.0);
         assert!(crate::scenario::handle_at("timeline:First").is_some());
         let viewport = h.app.viewport.rect.unwrap();
         let content = content_rect(&h.app, viewport);
         assert_eq!(viewport.left(), if mode == LayoutMode::Floating { 0.0 } else { crate::ui_kit::history_width(true) });
-        assert_eq!(content.left(), if mode == LayoutMode::Floating { browser.right() + SHELL_GAP } else { viewport.left() });
+        assert_eq!(content.left(), browser.right() + Container::for_layout(mode, Surface::Panel).gap());
         assert_eq!(content.bottom(), viewport.bottom());
         if mode == LayoutMode::Floating {
             assert!(covered(&h.app, history.center()));
@@ -470,7 +470,10 @@ fn assistant_right_edge_survives_palette_tool_resize_and_minimize() {
             let chat = h.app.agent_chat.panel_rect.unwrap();
             let palette = h.app.viewport.palette_rect.unwrap();
             assert!((chat.right() - right).abs() < 1.0, "{layout}: Assistant stays outside the palette");
-            assert!(palette.right() + SHELL_GAP <= chat.left() + 1.0, "{layout}: {palette:?}, {chat:?}");
+            assert!(
+                palette.right() + Container::for_layout(h.app.ui.layout, Surface::Panel).gap() <= chat.left() + 1.0,
+                "{layout}: {palette:?}, {chat:?}"
+            );
         }
         h.call("ui.agent_chat", json!({"minimized":true}));
         h.frames(5);
@@ -520,4 +523,141 @@ fn tool_sheets_drag_over_browser_and_history_but_clear_protected_panels() {
         h.step(&json!({"widget":"Cancel"})).unwrap();
         assert!(h.app.dialog.is_none(), "dragged sheet remains interactive");
     }
+}
+
+#[test]
+fn compact_layout_is_saved_and_survives_cancel_apply_defaults_and_bad_input() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":10,"width":10,"height":10})).unwrap();
+    h.app.start("solid.extrude");
+    h.settle();
+    let design = h.app.session.doc.to_json();
+    let undo = h.app.session.undo.len();
+    let camera = h.app.cam;
+    h.call("ui.prefs", json!({"open":"General"}));
+    h.step(&json!({"click":{"handle":"dialog:Workspace layout:Compact"}})).unwrap();
+    h.call("ui.prefs", json!({"button":"ok"}));
+    h.settle();
+    assert!(h.app.dialog.is_some(), "changing layout keeps the active tool");
+    assert_eq!(h.app.preferences.layout, LayoutMode::Docked);
+    assert_eq!(h.app.ui.layout, LayoutMode::Docked);
+    assert_eq!(h.app.cam, camera);
+    h.call("engine.execute", json!({"command":"view.layout", "params":{"mode":"compact"}}));
+    assert_eq!(h.app.cam, camera, "programmatic layout changes never auto-fit");
+    assert_eq!(h.app.session.doc.to_json(), design);
+    assert_eq!(h.app.session.undo.len(), undo);
+    let mut restored = crate::SolveApp::new(Default::default(), Default::default());
+    restored.load_prefs(&h.app.prefs());
+    assert_eq!(restored.ui.layout, LayoutMode::Docked);
+    assert_eq!(restored.preferences.layout, LayoutMode::Docked);
+    h.call("ui.prefs", json!({"open":"General","layout":"floating"}));
+    h.call("ui.prefs", json!({"button":"cancel"}));
+    assert_eq!(h.app.ui.layout, LayoutMode::Docked);
+    h.call("ui.prefs", json!({"open":"General","layout":"floating"}));
+    h.call("ui.prefs", json!({"button":"apply"}));
+    h.call("ui.prefs", json!({"layout":"compact"}));
+    h.call("ui.prefs", json!({"button":"cancel"}));
+    assert_eq!(h.app.ui.layout, LayoutMode::Floating);
+    h.call("ui.prefs", json!({"open":"General","layout":"compact"}));
+    h.call("ui.prefs", json!({"button":"defaults"}));
+    assert_eq!(h.app.ui.layout, LayoutMode::Floating);
+    assert_eq!(h.app.preferences.layout, LayoutMode::Floating);
+    h.call("ui.prefs", json!({"button":"ok"}));
+    assert!(crate::prefs::set(&mut h.app, &json!({"layout":"invalid"})).is_err());
+    assert_eq!(h.app.ui.layout, LayoutMode::Floating);
+    restored.load_prefs(r#"{"preferences":{"layout":"invalid","default_units":"in"}}"#);
+    assert_eq!(restored.ui.layout, LayoutMode::Floating);
+    assert_eq!(restored.preferences.default_units, "in");
+    assert_eq!(crate::prefs::lenient(&json!({})).layout, LayoutMode::Floating);
+}
+
+#[test]
+fn compact_chrome_is_flush_and_browser_hugs_content_in_both_themes() {
+    for dark in [false, true] {
+        let mut h = Harness::new();
+        h.call("ui.resize", json!({"width":1400,"height":900}));
+        h.call("ui.prefs", json!({"layout":"compact"}));
+        h.call("ui.set", json!({"dark":dark}));
+        h.settle();
+        let bar = rect_of("toolbar").unwrap();
+        let browser = rect_of("browser:card").unwrap();
+        let workspace = rect_of("ribbon:workspace").unwrap();
+        assert_eq!(workspace.left(), bar.left());
+        assert_eq!(workspace.top(), bar.top());
+        assert_eq!(h.app.shell.cards.get(1).unwrap().left(), workspace.right(), "one joined top bar");
+        assert_eq!(browser.left(), 0.0);
+        assert_eq!(browser.top(), bar.bottom(), "square, flush Browser/ribbon join");
+        assert!(browser.height() < h.app.viewport.rect.unwrap().height() / 2.0, "Browser hugs its contents");
+        let compact = crate::ui_kit::Container::new(&h.ctx, crate::ui_kit::Surface::Panel);
+        assert_eq!(compact.gap(), 0.0);
+        let frame = compact.frame(&h.ctx, crate::theme::Tokens::get().panel, crate::frame::Side::Left);
+        assert_eq!(frame.shadow, egui::Shadow::NONE);
+        assert_eq!(frame.corner_radius, egui::CornerRadius::ZERO);
+        h.app.start("solid.extrude");
+        h.settle();
+        let dialog = h.app.viewport.dialog_rect.unwrap();
+        assert!((dialog.right() - h.app.viewport.rect.unwrap().right()).abs() < 1.0, "{dialog:?}");
+        let before = dialog;
+        h.step(&json!({"drag":[{"handle":"dialog:title"},[700,300]],"steps":6})).unwrap();
+        h.settle();
+        let moved = h.app.viewport.dialog_rect.unwrap();
+        assert!(moved.right() < before.right() - 100.0, "compact tool sheets detach from the right edge");
+        let feature = crate::ui_kit::Container::new(&h.ctx, crate::ui_kit::Surface::Feature);
+        assert_eq!(feature.frame(&h.ctx, crate::theme::Tokens::get().dialog_body, crate::frame::Side::Right).shadow, egui::Shadow::NONE);
+        h.app.run("view.layout", json!({"mode":"floating"})).unwrap();
+        h.settle();
+        assert_eq!(rect_of("browser:card").unwrap().left(), SHELL_GAP);
+        assert!(h.app.dialog.is_some());
+    }
+}
+
+#[test]
+fn two_collapsed_compact_headers_leave_live_viewport_below_their_column() {
+    for dark in [false, true] {
+        let mut h = Harness::new();
+        h.call("ui.resize", json!({"width":1400,"height":900}));
+        h.call("ui.prefs", json!({"layout":"compact"}));
+        h.call("ui.set", json!({"dark":dark}));
+        h.app.run("view.history_layout", json!({"dock":"under_browser"})).unwrap();
+        h.app.preferences.timeline_left_browser_collapsed = true;
+        h.app.preferences.timeline_collapsed = true;
+        h.frames(12);
+        let browser = h.app.shell.browser.unwrap();
+        let history = h.app.shell.history.unwrap();
+        let below = egui::pos2(browser.center().x, history.bottom() + 40.0);
+        assert!(h.app.viewport.rect.unwrap().contains(below));
+        assert!(!covered(&h.app, below));
+        assert!(covered(&h.app, browser.center()));
+        assert!(covered(&h.app, history.center()));
+        h.call("ui.move", json!({"x":below.x,"y":below.y}));
+        assert_eq!(h.app.viewport.mouse, Some(below), "the vacated column remains live viewport");
+    }
+}
+
+#[test]
+fn ribbon_labels_are_saved_independently_and_icon_only_commands_remain_reachable() {
+    for mode in [LayoutMode::Floating, LayoutMode::Docked] {
+        let mut h = Harness::new();
+        h.call("ui.resize", json!({"width":1400,"height":900}));
+        h.call("ui.prefs", json!({"layout":mode}));
+        h.settle();
+        let labelled = rect_of("toolbar").unwrap();
+        h.call("ui.prefs", json!({"ribbon_labels":false}));
+        h.settle();
+        let icons = rect_of("toolbar").unwrap();
+        assert!(icons.height() < labelled.height());
+        assert_eq!(h.app.ui.layout, mode);
+        let command = rect_of("button:sketch.create").unwrap();
+        assert!(icons.contains_rect(command));
+        h.step(&json!({"click":{"handle":"button:sketch.create"}})).unwrap();
+        assert!(h.app.dialog.is_some(), "the icon still starts Create Sketch");
+        let mut restored = crate::SolveApp::new(Default::default(), Default::default());
+        restored.load_prefs(&h.app.prefs());
+        assert!(!restored.preferences.ribbon_labels);
+        assert_eq!(restored.ui.layout, mode);
+        h.call("ui.prefs", json!({"open":"General","ribbon_labels":true}));
+        h.call("ui.prefs", json!({"button":"cancel"}));
+        assert!(!h.app.preferences.ribbon_labels);
+    }
+    assert!(crate::prefs::lenient(&json!({})).ribbon_labels);
 }

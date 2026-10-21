@@ -334,10 +334,11 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     if !vp.is_finite() || !vp.is_positive() {
         return;
     }
-    let bottom = vp.bottom().min(ctx.content_rect().bottom()) - crate::shell::SHELL_GAP;
+    let gap = crate::ui_kit::Container::new(ctx, crate::ui_kit::Surface::Palette).gap();
+    let bottom = vp.bottom().min(ctx.content_rect().bottom()) - gap;
     let top = crate::shell::panel_top(app, vp, bottom, crate::frame::Side::Right);
     let frame = crate::ui_kit::Panel::palette_frame(ctx, app.ui.layout);
-    let anchor = egui::pos2(vp.right() - crate::shell::SHELL_GAP - frame.stroke.width, top + frame.stroke.width);
+    let anchor = egui::pos2(vp.right() - gap - frame.stroke.width, top + frame.stroke.width);
     let shown = |key: &str| match key {
         "grid" => !opts.hide_grid,
         "snap" => !opts.no_snap,

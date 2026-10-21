@@ -1,7 +1,8 @@
 # Layout-aware container audit
 
-Compact mode preparation, on top of History #3953 and Assistant #3985. This is the
-container migration, not the saved compact preference or its final composition (#2029).
+Shared container foundation (#4411) and compact composition (#2029), on top of
+History #3953 and Assistant #3985. General preferences save Floating or Compact;
+`view.layout` changes the same preference without changing the design.
 
 ## Ownership
 
@@ -9,7 +10,15 @@ container migration, not the saved compact preference or its final composition (
 UI crate and the desktop/web apps. `Surface` declares purpose, not a second layout
 setting. The shell publishes `LayoutMode` before drawing any page. Adaptive panels
 and shell layout use `Container::floating()`; frames use the same policy. There is
-one definition of floating/docked chrome in `ui_kit/container.rs`.
+one definition of floating/compact chrome and workspace gaps in `ui_kit/container.rs`.
+Compact joins the workspace and ribbon, puts Browser flush beneath it with a square
+join and content-hugging height, and opens feature/palette sheets at their edge without
+card gaps or shadows. Tool sheets remain draggable in either layout; compact sheets
+round all four corners when detached and square only the right corners at their right dock. Contacts declare which edges meet; the container rounds only
+exposed convex corners and collapses adjoining outlines into one stroke. Stacked
+headers cover the viewport without reserving a blank column beneath them.
+Floating keeps its card chrome; both layouts retain tool drag offsets.
+Menus, system windows, notifications and canvas content retain their existing roles.
 
 The shell still owns ordering, viewport reservations and shared-column geometry.
 A container does not infer geometry from a title or panel ID. Browser and History

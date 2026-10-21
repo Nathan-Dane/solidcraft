@@ -6,7 +6,7 @@
 //! viewport, a double-click on a sketch edits it, and a right-click opens the item's menu
 //! ([`crate::context_menu`]).
 
-use crate::ui_kit::{Container, Edge, Surface};
+use crate::ui_kit::{Container, Surface};
 #[cfg(test)]
 #[path = "occurrence_ui_tests.rs"]
 mod occurrence_ui_tests;
@@ -663,10 +663,6 @@ fn lit_row((selected, hovered): (bool, bool)) -> (bool, Mark) {
     (selected, if selected || hovered { Mark::Here } else { Mark::None })
 }
 
-pub fn browser(app: &mut SolveApp, ui: &mut egui::Ui) {
-    browser_panel(app, ui);
-}
-
 /// How narrow the browser sidebar may be dragged, and how wide (the viewport keeps the rest).
 const MIN_BROWSER_WIDTH: f32 = 170.0;
 const MAX_BROWSER_WIDTH: f32 = 620.0;
@@ -674,25 +670,6 @@ const MAX_BROWSER_WIDTH: f32 = 620.0;
 const BROWSER_RAIL: f32 = 6.0;
 /// How opaque the floating browser's card is; the workspace shows through the rest.
 const BROWSER_FLOAT_ALPHA: f32 = 0.4;
-
-fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let t = Tokens::get();
-    app.tree.order.clear();
-    DRAWN.with(|d| d.borrow_mut().clear());
-    OCCURRENCES.with(|d| d.borrow_mut().clear());
-    let mut acts = Actions::default();
-    let width = browser_width(app.preferences.browser_width);
-    let panel = Container::new(ui.ctx(), Surface::Panel)
-        .edge("sc_browser", Edge::Left)
-        .exact_size(width)
-        .resizable(false)
-        .frame(Container::new(ui.ctx(), Surface::Panel).edge_frame(t.panel).inner_margin(egui::Margin::symmetric(t.space_6 as i8, t.space_6 as i8)))
-        .show(ui, |ui| {
-            browser_contents(app, ui, &mut acts, false);
-        });
-    resize_column(app, ui, panel.response.rect, width, "left-browser-rail");
-    finish_browser(app, ui, acts);
-}
 
 pub(crate) fn browser_width(remembered: f32) -> f32 {
     if remembered.is_finite() { remembered.clamp(MIN_BROWSER_WIDTH, MAX_BROWSER_WIDTH) } else { crate::prefs::DEFAULT_BROWSER_WIDTH }
@@ -712,20 +689,21 @@ pub(crate) fn resize_column(app: &mut SolveApp, ui: &egui::Ui, rect: Rect, width
     crate::scenario::publish_handle(handle, pos2(rect.right() - BROWSER_RAIL / 2.0, rect.center().y));
 }
 
-/// One browser card for the floating shell and the docked shell's optional overlay.
-/// The preference keeps its translucent overlay semantics; the floating shell always has a card.
-pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
+/// One content-hugging browser; the shared container supplies floating or flush compact chrome.
+pub fn browser(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let available = ui.available_rect_before_wrap();
     let t = Tokens::get();
     app.tree.order.clear();
     DRAWN.with(|d| d.borrow_mut().clear());
     OCCURRENCES.with(|d| d.borrow_mut().clear());
     let mut acts = Actions::default();
-    let gap = crate::shell::SHELL_GAP;
-    let top_gap = if !Container::for_layout(app.ui.layout, Surface::Panel).floating() { gap } else { 0.0 };
+    let stacked = crate::timeline_left::stacked(app);
+    let container =
+        Container::new(ui.ctx(), Surface::Panel).joined(crate::ui_kit::DockEdges { left: true, top: true, bottom: stacked, ..Default::default() });
+    let gap = container.gap();
     let width = browser_width(app.preferences.browser_width);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
     let mut available = available;
-    let stacked = crate::timeline_left::stacked(app);
     if !stacked {
         available.min.x += crate::agent_chat::left_inset(app, available);
     }
@@ -739,13 +717,13 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     let bounds = if stacked {
         crate::timeline_left::stacked_rects(app, available).0
     } else {
-        floating_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, top_gap)
+        panel_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, gap)
     };
     app.shell.browser = None;
     let min_height = HEADER_H + 2.0 * (CARD_INSET + 1.0);
     if bounds.is_positive() && bounds.height() >= min_height {
-        let fill = if app.preferences.browser_float { t.panel.gamma_multiply(BROWSER_FLOAT_ALPHA) } else { t.panel };
-        let frame = Container::new(ui.ctx(), Surface::Panel).frame(ui.ctx(), fill, crate::frame::Side::Left).inner_margin(CARD_INSET as i8);
+        let fill = if container.floating() && app.preferences.browser_float { t.panel.gamma_multiply(BROWSER_FLOAT_ALPHA) } else { t.panel };
+        let frame = container.frame(ui.ctx(), fill, crate::frame::Side::Left).inner_margin(CARD_INSET as i8);
         let inner_width = (bounds.width() - frame.total_margin().sum().x).max(0.0);
         let inner_height = (bounds.height() - frame.total_margin().sum().y).max(0.0);
         let card = Container::new(ui.ctx(), Surface::Panel)
@@ -753,7 +731,8 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
             .fixed_pos(bounds.min)
             .order(egui::Order::Middle)
             .show(ui.ctx(), |ui| {
-                let response = frame.show(ui, |ui| {
+                let limits = Rect::from_min_max(available.min, pos2(available.right(), bounds.bottom()));
+                let response = container.show_frame(ui, frame, limits, |ui| {
                     ui.set_width(inner_width);
                     ui.set_max_height(inner_height);
                     if stacked {
@@ -808,9 +787,8 @@ fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     );
 }
 
-pub(crate) fn floating_bounds(available: Rect, history: Option<Rect>, width: f32, top_gap: f32) -> Rect {
-    let gap = crate::shell::SHELL_GAP;
-    let min = available.min + vec2(gap, top_gap);
+pub(crate) fn panel_bounds(available: Rect, history: Option<Rect>, width: f32, gap: f32) -> Rect {
+    let min = available.min + vec2(gap, 0.0);
     let right = (available.right() - gap).max(min.x);
     let bottom = history.map_or(available.bottom() - gap, |r| r.top() - gap).max(min.y);
     Rect::from_min_max(min, pos2((min.x + width).min(right), bottom))

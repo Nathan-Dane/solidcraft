@@ -147,26 +147,38 @@ impl<'a> Panel<'a> {
     }
 
     /// The painted anchor also drives dragging, including the shell's edge clearance.
-    fn bounded_anchor(&self) -> egui::Pos2 {
+    fn bounded_anchor(&self, ctx: &egui::Context) -> egui::Pos2 {
         let viewport = self.viewport;
+        let gap = super::Container::new(ctx, super::Surface::Feature).gap();
         let width = self.width.min(viewport.width().max(0.0));
         let x = match self.side {
-            crate::frame::Side::Right => {
-                self.anchor.x.clamp(viewport.left() + width, (viewport.right() - Tokens::get().space_8).max(viewport.left() + width))
-            }
+            crate::frame::Side::Right => self.anchor.x.clamp(
+                viewport.left() + width,
+                (viewport.right() - if gap > 0.0 { Tokens::get().space_8 } else { 0.0 }).max(viewport.left() + width),
+            ),
             crate::frame::Side::Left => self.anchor.x.clamp(viewport.left(), viewport.right() - width),
         };
-        let chrome =
-            Tokens::get().form_header_height + Tokens::get().form_footer_height + self.frame.total_margin().sum().y + crate::shell::SHELL_GAP;
+        let t = Tokens::get();
+        let chrome = t.form_header_height + t.form_footer_height + t.form_gap_y * 2.0 + self.frame.total_margin().sum().y + gap;
         egui::pos2(x, self.anchor.y.clamp(viewport.top(), (viewport.bottom() - chrome).max(viewport.top())))
     }
 
+    /// One positioned frame supplies both the outer surface and its footer corners.
+    fn positioned_frame(&self, ctx: &egui::Context) -> egui::Frame {
+        let anchor = self.bounded_anchor(ctx);
+        let right = match self.side {
+            crate::frame::Side::Right => anchor.x,
+            crate::frame::Side::Left => anchor.x + self.width.min(self.viewport.width().max(0.0)),
+        };
+        super::Container::new(ctx, super::Surface::Feature).tool_frame(self.frame, right >= self.viewport.right() - 0.5)
+    }
+
     pub(crate) fn window(&self, ctx: &egui::Context) -> egui::Window<'a> {
-        let gap = crate::shell::SHELL_GAP;
-        let frame = self.frame;
+        let gap = super::Container::new(ctx, super::Surface::Feature).gap();
         let viewport = self.viewport;
-        let anchor = self.bounded_anchor();
+        let anchor = self.bounded_anchor(ctx);
         let side = self.side;
+        let frame = self.positioned_frame(ctx);
         let margin = frame.total_margin();
         let width = self.width.min(viewport.width().max(0.0));
         let inner_width = (width - margin.sum().x).max(0.0);
@@ -237,16 +249,19 @@ impl<'a> Panel<'a> {
             let t = Tokens::get();
             let min = ui.cursor().min;
             let band = egui::Rect::from_min_size(min, vec2(ui.available_width(), super::header_height()));
-            crate::frame::drag_dock(ui, band, heading.drag_key, heading.moved, self.bounded_anchor() - heading.docked);
+            crate::frame::drag_dock(ui, band, heading.drag_key, heading.moved, self.bounded_anchor(ui.ctx()) - heading.docked);
             let mut close = false;
             if let Some(collapsed) = collapsed.as_deref_mut() {
                 collapsible_header(ui, heading.icon, heading.title, collapsed, || close = true);
             } else {
                 header(ui, heading.icon, heading.title, || close = true);
             }
-            let bottom = self.viewport.bottom() - crate::shell::SHELL_GAP - self.frame.inner_margin.bottomf() - self.frame.stroke.width;
+            let bottom = self.viewport.bottom()
+                - super::Container::new(ui.ctx(), super::Surface::Feature).gap()
+                - self.frame.inner_margin.bottomf()
+                - self.frame.stroke.width;
             let footer_height = t.form_footer_height;
-            let fields_height = (bottom - ui.cursor().top() - footer_height).max(0.0);
+            let fields_height = (bottom - ui.cursor().top() - footer_height - ui.spacing().item_spacing.y).max(0.0);
             let fields_rect = egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), fields_height));
             let state = if collapsed.as_deref().copied().unwrap_or(false) {
                 scenario::publish_count("dialog:body:content_height", 0.0);
@@ -279,12 +294,13 @@ impl<'a> Panel<'a> {
                 })
                 .inner
             };
+            let corners = self.positioned_frame(ui.ctx()).corner_radius;
             let action = super::footer(
                 ui,
                 self.ok,
                 self.cancel,
                 valid && !state.applying,
-                super::Footer { apply: heading.apply_label, status: state.text.as_deref(), ..Default::default() },
+                super::Footer { apply: heading.apply_label, status: state.text.as_deref(), corners: Some(corners), ..Default::default() },
             );
             if state.busy {
                 let rect = egui::Rect::from_min_size(

@@ -136,9 +136,8 @@ fn column_rects(app: &SolveApp, available: Rect, browser_collapsed: bool, histor
 fn column_rects_at(app: &SolveApp, available: Rect, browser_fold: f32, history_fold: f32) -> (Rect, Rect) {
     let mut available = available;
     available.min.x += crate::agent_chat::left_inset(app, available);
-    let gap = crate::shell::SHELL_GAP;
-    let top_gap = if !Container::for_layout(app.ui.layout, Surface::Panel).floating() { gap } else { 0.0 };
-    let column = crate::browser::floating_bounds(available, None, crate::browser::browser_width(app.preferences.browser_width), top_gap);
+    let gap = Container::for_layout(app.ui.layout, Surface::Panel).gap();
+    let column = crate::browser::panel_bounds(available, None, crate::browser::browser_width(app.preferences.browser_width), gap);
     if !app.ui.show_browser {
         let height = egui::lerp(column.height()..=header_outer_height().min(column.height()), history_fold);
         let history = Rect::from_min_size(column.min, vec2(column.width(), height));
@@ -159,12 +158,8 @@ pub(crate) fn floating_rect(app: &SolveApp, available: Rect) -> Rect {
     if stacked(app) {
         return stacked_rects(app, available).1;
     }
-    let gap = crate::shell::SHELL_GAP;
-    let top_gap = if !Container::for_layout(app.ui.layout, Surface::Panel).floating() { gap } else { 0.0 };
-    let min = pos2(
-        (available.left() + crate::agent_chat::left_inset(app, available) + gap).min(available.right()),
-        (available.top() + top_gap).min(available.bottom()),
-    );
+    let gap = Container::for_layout(app.ui.layout, Surface::Panel).gap();
+    let min = pos2((available.left() + crate::agent_chat::left_inset(app, available) + gap).min(available.right()), available.top());
     Rect::from_min_max(min, pos2((min.x + strip_width(app)).min((available.right() - gap).max(min.x)), (available.bottom() - gap).max(min.y)))
 }
 
@@ -179,14 +174,15 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         if !bounds.is_finite() || bounds.width() < crate::ui_kit::history_width(false) || bounds.height() < t.control_height {
             return;
         }
-        let frame = Container::new(ui.ctx(), Surface::Panel).frame(ui.ctx(), t.panel, crate::frame::Side::Left).inner_margin(t.space_4);
+        let container = Container::new(ui.ctx(), Surface::Panel).joined(crate::ui_kit::DockEdges { left: true, top: true, ..Default::default() });
+        let frame = container.frame(ui.ctx(), t.panel, crate::frame::Side::Left).inner_margin(t.space_4);
         let inner = (bounds.size() - frame.total_margin().sum()).max(egui::Vec2::ZERO);
         let card = Container::new(ui.ctx(), Surface::Panel)
             .area(egui::Id::new("sc_timeline_left_card"))
             .fixed_pos(bounds.min)
             .order(egui::Order::Middle)
             .show(ui.ctx(), |ui| {
-                let response = frame.show(ui, |ui| {
+                let response = container.show_frame(ui, frame, available, |ui| {
                     ui.set_min_size(inner);
                     ui.set_max_size(inner);
                     ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
@@ -1249,7 +1245,7 @@ mod tests {
             let history = h.app.shell.history.unwrap();
             assert!((browser.width() - history.width()).abs() < 1.0);
             assert!((browser.height() - history.height()).abs() < 1.0);
-            assert!(browser.bottom() < history.top());
+            assert!((history.top() - browser.bottom() - Container::for_layout(mode, Surface::Panel).gap()).abs() < 1.0);
             let at = handle_at("history:collapse").unwrap();
             h.call("ui.click", json!({"x":at.x,"y":at.y}));
             h.frames(5);
@@ -1264,7 +1260,7 @@ mod tests {
             let folded_history = h.app.shell.history.unwrap();
             assert!(folded_browser.height() <= header_outer_height() + 1.0);
             assert!(folded_history.height() <= header_outer_height() + 1.0);
-            assert!((folded_history.top() - folded_browser.bottom() - crate::shell::SHELL_GAP).abs() < 1.0);
+            assert!((folded_history.top() - folded_browser.bottom() - Container::for_layout(mode, Surface::Panel).gap()).abs() < 1.0);
             let at = handle_at("history:collapse").unwrap();
             h.call("ui.click", json!({"x":at.x,"y":at.y}));
             h.frames(5);
@@ -1546,7 +1542,10 @@ mod tests {
                     h.settle();
                     let history = crate::scenario::rect_of("history:vertical").unwrap();
                     let browser = crate::scenario::rect_of("browser:card").unwrap();
-                    assert!(history.right() < browser.left(), "{mode:?}, names={names}, collapsed={collapsed}: {history:?}, {browser:?}");
+                    assert!(
+                        (browser.left() - history.right() - Container::for_layout(mode, Surface::Panel).gap()).abs() < 1.0,
+                        "{mode:?}, names={names}, collapsed={collapsed}: {history:?}, {browser:?}"
+                    );
                     assert_eq!(history.width(), crate::ui_kit::history_width(names));
                     assert_eq!(handle_at("row:Untitled").is_none(), collapsed);
                     let folder = handle_at("timeline-folder:Housing").unwrap();
@@ -1622,11 +1621,8 @@ mod tests {
             harness.app.preferences.browser_float = false;
             harness.frames(4);
             assert!(crate::scenario::rect_of("browser:float").is_none(), "the explicit overlay is off");
-            assert_eq!(crate::scenario::rect_of("browser:card").is_some(), mode == crate::shell::LayoutMode::Floating);
-            assert_eq!(
-                harness.app.viewport.rect.unwrap().left(),
-                if mode == crate::shell::LayoutMode::Docked { harness.app.preferences.browser_width } else { 0.0 }
-            );
+            assert!(crate::scenario::rect_of("browser:card").is_some());
+            assert_eq!(harness.app.viewport.rect.unwrap().left(), 0.0);
             assert!(handle_at("left-browser-rail").is_some(), "both card and sidebar resize");
         }
     }

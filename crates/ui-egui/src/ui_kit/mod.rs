@@ -31,7 +31,7 @@ pub(crate) use checks::*;
 pub(crate) use choice::*;
 pub(crate) use color::*;
 pub(crate) use confirm::{Confirm, Tone};
-pub use container::{Container, Edge, Surface};
+pub use container::{Container, DockEdges, Edge, Surface};
 pub(crate) use disclosure::*;
 pub use fields::cell_editor;
 pub(crate) use fields::*;

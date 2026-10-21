@@ -398,3 +398,18 @@ rule. Ranking, command mode and keyboard routing remain with the caller.
 Generate CPU-rendered evidence of all five search states and the actual ribbon's
 closed/opening/open/closing transition in both themes with
 `SOLIDCRAFT_SEARCH_EVIDENCE=/tmp/search cargo test -p solidcraft-ui-egui --lib command_search`.
+
+### Compact workspace composition
+
+`Container::gap` and `Container::frame` supply the layout policy for every adaptive
+surface. Compact has no gaps or shadows between edge-bound panels; floating uses
+the shared card spacing and frame. `Panel` bounds draggable compact sheets to the workspace. The shared frame rounds
+all corners away from the right dock and only the left corners while right-docked;
+the footer inherits that frame's bottom corners. Both layouts retain drag offsets. Browser uses the same content renderer and width in both modes,
+with a square, flush ribbon join in Compact. Non-workspace surfaces keep their roles.
+`DockEdges` declares touching edges. The container measures content-hugging cards
+before rounding their exposed corners, and aligns touching outlines onto a single
+border strip without changing logical panel allocations. The application bar has
+an independent surface role.
+The saved `Prefs::layout` is changed through `view.layout`; `ui.set` may still make a
+transient automation override.

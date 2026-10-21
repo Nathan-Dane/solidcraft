@@ -2344,7 +2344,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         cancel = closed || action == crate::ui_kit::Action::Cancel;
         app.viewport.dialog_rect = crate::scenario::rect_of("dialog:window");
     } else {
-        let response = window.frame(frame).open(&mut keep).show(ctx, |ui| {
+        let response = window.open(&mut keep).show(ctx, |ui| {
             let spec = dense::command(&d.kind).and_then(solidcraft_engine::find_command);
             let icon = spec.as_ref().map_or("", |s| s.icon);
             let label = spec.as_ref().map_or(heading.as_str(), |s| tr(s.label));

@@ -1296,7 +1296,7 @@ fn history_board_in_both_themes_and_widths() {
                             |ui| {
                                 ui.painter().rect_filled(bounds, 0.0, Tokens::get().viewport_top);
                                 crate::timeline_left::left_panel(&mut app, ui);
-                                crate::browser::floating(&mut app, ui, bounds);
+                                crate::browser::browser(&mut app, ui);
                             },
                         );
                         textures_update(&mut textures, &output.textures_delta);

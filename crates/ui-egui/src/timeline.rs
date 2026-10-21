@@ -1,7 +1,7 @@
 //! The timeline (bottom): features in order, the rollback marker, errors and warnings.
 
 use crate::ui_kit::{Container, Edge, Surface};
-use egui::{Rect, Sense, Stroke, UiBuilder, pos2, vec2};
+use egui::{Rect, Sense, UiBuilder, pos2, vec2};
 use serde_json::{Value, json};
 use solidcraft_engine::doc::{
     FeatureKind, PlaneRef, SketchId,
@@ -309,9 +309,7 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
     let accent = crate::theme::TabAccent::for_tab(&t, &app.ui.tab);
     let r = ui.max_rect();
     let p = ui.painter().clone();
-    if !floating {
-        p.line_segment([r.left_top(), r.right_top()], Stroke::new(1.0, t.border));
-    }
+
     let n = app.session.doc.features.len();
     let marker = app.session.doc.marker.unwrap_or(n);
     // Playback controls.
