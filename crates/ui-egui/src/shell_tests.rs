@@ -485,7 +485,7 @@ fn assistant_right_edge_survives_palette_tool_resize_and_minimize() {
 }
 
 #[test]
-fn tool_sheets_drag_over_shell_cards_but_never_over_assistant() {
+fn tool_sheets_drag_over_browser_and_history_but_clear_protected_panels() {
     for side in ["left", "right"] {
         let mut h = Harness::new();
         h.app.home.open = false;
@@ -499,20 +499,22 @@ fn tool_sheets_drag_over_shell_cards_but_never_over_assistant() {
         let browser = h.app.shell.browser.unwrap();
         let history = h.app.shell.history.unwrap();
         let ribbon = h.app.shell.cards[1];
-        for target in [browser.center(), history.center(), ribbon.center(), egui::pos2(-1000.0, 400.0), egui::pos2(3000.0, 400.0)] {
+        let workspace = h.app.shell.cards[0];
+        for target in [browser.center(), history.center(), ribbon.center(), workspace.center(), egui::pos2(-1000.0, 400.0), egui::pos2(3000.0, 400.0)]
+        {
             let title = crate::scenario::handle_at("dialog:title").unwrap();
             h.call("ui.drag", json!({"x0":title.x,"y0":title.y,"x1":target.x,"y1":target.y,"steps":10}));
             h.frames(4);
             let sheet = h.app.viewport.dialog_rect.unwrap();
             assert!(!sheet.intersect(chat).is_positive(), "{side}: {sheet:?} overlaps Assistant {chat:?}");
+            assert!(!sheet.intersect(ribbon).is_positive(), "sheet clears ribbon");
+            assert!(!sheet.intersect(workspace).is_positive(), "sheet clears workspace selector");
             if target == browser.center() {
                 assert!(sheet.intersect(browser).is_positive(), "sheet can cover Browser");
                 let layer = h.ctx.layer_id_at(sheet.intersect(browser).center()).unwrap();
                 assert_eq!(layer.id, egui::Id::new(("sc_dialog", "CREATE SKETCH")), "sheet receives input above Browser");
             } else if target == history.center() {
                 assert!(sheet.intersect(history).is_positive(), "sheet can cover History");
-            } else if target == ribbon.center() {
-                assert!(sheet.intersect(ribbon).is_positive(), "sheet can cover ribbon");
             }
         }
         h.step(&json!({"widget":"Cancel"})).unwrap();

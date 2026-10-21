@@ -120,10 +120,18 @@ pub(crate) fn content_rect(app: &SolveApp, viewport: Rect) -> Rect {
     if app.ui.layout == LayoutMode::Floating { app.shell.content.unwrap_or(viewport).intersect(viewport) } else { viewport }
 }
 
-/// Tool sheets open beside the other cards, but may be dragged across them.
-/// Assistant alone reserves its outside rail; that exception stays in its owner.
+/// Tool sheets may cover Browser and History, while shell chrome and Assistant stay clear.
+/// Assistant's outside-rail exception stays in its owner.
 pub(crate) fn tool_drag_rect(app: &SolveApp, placement: Rect) -> Rect {
-    if app.ui.layout == LayoutMode::Floating { crate::agent_chat::tool_space(app, app.viewport.rect.unwrap_or(placement)) } else { placement }
+    if app.ui.layout == LayoutMode::Floating {
+        let mut bounds = crate::agent_chat::tool_space(app, app.viewport.rect.unwrap_or(placement));
+        for card in app.shell.cards.iter().filter(|r| r.is_finite() && r.is_positive()) {
+            bounds.min.y = (card.bottom() + SHELL_GAP).clamp(bounds.top(), bounds.bottom());
+        }
+        bounds
+    } else {
+        placement
+    }
 }
 
 pub(crate) fn panel_top(app: &SolveApp, viewport: Rect, bottom: f32, side: crate::frame::Side) -> f32 {
