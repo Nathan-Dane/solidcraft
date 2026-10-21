@@ -154,7 +154,7 @@ pub(crate) fn left_inset(app: &SolveApp, available: Rect) -> f32 {
 /// Assistant-specific precedence over tool sheets. Keep this out of the shared container:
 /// ordinary tool panels never reserve an outside rail for themselves.
 pub(crate) fn tool_space(app: &SolveApp, mut available: Rect) -> Rect {
-    if app.ui.layout == crate::shell::LayoutMode::Floating
+    if Container::for_layout(app.ui.layout, Surface::Panel).floating()
         && shown(app)
         && app.agent_chat.open
         && !app.preferences.agent_chat_popped
