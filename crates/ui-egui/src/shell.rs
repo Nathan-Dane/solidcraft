@@ -134,6 +134,16 @@ pub(crate) fn content_rect(app: &SolveApp, viewport: Rect) -> Rect {
     if Container::for_layout(app.ui.layout, Surface::Panel).floating() { app.shell.content.unwrap_or(viewport).intersect(viewport) } else { viewport }
 }
 
+/// Tool sheets open beside the other cards, but may be dragged across them.
+/// Assistant alone reserves its outside rail; that exception stays in its owner.
+pub(crate) fn tool_drag_rect(app: &SolveApp, placement: Rect) -> Rect {
+    if Container::for_layout(app.ui.layout, Surface::Feature).floating() {
+        crate::agent_chat::tool_space(app, app.viewport.rect.unwrap_or(placement))
+    } else {
+        placement
+    }
+}
+
 pub(crate) fn panel_top(app: &SolveApp, viewport: Rect, bottom: f32, side: crate::frame::Side) -> f32 {
     let content = content_rect(app, viewport);
     if Container::for_layout(app.ui.layout, Surface::Panel).floating() && side == crate::frame::Side::Right {

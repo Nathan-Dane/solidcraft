@@ -483,3 +483,39 @@ fn assistant_right_edge_survives_palette_tool_resize_and_minimize() {
         assert!(h.app.viewport.palette_rect.unwrap().right() > palette.right(), "closing Assistant reclaims its rail");
     }
 }
+
+#[test]
+fn tool_sheets_drag_over_shell_cards_but_never_over_assistant() {
+    for side in ["left", "right"] {
+        let mut h = Harness::new();
+        h.app.home.open = false;
+        h.call("ui.resize", json!({"width":1800,"height":1000}));
+        h.call("ui.set", json!({"layout":"floating"}));
+        h.call("ui.agent_chat", json!({"open":true,"side":side,"width":380,"picker":false}));
+        h.frames(5);
+        h.app.start("sketch.create");
+        h.frames(5);
+        let chat = h.app.agent_chat.panel_rect.unwrap();
+        let browser = h.app.shell.browser.unwrap();
+        let history = h.app.shell.history.unwrap();
+        let ribbon = h.app.shell.cards[1];
+        for target in [browser.center(), history.center(), ribbon.center(), egui::pos2(-1000.0, 400.0), egui::pos2(3000.0, 400.0)] {
+            let title = crate::scenario::handle_at("dialog:title").unwrap();
+            h.call("ui.drag", json!({"x0":title.x,"y0":title.y,"x1":target.x,"y1":target.y,"steps":10}));
+            h.frames(4);
+            let sheet = h.app.viewport.dialog_rect.unwrap();
+            assert!(!sheet.intersect(chat).is_positive(), "{side}: {sheet:?} overlaps Assistant {chat:?}");
+            if target == browser.center() {
+                assert!(sheet.intersect(browser).is_positive(), "sheet can cover Browser");
+                let layer = h.ctx.layer_id_at(sheet.intersect(browser).center()).unwrap();
+                assert_eq!(layer.id, egui::Id::new(("sc_dialog", "CREATE SKETCH")), "sheet receives input above Browser");
+            } else if target == history.center() {
+                assert!(sheet.intersect(history).is_positive(), "sheet can cover History");
+            } else if target == ribbon.center() {
+                assert!(sheet.intersect(ribbon).is_positive(), "sheet can cover ribbon");
+            }
+        }
+        h.step(&json!({"widget":"Cancel"})).unwrap();
+        assert!(h.app.dialog.is_none(), "dragged sheet remains interactive");
+    }
+}

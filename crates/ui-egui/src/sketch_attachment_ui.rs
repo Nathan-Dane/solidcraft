@@ -149,12 +149,13 @@ pub fn panel(app: &mut SolveApp, ctx: &egui::Context) {
     let top = crate::shell::panel_top(app, viewport, viewport.bottom(), side);
     let docked = egui::pos2(side.anchor_x(viewport), top);
     let moved = crate::frame::dock_offset(ctx, "sc_redefine");
-    let anchor = crate::frame::offset_anchor(docked, moved, viewport, side);
+    let drag_bounds = crate::shell::tool_drag_rect(app, viewport);
+    let anchor = crate::frame::offset_anchor(docked, moved, drag_bounds, side);
     let frame = ui_kit::Panel::feature_frame(ctx, app.ui.layout, side);
     let spec = solidcraft_engine::find_command("sketch.redefine");
     let command = spec.as_ref().map_or("", |s| crate::i18n::tr_label(s.label));
     let title = crate::i18n::format("sketch_panel.redefine_title", &[("command", command), ("name", name)]);
-    let panel = ui_kit::Panel::new(&title, egui::Id::new("sc_redefine"), anchor, viewport, side, frame);
+    let panel = ui_kit::Panel::new(&title, egui::Id::new("sc_redefine"), anchor, drag_bounds, side, frame);
     let response = panel.window(ctx).show(ctx, |ui| {
         let (closed, action) = panel.feature(
             ui,

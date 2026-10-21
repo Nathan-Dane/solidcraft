@@ -61,12 +61,13 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     let docked = egui::pos2(side.anchor_x(viewport), top);
     let title = tr("ui.material_review.title");
     let moved = crate::frame::dock_offset(ctx, "material_card_review");
-    let anchor = crate::frame::offset_anchor(docked, moved, viewport, side);
+    let drag_bounds = crate::shell::tool_drag_rect(app, viewport);
+    let anchor = crate::frame::offset_anchor(docked, moved, drag_bounds, side);
     let panel = ui_kit::Panel::new(
         title,
         egui::Id::new("sc_material_card_review"),
         anchor,
-        viewport,
+        drag_bounds,
         side,
         ui_kit::Panel::feature_frame(ctx, app.ui.layout, side),
     )
