@@ -68,7 +68,10 @@ pub(crate) fn strip_width(app: &SolveApp) -> f32 {
 pub(crate) fn floating_rect(app: &SolveApp, available: Rect) -> Rect {
     let gap = crate::shell::SHELL_GAP;
     let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
-    let min = pos2((available.left() + gap).min(available.right()), (available.top() + top_gap).min(available.bottom()));
+    let min = pos2(
+        (available.left() + crate::agent_chat::left_inset(app, available) + gap).min(available.right()),
+        (available.top() + top_gap).min(available.bottom()),
+    );
     Rect::from_min_max(min, pos2((min.x + strip_width(app)).min((available.right() - gap).max(min.x)), (available.bottom() - gap).max(min.y)))
 }
 

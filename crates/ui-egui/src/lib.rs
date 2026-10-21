@@ -1591,6 +1591,10 @@ impl SolveApp {
         if floating && show_timeline && !left_timeline {
             timeline::timeline(self, ui);
         }
+        let chat_first = !floating && self.preferences.agent_chat_side == "left";
+        if chat_first {
+            agent_chat::show(self, ui);
+        }
         if left_timeline {
             timeline_left::left_panel(self, ui);
         }
@@ -1600,7 +1604,7 @@ impl SolveApp {
         if render_workspace::active(self) {
             render_workspace::panel(self, ui);
         }
-        if !floating {
+        if !floating && !chat_first {
             agent_chat::show(self, ui);
         }
         if browser_float {

@@ -719,6 +719,7 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     let width = browser_width(app.preferences.browser_width);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
     let mut available = available;
+    available.min.x += crate::agent_chat::left_inset(app, available);
     if vertical && let Some(history) = app.shell.history {
         available.min.x = (history.right() + gap).min(available.right()) - gap;
     }

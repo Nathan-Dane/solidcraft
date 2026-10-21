@@ -340,7 +340,7 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
                 assert!(layout.navigation.center().x < original_controls.navigation.center().x, "navigation moves left");
             } else {
                 let browser = h.app.shell.browser.expect("browser card");
-                assert!(card.left() > browser.right(), "left Assistant clears browser");
+                assert!(card.right() < browser.left(), "left Assistant precedes browser");
             }
             let camera = h.app.cam;
             let at = card.center();
@@ -365,10 +365,74 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             assert_eq!(h.app.viewport.rect, Some(projection));
             let folded_controls = h.app.viewport.layout.as_ref().expect("layout");
             assert_eq!(folded_controls.axis_view, original_controls.axis_view);
-            assert_eq!(folded_controls.navigation, original_controls.navigation);
+            if side == "right" {
+                assert_eq!(folded_controls.navigation, original_controls.navigation);
+            } else {
+                let shift = (folded.width() + SHELL_GAP) / 2.0;
+                assert!((folded_controls.navigation.center().x - original_controls.navigation.center().x - shift).abs() < 1.0);
+            }
             h.call("ui.agent_chat", serde_json::json!({"open":false}));
             h.frames(3);
             assert!(!covered(&h.app, card.center()), "closed chat leaves no stale obstruction");
+        }
+    }
+}
+
+#[test]
+fn assistant_left_dock_precedes_history_and_drag_hints_match_the_result() {
+    for layout in ["floating", "docked"] {
+        for names in [false, true] {
+            let mut h = Harness::new();
+            h.app.home.open = false;
+            h.app.preferences.timeline_left = true;
+            h.app.preferences.timeline_left_names = names;
+            h.call("ui.resize", json!({"width":1600,"height":1000}));
+            h.call("ui.set", json!({"layout":layout}));
+            h.call("ui.agent_chat", json!({"open":true,"side":"right","width":440,"picker":false}));
+            h.frames(6);
+            let projection = h.app.viewport.rect;
+            for left in [true, false] {
+                let grip = crate::scenario::handle_at("agent_chat:grip").expect("drag grip");
+                let target = pos2(if left { 100.0 } else { 1500.0 }, grip.y);
+                h.app.synthetic.push(egui::Event::PointerMoved(grip));
+                h.frame();
+                h.app.synthetic.push(egui::Event::PointerButton {
+                    pos: grip,
+                    button: egui::PointerButton::Primary,
+                    pressed: true,
+                    modifiers: egui::Modifiers::NONE,
+                });
+                h.frame();
+                h.app.synthetic.push(egui::Event::PointerMoved(target));
+                h.frames(2);
+                let hint = rect_of("agent_chat:dock_hint").expect("visible dock target");
+                h.app.synthetic.push(egui::Event::PointerButton {
+                    pos: target,
+                    button: egui::PointerButton::Primary,
+                    pressed: false,
+                    modifiers: egui::Modifiers::NONE,
+                });
+                h.frames(6);
+                let card = h.app.agent_chat.panel_rect.expect("docked Assistant");
+                assert_eq!(h.app.preferences.agent_chat_side, if left { "left" } else { "right" });
+                assert!((hint.min - card.min).length() < 1.0 && (hint.max - card.max).length() < 1.0, "{layout} preview {hint:?} matches {card:?}");
+                if layout == "floating" {
+                    assert_eq!(h.app.viewport.rect, projection, "docking keeps model projection");
+                }
+                if left {
+                    let history = h.app.shell.history.expect("vertical history");
+                    let browser = h.app.shell.browser.expect("browser");
+                    assert!(card.right() <= history.left(), "Assistant precedes history: {card:?} {history:?}");
+                    assert!(history.right() <= browser.left(), "history precedes browser");
+                }
+            }
+            h.call("ui.agent_chat", json!({"side":"left","minimized":true}));
+            h.frames(6);
+            let strip = h.app.agent_chat.drop_rect.expect("minimized Assistant");
+            assert!(strip.right() <= h.app.shell.history.expect("history").left());
+            h.call("ui.agent_chat", json!({"open":false}));
+            h.frames(6);
+            assert!(h.app.shell.history.expect("history returns to outer edge").left() < strip.right());
         }
     }
 }

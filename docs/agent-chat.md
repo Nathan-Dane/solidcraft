@@ -36,7 +36,8 @@ In the floating layout, Assistant fills the viewport height in the shared rounde
 space around its edges. The compass and navigation bar move into the remaining space beside it. It overlays the model without changing the viewport projection;
 clicks and scrolling over the panel stay in the chat. The docked layout retains its side panel.
 
-- **Docking:** drag the panel's header (the dotted grip and the title) to the other half of the
+- **Docking:** on the left, Assistant is the first panel, before vertical history and the browser.
+  The drag highlight shows the actual destination bounds. Drag the panel's header (the dotted grip and the title) to the other half of the
   window and let go. The side it would land on lights up while you drag. You can also pick
   **Left** or **Right** under Preferences → AI → Panel. SolidCraft remembers the side.
 - **Width:** drag the panel's inner edge. SolidCraft remembers it.

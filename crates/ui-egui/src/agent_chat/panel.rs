@@ -101,6 +101,9 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         show_drop_hint(app, &ctx);
         return;
     }
+    let available = ui.available_rect_before_wrap();
+    let screen = ctx.content_rect();
+    app.agent_chat.dock_space = Some(Rect::from_x_y_ranges(screen.x_range(), available.y_range()));
     let t = Tokens::get();
     let left = app.preferences.agent_chat_side == "left";
     let side = |id: Id| if left { egui::Panel::left(id) } else { egui::Panel::right(id) };
@@ -133,47 +136,66 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 
+/// Horizontal room reserved before the history and browser when Assistant is on the left.
+pub(crate) fn left_inset(app: &SolveApp, available: Rect) -> f32 {
+    if app.ui.layout == crate::shell::LayoutMode::Floating
+        && shown(app)
+        && app.agent_chat.open
+        && !app.preferences.agent_chat_popped
+        && app.preferences.agent_chat_side == "left"
+    {
+        let width = if app.preferences.agent_chat_minimized { STRIP } else { app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH) };
+        (width + crate::shell::SHELL_GAP).min(available.width().max(0.0))
+    } else {
+        0.0
+    }
+}
+
+/// The same outer rectangle is used for the floating sheet and its docking preview.
+fn floating_bounds(app: &SolveApp, available: Rect, left: bool) -> Rect {
+    let t = Tokens::get();
+    let gap = crate::shell::SHELL_GAP;
+    let mut bounds = available.shrink(gap);
+    if let Some(history) = app.shell.history.filter(|_| app.ui.show_timeline && !app.preferences.timeline_left) {
+        bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
+    }
+    // Left docking always starts at the outer edge; history and browser follow it.
+    // A right sheet leaves room beside an existing feature sheet or sketch palette.
+    if !left {
+        let dialog = app.viewport.dialog_rect.filter(|_| app.dialog.is_some() || app.tree.redefine.is_some());
+        let palette = app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some());
+        for obstacle in [dialog, palette].into_iter().flatten().filter(|r| r.is_finite() && r.is_positive()) {
+            if obstacle.center().x >= available.center().x {
+                bounds.max.x = (obstacle.left() - gap).min(bounds.right()).max(bounds.left());
+            }
+        }
+        // Match the shared Panel's right-edge clearance.
+        bounds.max.x = bounds.right().min(available.right() - t.space_8).max(bounds.left());
+    }
+    let width = if app.preferences.agent_chat_minimized { STRIP } else { app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH) };
+    let height = if app.preferences.agent_chat_minimized { (t.space_24 * 3.0 + t.space_16).min(bounds.height()) } else { bounds.height() };
+    let width = width.min(bounds.width().max(0.0));
+    Rect::from_min_size(pos2(if left { bounds.left() } else { bounds.right() - width }, bounds.top()), vec2(width, height.max(0.0)))
+}
+
 /// Use the same bounded, rounded floating surface as feature panels. The sheet overlays
 /// the viewport, leaving the model's rendering and picking projection unchanged.
 fn floating(app: &mut SolveApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let t = Tokens::get();
-    let gap = crate::shell::SHELL_GAP;
     let available = ui.available_rect_before_wrap();
+    app.agent_chat.dock_space = Some(available);
     let left = app.preferences.agent_chat_side == "left";
     let side = if left { crate::frame::Side::Left } else { crate::frame::Side::Right };
     let minimized = app.preferences.agent_chat_minimized;
-    let mut bounds = available.shrink(gap);
-    if left {
-        if let Some(browser) = app.shell.browser {
-            bounds.min.x = (browser.right() + gap).max(bounds.left()).min(bounds.right());
-        }
-        if let Some(history) = app.shell.history.filter(|_| app.preferences.timeline_left) {
-            bounds.min.x = (history.right() + gap).max(bounds.left()).min(bounds.right());
-        }
-    }
-    if let Some(history) = app.shell.history.filter(|_| !app.preferences.timeline_left) {
-        bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
-    }
-    // Feature sheets and the sketch palette keep their existing anchor. Leave room beside
-    // them rather than reserving model projection width.
-    let dialog = app.viewport.dialog_rect.filter(|_| app.dialog.is_some() || app.tree.redefine.is_some());
-    let palette = app.viewport.palette_rect.filter(|_| app.session.active_sketch.is_some());
-    for obstacle in [dialog, palette].into_iter().flatten().filter(|r| r.is_finite() && r.is_positive()) {
-        if left && obstacle.center().x < available.center().x {
-            bounds.min.x = (obstacle.right() + gap).max(bounds.left()).min(bounds.right());
-        } else if !left && obstacle.center().x >= available.center().x {
-            bounds.max.x = (obstacle.left() - gap).min(bounds.right()).max(bounds.left());
-        }
-    }
-    let top = bounds.top();
+    let bounds = floating_bounds(app, available, left);
     if !bounds.is_positive() {
         app.agent_chat.panel_rect = None;
         return;
     }
-    let width = if minimized { STRIP } else { app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH) }.min(bounds.width());
-    let height = if minimized { (t.space_24 * 3.0 + t.space_16).min(bounds.height()) } else { bounds.height() };
-    let anchor = pos2(if left { bounds.left() } else { bounds.right() }, top);
+    let width = bounds.width();
+    let height = bounds.height();
+    let anchor = if left { bounds.left_top() } else { bounds.right_top() };
     let frame = ui_kit::Panel::feature_frame(&ctx, crate::shell::LayoutMode::Floating, side);
     let inner = (vec2(width, height) - frame.total_margin().sum()).max(egui::Vec2::ZERO);
     let panel = ui_kit::Panel::new(tr("ui.assistant"), Id::new("sc_agent_chat_floating"), anchor, available, side, frame).width(width);
@@ -615,16 +637,17 @@ fn dock_drag(app: &mut SolveApp, ui: &egui::Ui, drag: &egui::Response, left: boo
     {
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         let to_left = target(p.x);
-        let w = app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH);
-        let top = screen.top() + crate::toolbar::APP_BAR_HEIGHT;
-        let zone = if to_left {
-            Rect::from_min_max(pos2(screen.left(), top), pos2(screen.left() + w, screen.bottom()))
+        let available = app.agent_chat.dock_space.unwrap_or(screen);
+        let zone = if app.ui.layout == crate::shell::LayoutMode::Floating {
+            floating_bounds(app, available, to_left)
         } else {
-            Rect::from_min_max(pos2(screen.right() - w, top), pos2(screen.right(), screen.bottom()))
+            let w = app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH).min(available.width());
+            Rect::from_min_size(pos2(if to_left { available.left() } else { available.right() - w }, available.top()), vec2(w, available.height()))
         };
+        crate::scenario::publish_rect("agent_chat:dock_hint", zone);
         let t = Tokens::get();
         let painter = ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Foreground, Id::new("sc_agent_chat_dock_hint")));
-        painter.rect(zone.shrink(4.0), 8.0, t.accent.gamma_multiply(0.18), Stroke::new(2.0, t.accent), egui::StrokeKind::Inside);
+        painter.rect(zone, t.radius_xl, t.accent.gamma_multiply(0.18), Stroke::new(2.0, t.accent), egui::StrokeKind::Inside);
         painter.text(
             zone.center(),
             Align2::CENTER_CENTER,
