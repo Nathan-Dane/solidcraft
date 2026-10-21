@@ -109,22 +109,26 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | status: `status_header`, `StatusHeader` | Supplied icon/name/status and constraint meter | `font_label`, `text/dim`, `accent`, sketch/header tokens |
 | `progress` | Clamped determinate progress | `space_3/6`, `dialog_rule`, `accent` |
 
-The vertical history occupies the far left of the viewport shell; the browser card or its
-34 pt collapsed rail sits to its right with the shell gap. Floating mode keeps the scene's
-projection intact; Docked reserves the history column. The seam handle overlays the strip’s right edge without taking layout space. Its 3 × 26 pt
-`control_border` grip sits 2 pt inside the edge at the vertical centre. Hovering the 10 pt edge zone
-reveals an 18 × 44 pt half-pill straddling the edge, with active-tab accent border/chevron and soft
-fill (the browser header’s shared tint). The edge uses the horizontal resize cursor; the pill uses
-the pointing hand. Click the pill, double-click the edge, or focus the handle with Tab and press
-Enter/Space to toggle. The tooltip shows **Show names**/**Hide names** and “double-click the edge”.
-Dragging clamps the width continuously to 56–168 pt, clips 26 pt name rows, highlights the border,
-and draws a dashed accent guide at the names width with a Names chip. Release snaps at the midpoint
-(112 pt) through `view.history_names`. Only `timeline_left_names` is persisted; the drag width
-stays in memory. The command also appears in search and the strip context menu (checked **Show names**),
-independently of browser collapse. The whole collapsed browser rail expands on click and uses
-the same inset, rounded tab-accent hover tint as the expanded header, with a pointing-hand cursor. Transport
-sits at the top, stacked for icons and horizontal for names, followed by 6 pt padding, a 1 pt
-hairline and 2 pt before the first item. Selection actions live in the item context menus.
+History contents are selected from measured panel width. A 56 pt thin strip shows icons
+and vertical playback controls. The minimum named width is 112 pt; it adds horizontal
+playback and the same six-dot window grip as Assistant. When the remaining header space
+fits its measured text, **History** appears between grip and playback. No names-mode flag
+or command selects these layouts. The seam snaps between 56 and 112 pt; widths from 112
+through 624 pt remain continuous and persist as `timeline_left_width`.
+
+Drag the grip or title to dock along the bottom, at the full-height left edge, or beneath
+the browser. The last position shares the browser's width and divides available column
+height equally. Folding either card leaves its header visible and gives the remainder to
+the other. If both are folded, their headers sit together at the top of the column.
+Browser resizing also resizes History.
+The `view.history_layout` command validates width, docking and collapse requests without
+altering the design or opening dialogs. Floating mode preserves viewport projection.
+
+The seam handle overlays the strip's right edge without taking layout space. Its grip is
+visible at rest; the arrow appears only on hover. Click, double-click the edge, or use
+Enter/Space on the focused handle to resize between thin and minimum named widths. Drag
+freely above the named minimum; resizing draws no dotted guide or name label. Header/title dragging
+and the edge width gesture are separate from feature/folder and rollback dragging.
 The rollback marker is 12 pt high.
 Its 2 pt line uses the active tab fill and ends in a 10 pt hollow circle with a 2 pt accent
 border and the card/panel surface inside. The circle overlaps the line end by 1 pt. The bottom

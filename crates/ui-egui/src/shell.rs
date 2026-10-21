@@ -82,6 +82,8 @@ pub(crate) struct State {
     pub history: Option<Rect>,
     /// In-memory seam drag width, never serialized as a preference.
     pub history_drag_width: Option<f32>,
+    /// Unreserved canvas bounds used by History docking targets.
+    pub history_dock_space: Option<Rect>,
     pub content: Option<Rect>,
 }
 

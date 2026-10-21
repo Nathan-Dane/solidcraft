@@ -729,15 +729,23 @@ impl SolveApp {
         if self.file_load.busy() || self.file_picker.is_some() || self.saving.is_some() {
             return Err("a file operation is in progress".into());
         }
-        if id == "view.history_names" {
-            self.session.history_names = self.preferences.timeline_left_names;
-        }
         let t0 = now_ms();
         let r = self.session.execute(id, &params).map_err(|e| e.to_string());
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         if let Ok(v) = &r {
-            if id == "view.history_names" {
-                self.preferences.timeline_left_names = self.session.history_names;
+            if id == "view.history_layout" {
+                if let Some(width) = v.get("width").and_then(Value::as_f64) {
+                    self.preferences.timeline_left_width = ui_kit::history_snap_width(width as f32);
+                }
+                if let Some(dock) = v.get("dock").and_then(Value::as_str) {
+                    self.preferences.timeline_left = dock != "bottom";
+                    self.preferences.timeline_under_browser = dock == "under_browser";
+                    self.preferences.timeline_collapsed = false;
+                    self.preferences.timeline_left_browser_collapsed = false;
+                }
+                if let Some(collapsed) = v.get("collapsed").and_then(Value::as_bool) {
+                    self.preferences.timeline_collapsed = collapsed;
+                }
             }
             if matches!(id, "view.ambient_occlusion" | "view.graphics_preset") {
                 self.preferences.ambient_occlusion = v.get("enabled").and_then(Value::as_bool).unwrap_or(false);
@@ -858,7 +866,7 @@ impl SolveApp {
             return;
         }
         // A display toggle leaves the current modelling tool and camera in place.
-        if id == "view.history_names" {
+        if id == "view.history_layout" {
             let _ = self.run(id, json!({}));
             return;
         }
@@ -1550,19 +1558,16 @@ impl SolveApp {
         if !browser_float {
             self.shell.browser = None;
         }
-        let previous_history = self.shell.history;
-        self.shell.history = None;
+        if floating || left_timeline || !show_timeline {
+            self.shell.history = None;
+        }
         let full = ui.available_rect_before_wrap();
         if floating {
             let cards = shell::Cards::new(full, self.ui.layout);
             self.shell.cards = vec![cards.workspace, cards.ribbon];
             self.shell.history = if left_timeline {
                 let below_ribbon = egui::Rect::from_min_max(egui::pos2(full.left(), cards.bottom), full.max);
-                let mut rect = timeline_left::floating_rect(self, below_ribbon);
-                if let Some(previous) = previous_history.filter(|previous| (previous.width() - rect.width()).abs() < 1.0) {
-                    rect.max.y = (rect.top() + previous.height()).min(rect.bottom());
-                }
-                Some(rect)
+                Some(timeline_left::floating_rect(self, below_ribbon))
             } else {
                 show_timeline.then(|| timeline::floating_rect(full))
             };
@@ -1605,6 +1610,10 @@ impl SolveApp {
             // The remaining content starts below the ribbon in either shell layout.
             let viewport = ui.available_rect_before_wrap();
             browser::floating(self, ui, viewport);
+        }
+        if !floating && timeline_left::stacked(self) {
+            let width = browser::browser_width(self.preferences.browser_width) + shell::SHELL_GAP * 2.0;
+            egui::Panel::left("sc_history_browser_column").exact_size(width).resizable(false).frame(egui::Frame::NONE).show(ui, |_| {});
         }
         egui::CentralPanel::default().frame(egui::Frame::NONE).show(ui, |ui| {
             if floating {

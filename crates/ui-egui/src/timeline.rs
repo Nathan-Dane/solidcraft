@@ -255,6 +255,7 @@ fn toggle_feature(app: &mut SolveApp, id: u64) {
 
 pub fn timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
+    app.shell.history_dock_space = Some(ui.available_rect_before_wrap());
     if app.ui.layout == crate::shell::LayoutMode::Floating {
         let rect = floating_rect(ui.available_rect_before_wrap());
         // A window too short for the card (the ribbon already fills it) leaves the history out
@@ -273,6 +274,7 @@ pub fn timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
         let response = egui::Panel::bottom("sc_timeline").exact_size(40.0).frame(egui::Frame::NONE.fill(t.timeline)).show(ui, |ui| {
             timeline_contents(app, ui, false);
         });
+        app.shell.history = Some(response.response.rect);
         crate::scenario::publish_rect("history:strip", response.response.rect);
     }
 }
@@ -295,11 +297,21 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
     let marker = app.session.doc.marker.unwrap_or(n);
     // Playback controls.
     let mut x = r.left() + t.space_10;
-    if floating {
-        let label = p.layout_no_wrap(crate::i18n::tr("ui.history_title").to_string(), egui::FontId::proportional(t.font_label), t.text);
-        p.galley(pos2(x, r.center().y - label.size().y / 2.0), label.clone(), t.text);
+    let grip_rect = Rect::from_center_size(pos2(x + t.space_10 / 2.0, r.center().y), vec2(t.space_10, t.space_16 + t.space_2));
+    let mut grip_ui = ui.new_child(UiBuilder::new().max_rect(grip_rect).layout(egui::Layout::left_to_right(egui::Align::Center)));
+    let grip = crate::ui_kit::panel_grip(&mut grip_ui).rect;
+    x += t.space_10 + t.space_8;
+    let mut drag_rect = grip;
+    if r.width() >= crate::ui_kit::history_width(true) {
+        let label = p.layout_no_wrap(crate::i18n::tr("ui.history_title").to_string(), crate::fonts::semibold(t.font_heading), t.text);
+        let title_rect = Rect::from_min_size(pos2(x, r.center().y - label.size().y / 2.0), label.size());
+        p.galley(title_rect.min, label.clone(), t.text);
+        drag_rect = drag_rect.union(title_rect);
         x += label.size().x + t.space_12;
     }
+    let response = ui.interact(drag_rect, egui::Id::new("sc_history_dock_grip"), Sense::drag());
+    crate::scenario::publish_handle("history:grip", drag_rect.center());
+    crate::timeline_left::dock_drag(app, ui, &response);
     let controls = [("first", Some(0usize)), ("back", Some(marker.saturating_sub(1))), ("forward", Some((marker + 1).min(n))), ("last", None)];
     for (what, target) in controls {
         let br = Rect::from_center_size(pos2(x + 11.0, r.center().y), vec2(22.0, 22.0));

@@ -690,7 +690,7 @@ fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     finish_browser(app, ui, acts);
 }
 
-fn browser_width(remembered: f32) -> f32 {
+pub(crate) fn browser_width(remembered: f32) -> f32 {
     if remembered.is_finite() { remembered.clamp(MIN_BROWSER_WIDTH, MAX_BROWSER_WIDTH) } else { crate::prefs::DEFAULT_BROWSER_WIDTH }
 }
 
@@ -719,12 +719,19 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     let width = browser_width(app.preferences.browser_width);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
     let mut available = available;
-    if vertical && let Some(history) = app.shell.history {
+    let stacked = crate::timeline_left::stacked(app);
+    if vertical
+        && !stacked
+        && let Some(history) = app.shell.history
+    {
         available.min.x = (history.right() + gap).min(available.right()) - gap;
     }
-    let collapsed = vertical && app.preferences.timeline_left_browser_collapsed;
-    let bounds =
-        floating_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, top_gap);
+    let collapsed = vertical && !stacked && app.preferences.timeline_left_browser_collapsed;
+    let bounds = if stacked {
+        crate::timeline_left::stacked_rects(app, available).0
+    } else {
+        floating_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, top_gap)
+    };
     app.shell.browser = None;
     let min_height = HEADER_H + 2.0 * (CARD_INSET + 1.0);
     if bounds.is_positive() && bounds.height() >= min_height {
@@ -736,6 +743,10 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
             let response = frame.show(ui, |ui| {
                 ui.set_width(inner_width);
                 ui.set_max_height(inner_height);
+                if stacked {
+                    ui.set_min_height(inner_height);
+                    ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, vec2(inner_width, inner_height))));
+                }
                 if collapsed {
                     browser_collapsed_rail(app, ui);
                 } else {
@@ -790,7 +801,7 @@ fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     );
 }
 
-fn floating_bounds(available: Rect, history: Option<Rect>, width: f32, top_gap: f32) -> Rect {
+pub(crate) fn floating_bounds(available: Rect, history: Option<Rect>, width: f32, top_gap: f32) -> Rect {
     let gap = crate::shell::SHELL_GAP;
     let min = available.min + vec2(gap, top_gap);
     let right = (available.right() - gap).max(min.x);
@@ -802,12 +813,19 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, c
     let t = Tokens::get();
     // Only the floating card folds; the docked column keeps its full height.
     browser_header(app, ui, collapsible);
-    if collapsible && app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left) {
+    let stacked = crate::timeline_left::stacked(app);
+    if collapsible
+        && (if stacked {
+            app.preferences.timeline_left_browser_collapsed
+        } else {
+            app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left)
+        })
+    {
         return;
     }
     ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top() + 1.0, egui::Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)));
     ui.add_space(t.space_3);
-    if collapsible {
+    if collapsible && !stacked {
         browser_rows_hugging(app, ui, acts);
     } else {
         browser_rows(app, ui, acts);
@@ -822,7 +840,8 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     let response = ui.interact(rect, ui.id().with("browser_header"), if collapsible { Sense::click() } else { Sense::hover() });
     crate::scenario::publish_target("browser:header", rect);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
-    let collapsed = collapsible && !vertical && app.tree.panel_collapsed;
+    let stacked = crate::timeline_left::stacked(app);
+    let collapsed = collapsible && if stacked { app.preferences.timeline_left_browser_collapsed } else { !vertical && app.tree.panel_collapsed };
     if vertical {
         crate::scenario::publish_handle("left-browser-toggle", rect.center());
     }
@@ -847,7 +866,9 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     if collapsible {
         let tip = crate::i18n::tr(if collapsed { "ui.browser_expand" } else { "ui.browser_collapse" });
         if response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tip).clicked() {
-            if vertical {
+            if stacked {
+                app.preferences.timeline_left_browser_collapsed = !app.preferences.timeline_left_browser_collapsed;
+            } else if vertical {
                 app.preferences.timeline_left_browser_collapsed = true;
             } else {
                 app.tree.panel_collapsed = !app.tree.panel_collapsed;

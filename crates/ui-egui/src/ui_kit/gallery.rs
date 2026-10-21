@@ -1104,7 +1104,7 @@ fn history_seam_example(ui: &mut Ui, state: HistoryHandleState) {
 fn history_example(ui: &mut Ui, names: bool) {
     let mut app = crate::test_support::sample_app();
     app.preferences.timeline_left = true;
-    app.preferences.timeline_left_names = names;
+    app.preferences.timeline_left_width = crate::ui_kit::history_width(names);
     app.run("timeline.roll_to", serde_json::json!({"position":3})).unwrap();
     let feature = app.session.doc.features.get(2).unwrap().id;
     app.run("select.set", serde_json::json!({"items":[{"type":"feature","id":feature}]})).unwrap();
@@ -1132,7 +1132,7 @@ fn history_board_in_both_themes_and_widths() {
                     ctx.global_style_mut(|style| style.animation_time = 0.0);
                     let mut app = crate::test_support::sample_app();
                     app.preferences.timeline_left = true;
-                    app.preferences.timeline_left_names = names;
+                    app.preferences.timeline_left_width = crate::ui_kit::history_width(names);
                     app.preferences.timeline_left_browser_collapsed = collapsed;
                     app.run("timeline.roll_to", serde_json::json!({"position":3})).unwrap();
                     let feature = app.session.doc.features.get(2).unwrap().id;

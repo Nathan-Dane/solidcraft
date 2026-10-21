@@ -298,7 +298,7 @@ fn left_history_and_browser_share_the_left_edge_without_moving_right_controls() 
         assert!(crate::scenario::handle_at("timeline:First").is_some());
         let viewport = h.app.viewport.rect.unwrap();
         let content = content_rect(&h.app, viewport);
-        assert_eq!(viewport.left(), if mode == LayoutMode::Floating { 0.0 } else { 168.0 });
+        assert_eq!(viewport.left(), if mode == LayoutMode::Floating { 0.0 } else { crate::ui_kit::history_width(true) });
         assert_eq!(content.left(), if mode == LayoutMode::Floating { browser.right() + SHELL_GAP } else { viewport.left() });
         assert_eq!(content.bottom(), viewport.bottom());
         if mode == LayoutMode::Floating {
