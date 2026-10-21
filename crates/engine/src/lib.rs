@@ -170,9 +170,19 @@ pub struct Snapshot {
 pub struct Ahead(Session);
 
 impl Ahead {
-    /// Run `commands` (their results stay in the shared evaluation cache).
+    /// What the evaluation computes, kept for the run that follows here whatever the evaluation
+    /// cache drops meanwhile: hand it to [`solidcraft_doc::Model::keep`] for that run.
+    pub fn kept(&self) -> Arc<solidcraft_doc::KeptResults> {
+        self.0.model.kept().unwrap_or_default()
+    }
+
+    /// Run `commands` (their results stay in the shared evaluation cache, and in [`Ahead::kept`]),
+    /// then make the display meshes and plans of the bodies they end with: the bodies the run
+    /// here finds share them, so the window draws, fits and picks without tessellating anything.
     pub fn evaluate(self, commands: &[(String, Value)]) -> Result<()> {
-        self.0.preview_in_place(commands).map(|_| ())
+        let (s, _) = self.0.preview_in_place(commands)?;
+        s.world_state().warm_display();
+        Ok(())
     }
 
     /// Run `commands` one after another, each reply or error in turn (what they evaluate stays
@@ -242,8 +252,6 @@ pub struct Session {
     /// How calls that break a command's parameter contract are treated (off by default). It
     /// belongs to the session, not the design, so it survives opening and starting designs.
     pub param_check: schema::ParamCheck,
-    /// Session display preference, mirrored by the UI; never part of a design.
-    pub history_names: bool,
     /// The component new sketches and features go into (0 = the root).
     pub active_component: u64,
     /// The placement used when authoring shared component geometry.
@@ -405,7 +413,6 @@ impl Session {
             revision: 1,
             auto_project: true,
             param_check: schema::ParamCheck::Off,
-            history_names: true,
             active_component: 0,
             active_occurrence_path: None,
             pending_moves: Default::default(),
@@ -441,7 +448,6 @@ impl Session {
     pub fn replace_design(&mut self, fresh: Session) {
         let auto_project = self.auto_project;
         let param_check = self.param_check;
-        let history_names = self.history_names;
         let render_viewport = self.render_viewport.clone();
         let render_jobs = self.render_jobs.scratch();
         let checkpoints = std::mem::take(&mut self.checkpoints);
@@ -449,7 +455,6 @@ impl Session {
         *self = fresh;
         self.auto_project = auto_project;
         self.param_check = param_check;
-        self.history_names = history_names;
         self.render_viewport = render_viewport;
         self.render_jobs = render_jobs;
         self.checkpoints = checkpoints;
@@ -940,7 +945,6 @@ impl Session {
             revision: self.revision,
             auto_project: self.auto_project,
             param_check: self.param_check,
-            history_names: self.history_names,
             active_component: self.active_component,
             active_occurrence_path: self.active_occurrence_path.clone(),
             pending_moves: self.pending_moves.clone(),
@@ -1036,6 +1040,7 @@ impl Session {
         let mut copy = self.scratch();
         copy.undo.clone_from(&self.undo);
         copy.redo.clone_from(&self.redo);
+        copy.model.keep(Some(Arc::default()));
         Ahead(copy)
     }
 

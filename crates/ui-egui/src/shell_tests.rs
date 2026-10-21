@@ -298,7 +298,7 @@ fn left_history_and_browser_share_the_left_edge_without_moving_right_controls() 
         assert!(crate::scenario::handle_at("timeline:First").is_some());
         let viewport = h.app.viewport.rect.unwrap();
         let content = content_rect(&h.app, viewport);
-        assert_eq!(viewport.left(), if mode == LayoutMode::Floating { 0.0 } else { 168.0 });
+        assert_eq!(viewport.left(), if mode == LayoutMode::Floating { 0.0 } else { crate::ui_kit::history_width(true) });
         assert_eq!(content.left(), if mode == LayoutMode::Floating { browser.right() + SHELL_GAP } else { viewport.left() });
         assert_eq!(content.bottom(), viewport.bottom());
         if mode == LayoutMode::Floating {
@@ -382,11 +382,12 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
 #[test]
 fn assistant_left_dock_precedes_history_and_drag_hints_match_the_result() {
     for layout in ["floating", "docked"] {
-        for names in [false, true] {
+        for (names, stacked) in [(false, false), (true, false), (true, true)] {
             let mut h = Harness::new();
             h.app.home.open = false;
             h.app.preferences.timeline_left = true;
-            h.app.preferences.timeline_left_names = names;
+            h.app.preferences.timeline_under_browser = stacked;
+            h.app.preferences.timeline_left_width = crate::ui_kit::history_width(names);
             h.call("ui.resize", json!({"width":1600,"height":1000}));
             h.call("ui.set", json!({"layout":layout}));
             h.call("ui.agent_chat", json!({"open":true,"side":"right","width":440,"picker":false}));
@@ -424,7 +425,13 @@ fn assistant_left_dock_precedes_history_and_drag_hints_match_the_result() {
                     let history = h.app.shell.history.expect("vertical history");
                     let browser = h.app.shell.browser.expect("browser");
                     assert!(card.right() <= history.left(), "Assistant precedes history: {card:?} {history:?}");
-                    assert!(history.right() <= browser.left(), "history precedes browser");
+                    if stacked {
+                        assert!((history.left() - browser.left()).abs() < 1.0);
+                        assert!((history.width() - browser.width()).abs() < 1.0);
+                        assert!(browser.bottom() <= history.top(), "History stays below Browser");
+                    } else {
+                        assert!(history.right() <= browser.left(), "history precedes browser");
+                    }
                 }
             }
             h.call("ui.agent_chat", json!({"side":"left","minimized":true}));

@@ -145,18 +145,32 @@ pub(crate) fn history_marker(p: &Painter, rect: Rect, vertical: bool, accent: Ta
     p.circle(centre, outer_radius - t.space_2 / 2.0, if vertical { t.panel } else { t.timeline }, Stroke::new(t.space_2, accent.color));
 }
 
-/// The vertical strip has exactly two persisted widths; intermediate widths are transient.
+/// Thin and minimum named widths; wider named panels retain their measured width.
 pub(crate) fn history_width(names: bool) -> f32 {
     let t = Tokens::get();
-    if names { t.space_24 * 7.0 } else { t.control_height * 2.0 }
+    if names { t.space_16 * 7.0 } else { t.control_height * 2.0 }
 }
 
 pub(crate) fn history_clamp_width(width: f32) -> f32 {
-    if width.is_finite() { width.clamp(history_width(false), history_width(true)) } else { history_width(false) }
+    if width.is_finite() { width.clamp(history_width(false), Tokens::get().space_24 * 26.0) } else { history_width(false) }
 }
 
-pub(crate) fn history_snap_names(width: f32) -> bool {
-    history_clamp_width(width) >= (history_width(false) + history_width(true)) / 2.0
+/// Only the gap between thin and medium snaps. Every larger width is retained.
+pub(crate) fn history_snap_width(width: f32) -> f32 {
+    let width = history_clamp_width(width);
+    if width < (history_width(false) + history_width(true)) / 2.0 { history_width(false) } else { width.max(history_width(true)) }
+}
+
+/// The same six-dot grip is used by Assistant and History headers.
+pub(crate) fn panel_grip(ui: &mut egui::Ui) -> egui::Response {
+    let t = Tokens::get();
+    let (rect, response) = ui.allocate_exact_size(vec2(t.space_10, t.space_16 + t.space_2), egui::Sense::hover());
+    for row in 0..3 {
+        for col in 0..2 {
+            ui.painter().circle_filled(rect.left_top() + vec2(2.5 + col as f32 * 5.0, 4.0 + row as f32 * 5.0), 1.1, t.text_dim);
+        }
+    }
+    response
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -201,13 +215,6 @@ impl HistorySeam {
             }
             HistoryHandleState::Drag => {
                 p.rect_stroke(card, t.radius_lg, Stroke::new(1.0, accent.color), egui::StrokeKind::Inside);
-                let x = card.left() + history_width(true);
-                let line = [pos2(x, card.top()), pos2(x, card.bottom())];
-                p.extend(egui::Shape::dashed_line(&line, Stroke::new(t.space_2, accent.color), t.space_6, t.space_4));
-                let galley = p.layout_no_wrap(crate::i18n::tr("ui.history_names").to_owned(), crate::fonts::semibold(t.font_small), accent.ink);
-                let chip = Rect::from_min_size(pos2(x + t.space_8, card.top() + t.space_4), galley.size() + vec2(t.space_16, t.space_4));
-                p.rect_filled(chip, t.radius_lg, accent.soft);
-                p.galley(chip.min + vec2(t.space_8, t.space_2), galley, accent.ink);
             }
         }
     }
@@ -217,6 +224,7 @@ pub(crate) struct HistorySeamResponse {
     pub toggle: bool,
     pub width: Option<f32>,
     pub released: bool,
+    #[cfg(test)]
     pub response: egui::Response,
 }
 
@@ -226,7 +234,7 @@ pub(crate) fn history_seam(ui: &mut egui::Ui, card: Rect, names: bool) -> Histor
     let id = ui.id().with("history_seam");
     let edge = ui.interact(seam.edge, id.with("edge"), egui::Sense::CLICK | egui::Sense::DRAG);
     let button = ui.interact(seam.pill, id, egui::Sense::click_and_drag());
-    let label = crate::i18n::tr(if names { "ui.history_hide_names" } else { "ui.history_show_names" });
+    let label = crate::i18n::tr(if names { "ui.collapse" } else { "ui.expand" });
     button.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
     if button.clicked() {
         button.request_focus();
@@ -284,7 +292,13 @@ pub(crate) fn history_seam(ui: &mut egui::Ui, card: Rect, names: bool) -> Histor
     crate::scenario::publish_rect("history:seam", seam.edge);
     crate::scenario::publish_rect("history:handle", seam.pill);
     // egui's click response includes Enter and Space for a focused button.
-    HistorySeamResponse { toggle: button.clicked() || edge.double_clicked(), width, released: drag.drag_stopped(), response }
+    HistorySeamResponse {
+        toggle: button.clicked() || edge.double_clicked(),
+        width,
+        released: drag.drag_stopped(),
+        #[cfg(test)]
+        response,
+    }
 }
 
 #[cfg(test)]
@@ -332,8 +346,8 @@ mod tests {
                         HistoryHandleState::Drag => {
                             assert_eq!(rect.rect, card);
                             assert_eq!(rect.stroke.color, accent.color);
-                            assert!(out.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Text(text) if text.galley.text() == "Names")));
-                            assert!(out.shapes.iter().filter(|s| matches!(s.shape, egui::Shape::LineSegment { .. })).count() > 2);
+                            assert!(!out.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Text(_))));
+                            assert!(!out.shapes.iter().any(|s| matches!(s.shape, egui::Shape::LineSegment { .. })));
                         }
                     }
                 }
@@ -379,8 +393,8 @@ mod tests {
                     if let Some(width) = result.width {
                         self.width = width;
                         if result.released {
-                            self.names = history_snap_names(width);
-                            self.width = history_width(self.names);
+                            self.names = history_snap_width(width) >= history_width(true);
+                            self.width = history_snap_width(width);
                         }
                     } else if result.toggle {
                         self.names = !self.names;
@@ -418,7 +432,7 @@ mod tests {
                 .platform_output
                 .events
                 .iter()
-                .any(|e| matches!(e, egui::output::OutputEvent::FocusGained(info) if info.label.as_deref() == Some("Show names")))
+                .any(|e| matches!(e, egui::output::OutputEvent::FocusGained(info) if info.label.as_deref() == Some("Expand")))
         );
         h.frame(vec![]);
         assert!(h.focused, "Tab reaches the seam button");
@@ -431,7 +445,7 @@ mod tests {
     #[test]
     fn seam_drag_resizes_continuously_and_snaps_both_directions() {
         use crate::test_support::pointer;
-        for (names, delta, expected) in [(false, 80.0, true), (false, 30.0, false), (true, -80.0, false), (true, -30.0, true)] {
+        for (names, delta, expected) in [(false, 40.0, true), (false, 20.0, false), (true, -40.0, false), (true, -20.0, true)] {
             for pill in [false, true] {
                 let mut h = SeamHarness::new(names);
                 let start = if pill { h.card().right_center() } else { pos2(h.card().right() - 4.0, h.card().top() + 30.0) };
@@ -442,11 +456,11 @@ mod tests {
                 assert_eq!(h.width, history_width(names) + delta, "continuous width before release");
                 h.frame(pointer(end, false));
                 assert_eq!(h.names, expected);
-                assert_eq!(h.width, history_width(expected));
+                assert_eq!(h.width, history_snap_width(history_width(names) + delta));
             }
         }
         for hostile in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY, -1000.0, 10000.0] {
-            assert!((history_width(false)..=history_width(true)).contains(&history_clamp_width(hostile)));
+            assert!((history_width(false)..=Tokens::get().space_24 * 26.0).contains(&history_clamp_width(hostile)));
         }
     }
 

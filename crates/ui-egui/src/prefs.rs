@@ -414,8 +414,12 @@ preference_settings! {
     ui_font: String = String::new(), 0;
     /// Put the feature history to the left of the browser instead of below the viewport.
     timeline_left: bool = false, 0;
-    /// Show compact names instead of icon chips in the vertical history strip.
-    timeline_left_names: bool = true, 0;
+    /// Measured outer width; the contents react to this width without a names mode.
+    timeline_left_width: f32 = 112.0, 0;
+    /// Share the browser column, vertically, instead of a separate left column.
+    timeline_under_browser: bool = false, 0;
+    /// Fold the shared-column history to its header.
+    timeline_collapsed: bool = false, 0;
     /// Legacy shared-column height, retained for preference compatibility.
     timeline_left_height: f32 = 360.0, 0;
     /// Whether the browser beside the vertical history is collapsed to its rail.
@@ -464,6 +468,10 @@ preference_settings! {
     ai_features: bool = true, PAGE_AI;
     /// The Assistant button in the application bar (the shortcut and View menu entry stay).
     ai_toolbar_button: bool = true, PAGE_AI;
+    /// An agent's slow commands over the control channel (MCP) compute off the window thread,
+    /// so the window stays live while they run (#1989, [`crate::control_job`]). Off: they run on
+    /// the window thread, and the window waits for each, as before (the default).
+    agent_off_thread: bool = false, PAGE_AI;
     /// Agents the user added (the installed ones are found by themselves). API keys are never
     /// here: they live in the system keychain.
     agents: Vec<crate::agent_chat::agents::AgentConfig> = Vec::new();
@@ -1103,14 +1111,18 @@ fn page(app: &mut SolveApp, ui: &mut egui::Ui, t: &Tokens) {
                 ui_kit::row(ui, app.tr_label("Interface font"), |ui| ui_font_row(app, ui));
             }
             ui_kit::row(ui, app.tr("ui.feature_history"), |ui| {
-                let mut selected = usize::from(app.preferences.timeline_left);
+                let mut selected = if app.preferences.timeline_left { if app.preferences.timeline_under_browser { 2 } else { 1 } } else { 0 };
                 if ui_kit::segmented(
                     ui,
                     &mut selected,
-                    &[crate::i18n::tr("ui.timeline_bottom"), crate::i18n::tr("ui.timeline_left_sidebar")],
+                    &[
+                        crate::i18n::tr("ui.timeline_bottom"),
+                        crate::i18n::tr("ui.timeline_left_sidebar"),
+                        crate::i18n::tr("ui.history_below_browser"),
+                    ],
                     Default::default(),
                 ) {
-                    app.preferences.timeline_left = selected == 1;
+                    let _ = app.run("view.history_layout", json!({"dock": match selected { 1=>"left",2=>"under_browser",_=>"bottom" }}));
                 }
             });
             ui_kit::text(ui, app.tr("ui.timeline_left_note"), ui_kit::Text::Note("timeline"));

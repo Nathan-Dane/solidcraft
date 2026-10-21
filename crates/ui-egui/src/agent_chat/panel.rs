@@ -68,7 +68,6 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if !shown(app) {
         return;
     }
-    super::settings::dialog(app, &ctx);
     if ctx.input_mut(|i| i.consume_shortcut(&SHORTCUT)) {
         toggle(app);
     }
@@ -561,14 +560,8 @@ fn header(app: &mut SolveApp, ui: &mut egui::Ui, left: bool) {
     ui_kit::assistant_header(ui, |ui| {
         ui.horizontal(|ui| {
             let title = {
-                let (grip, _) = ui.allocate_exact_size(vec2(if popped { 0.0 } else { 10.0 }, 18.0), Sense::hover());
-                if !popped {
-                    for row in 0..3 {
-                        for col in 0..2 {
-                            ui.painter().circle_filled(grip.left_top() + vec2(2.5 + col as f32 * 5.0, 4.0 + row as f32 * 5.0), 1.1, t.text_dim);
-                        }
-                    }
-                }
+                let grip =
+                    if popped { ui.allocate_exact_size(vec2(0.0, t.space_16 + t.space_2), Sense::hover()).0 } else { ui_kit::panel_grip(ui).rect };
                 let l = ui.label(RichText::new(tr("ui.assistant")).semibold().color(t.text).size(t.font_heading));
                 grip.union(l.rect)
             };

@@ -91,6 +91,8 @@ pub struct TreeState {
     /// A Section Analysis hidden with its eye in the Analysis folder: its plane (origin,
     /// normal), so the eye can bring it back (#822).
     pub hidden_section: Option<(solidcraft_engine::geom::Vec3, solidcraft_engine::geom::Vec3)>,
+    /// What the Section Analysis dialog's OK last made, for Edit to start from.
+    pub section_dialog: Option<crate::dialogs::SectionDraft>,
     /// The Analysis folder hidden with its own eye, and the Section Analysis hidden with its
     /// own: the section shows only while neither is, and each eye keeps its state.
     pub analysis_hidden: bool,
@@ -690,7 +692,7 @@ fn browser_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     finish_browser(app, ui, acts);
 }
 
-fn browser_width(remembered: f32) -> f32 {
+pub(crate) fn browser_width(remembered: f32) -> f32 {
     if remembered.is_finite() { remembered.clamp(MIN_BROWSER_WIDTH, MAX_BROWSER_WIDTH) } else { crate::prefs::DEFAULT_BROWSER_WIDTH }
 }
 
@@ -719,13 +721,22 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     let width = browser_width(app.preferences.browser_width);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
     let mut available = available;
-    available.min.x += crate::agent_chat::left_inset(app, available);
-    if vertical && let Some(history) = app.shell.history {
+    let stacked = crate::timeline_left::stacked(app);
+    if !stacked {
+        available.min.x += crate::agent_chat::left_inset(app, available);
+    }
+    if vertical
+        && !stacked
+        && let Some(history) = app.shell.history
+    {
         available.min.x = (history.right() + gap).min(available.right()) - gap;
     }
-    let collapsed = vertical && app.preferences.timeline_left_browser_collapsed;
-    let bounds =
-        floating_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, top_gap);
+    let collapsed = vertical && !stacked && app.preferences.timeline_left_browser_collapsed;
+    let bounds = if stacked {
+        crate::timeline_left::stacked_rects(app, available).0
+    } else {
+        floating_bounds(available, if vertical { None } else { app.shell.history }, if collapsed { t.space_24 + t.space_10 } else { width }, top_gap)
+    };
     app.shell.browser = None;
     let min_height = HEADER_H + 2.0 * (CARD_INSET + 1.0);
     if bounds.is_positive() && bounds.height() >= min_height {
@@ -737,6 +748,10 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
             let response = frame.show(ui, |ui| {
                 ui.set_width(inner_width);
                 ui.set_max_height(inner_height);
+                if stacked {
+                    ui.set_min_height(inner_height);
+                    ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, vec2(inner_width, inner_height))));
+                }
                 if collapsed {
                     browser_collapsed_rail(app, ui);
                 } else {
@@ -758,12 +773,6 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     finish_browser(app, ui, acts);
 }
 
-/// Both the header and the collapsed rail are painted inside the card's shared inset.
-fn paint_browser_hover(painter: &egui::Painter, rect: Rect) {
-    let t = Tokens::get();
-    painter.rect_filled(rect, t.radius_lg.saturating_sub(CARD_INSET as u8), crate::theme::TabAccent::current(painter.ctx()).soft);
-}
-
 fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let title_top = t.space_24 + ui.spacing().item_spacing.y;
@@ -773,7 +782,7 @@ fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     let response =
         ui.interact(rect.expand(CARD_INSET + 1.0), ui.id().with("browser_header"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.hovered() || response.has_focus() {
-        paint_browser_hover(ui.painter(), rect);
+        crate::ui_kit::panel_header_hover(ui.painter(), rect);
     }
     let disclosure = Rect::from_min_size(rect.min, vec2(rect.width(), t.space_24));
     crate::ui_kit::disclosure(ui.painter(), disclosure.center(), false, t.text_dim);
@@ -791,7 +800,7 @@ fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     );
 }
 
-fn floating_bounds(available: Rect, history: Option<Rect>, width: f32, top_gap: f32) -> Rect {
+pub(crate) fn floating_bounds(available: Rect, history: Option<Rect>, width: f32, top_gap: f32) -> Rect {
     let gap = crate::shell::SHELL_GAP;
     let min = available.min + vec2(gap, top_gap);
     let right = (available.right() - gap).max(min.x);
@@ -803,12 +812,20 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, c
     let t = Tokens::get();
     // Only the floating card folds; the docked column keeps its full height.
     browser_header(app, ui, collapsible);
-    if collapsible && app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left) {
+    let stacked = crate::timeline_left::stacked(app);
+    if collapsible
+        && (if stacked {
+            (app.preferences.timeline_left_browser_collapsed && app.shell.history_folding.is_none_or(|p| p[0] >= 1.0))
+                || ui.available_height() <= t.space_3
+        } else {
+            app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left)
+        })
+    {
         return;
     }
     ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top() + 1.0, egui::Stroke::new(1.0, t.toolbar.lerp_to_gamma(t.border, 0.5)));
     ui.add_space(t.space_3);
-    if collapsible {
+    if collapsible && !stacked {
         browser_rows_hugging(app, ui, acts);
     } else {
         browser_rows(app, ui, acts);
@@ -823,12 +840,13 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     let response = ui.interact(rect, ui.id().with("browser_header"), if collapsible { Sense::click() } else { Sense::hover() });
     crate::scenario::publish_target("browser:header", rect);
     let vertical = app.ui.show_timeline && app.preferences.timeline_left;
-    let collapsed = collapsible && !vertical && app.tree.panel_collapsed;
+    let stacked = crate::timeline_left::stacked(app);
+    let collapsed = collapsible && if stacked { app.preferences.timeline_left_browser_collapsed } else { !vertical && app.tree.panel_collapsed };
     if vertical {
         crate::scenario::publish_handle("left-browser-toggle", rect.center());
     }
     if collapsible && (response.hovered() || response.has_focus()) {
-        paint_browser_hover(ui.painter(), rect);
+        crate::ui_kit::panel_header_hover(ui.painter(), rect);
     }
     let title = crate::i18n::tr("ui.browser_title").to_string();
     let kind = if collapsible { egui::WidgetType::Button } else { egui::WidgetType::Label };
@@ -848,7 +866,9 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
     if collapsible {
         let tip = crate::i18n::tr(if collapsed { "ui.browser_expand" } else { "ui.browser_collapse" });
         if response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(tip).clicked() {
-            if vertical {
+            if stacked {
+                app.preferences.timeline_left_browser_collapsed = !app.preferences.timeline_left_browser_collapsed;
+            } else if vertical {
                 app.preferences.timeline_left_browser_collapsed = true;
             } else {
                 app.tree.panel_collapsed = !app.tree.panel_collapsed;
@@ -923,6 +943,8 @@ fn rows_scrolling(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, shr
     prepare_model(app);
     acts.lit = Lit::of(app);
     egui::ScrollArea::vertical()
+        // The card may animate all the way down to its header.
+        .min_scrolled_height(0.0)
         .auto_shrink([false, shrink_height])
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| {
@@ -1401,7 +1423,7 @@ fn analysis_rows(app: &mut SolveApp, ui: &mut egui::Ui, depth: usize, acts: &mut
         set_section_shown(app, !section_shown);
     }
     if r.double {
-        app.start("inspect.section");
+        crate::dialogs::edit_section(app);
     }
     if let Some(p) = r.secondary {
         acts.menu = Some((p, Target::Section));

@@ -82,6 +82,11 @@ pub(crate) struct State {
     pub history: Option<Rect>,
     /// In-memory seam drag width, never serialized as a preference.
     pub history_drag_width: Option<f32>,
+    /// Unreserved canvas bounds used by History docking targets.
+    pub history_dock_space: Option<Rect>,
+    /// Browser/history collapse progress shared by both cards for this frame.
+    pub history_folding: Option<[f32; 2]>,
+    pub history_fold_motion: Option<[crate::timeline_left::FoldMotion; 2]>,
     pub content: Option<Rect>,
 }
 
