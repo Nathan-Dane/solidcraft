@@ -1,0 +1,64 @@
+# Layout-aware container audit
+
+Compact mode preparation, on top of History #3953 and Assistant #3985. This is the
+container migration, not the saved compact preference or its final composition (#2029).
+
+## Ownership
+
+`ui_kit::Container` is the only production constructor for outer egui hosts in the
+UI crate and the desktop/web apps. `Surface` declares purpose, not a second layout
+setting. The shell publishes `LayoutMode` before drawing any page. Adaptive panels
+and shell layout use `Container::floating()`; frames use the same policy. There is
+one definition of floating/docked chrome in `ui_kit/container.rs`.
+
+The shell still owns ordering, viewport reservations and shared-column geometry.
+A container does not infer geometry from a title or panel ID. Browser and History
+share a column width; Assistant remains outermost on the left. Those relationships
+must survive the compact composition. Existing `Panel`, `Window`, `Confirm` and
+`Menu` are content compositions over the universal container, not alternative hosts.
+
+## Inventory and migration
+
+| Surfaces | Owners / composition | Container policy |
+| --- | --- | --- |
+| Browser, vertical History and Browser/History shared column | `browser`, `timeline_left`, `lib` | Adaptive panel; shared shell placement, resizing and fold state remain with owners |
+| Horizontal History | `timeline` | Adaptive panel surface; floating strip or bottom dock |
+| Assistant sheet and folded strip | `agent_chat/panel` → `Panel` | Adaptive feature surface; left/right position, resize, drag targets and native pop-out retained |
+| Feature forms, Parameters, material review, Redefine Sketch Plane | `dialogs`, `params_dialog`, `material_card_review`, `sketch_attachment_ui` → `Panel` | Adaptive feature surface; bounded anchors and pinned actions retained |
+| Sketch options | `sketch_palette` → `Panel` | Adaptive palette surface, preserving transparency |
+| Application bar, workspace and ribbon | `toolbar`, `shell` | Chrome hosts; adaptive card geometry comes from the shared policy |
+| Render settings | `render_workspace` | Panel host; existing right dock retained |
+| Preferences, managers, About, update/install/recovery/crash/issue prompts | `Window`, `Confirm` | System windows and modal sheets retain modality; these are not workspace sidebars |
+| BOM, Messages, mouse gestures, 3D mouse calibration | respective modules → `Container::report` | Bounded tool/report windows; legacy `frame::window` removed |
+| Web stored-files and web recovery windows | `apps/solidcraft-web` | Same public container API; platform file/storage behavior retained |
+| File/workspace/document/Help/context/overflow menus, radial menu, Select Other and inline rename | respective owners → `Menu` / container popup | Anchored transient hosts; never consume workspace dock space |
+| Search, completions, colour and library popovers | `shortcut_box`, kit fields/choice/colour/table | Anchored popup containers; editor focus and completion semantics retained |
+| Dimension values, canvas placement values, canvas feedback and History resize seam | `dim_view`, `sketch_dims`, `canvas`, `timeline_left` | Model/control-anchored overlays; retain their coordinates rather than becoming docks |
+| Status and loading/progress messages | `viewport`, `open_meshing` | Notification surfaces independent of layout |
+| Navigation bar | `viewport` | Shared navigation surface; shell still computes its available canvas bounds |
+| Home, model viewport, Render canvas and native Assistant window content | `home`, `lib`, `agent_chat/panel` | Central content hosts, not floating workspace panels |
+| Loading input shield | `file_load` | Explicit input shield; must remain interactive while CAD input is blocked |
+
+The compass, geometry previews, drag handles, selection outlines, dimension lines,
+charts and thumbnails are drawn content, not independent card hosts. Giving them
+workspace docks would be incorrect. egui-managed tooltips and widget internals
+remain with their owning shared widget. OS file/program/colour pickers and native
+viewport creation remain host services, not in-app panels.
+
+## Enforcement for additions
+
+`all_outer_hosts_use_the_universal_container` recursively parses every Rust file in
+`crates/ui-egui/src`, `apps/solidcraft/src` and `apps/solidcraft-web/src`, including
+kit implementation modules. The sole constructor implementation exception is the
+exact `ui_kit/container.rs` path, not a list of panel names or allowed callers.
+It rejects raw Area, Panel, Window, Modal, CentralPanel, Popup and SubMenu
+constructors, their imported aliases, outer popup/window frames, shadows and
+Response/Ui popup shortcuts. State queries and test-only fixtures remain valid.
+Guard regression tests include nested modules, renamed imports and type aliases.
+
+New workspace panels must declare an adaptive `Surface` and use this policy for
+host choice and outer chrome. Do not introduce another layout bool, raw host,
+shadow or mode-specific frame in the feature module. Body groups, message bubbles,
+field backgrounds and image frames are content; they may use local zero-shadow
+frames or existing kit controls. Add new surface policies in the universal module
+and test both modes and themes. Never add a per-file allowance to bypass the guard.

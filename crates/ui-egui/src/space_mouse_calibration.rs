@@ -3,6 +3,7 @@
 //! (`solidcraft_space_mouse::Wizard`), and saves what it found for the device it started with.
 //! The window closes with Preferences, and when another device (or none) is read instead.
 
+use crate::ui_kit::{Container, Surface};
 use solidcraft_space_mouse::{Calibration, Problem, Stage, Wizard};
 
 use crate::SolveApp;
@@ -109,7 +110,8 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         Stage::Done => format!("{0} / {0}", STEP_PROMPTS.len()),
     };
     let (mut back, mut over, mut cancel, mut save) = (false, false, false, false);
-    crate::frame::window(ctx, app.tr("ui.space_mouse_calibrate_title"), crate::frame::Width::Normal)
+    Container::new(ctx, Surface::Window)
+        .report(ctx, app.tr("ui.space_mouse_calibrate_title"), crate::frame::Width::Normal)
         .id(egui::Id::new("sc_space_mouse_calibration"))
         .collapsible(false)
         .resizable(false)

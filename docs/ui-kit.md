@@ -2,9 +2,15 @@
 
 `crates/ui-egui/src/ui_kit/` contains the tokenised controls used by feature dialogs,
 preferences, manager cards, prompts, context menus and the sketch palette. Import through
-`crate::ui_kit::{...}`. The API is crate-visible; implementation modules are private.
+`crate::ui_kit::{...}`. Most controls are crate-visible; the container API is public so platform apps use the same hosts.
 
 ## Composition and rules
+
+- Every outer host uses `ui_kit::Container` with a semantic `Surface`. The shell
+  publishes the layout once per frame; `Container::floating()` and `frame()` own
+  adaptive placement policy and chrome. `Panel`, `Window`, `Confirm` and `Menu`
+  compose it. Raw egui hosts and outer shadows are rejected recursively, including
+  platform apps. See the [container audit and migration inventory](ui-container-audit.md).
 
 - Colours, typography, dimensions and spacing come from `theme::Tokens`.
 - Sliders only via `ui_kit::slider`; `Slider` options change behaviour, never appearance.

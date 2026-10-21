@@ -3,6 +3,7 @@
 //! width and fold are preferences, so they come back next time.
 
 use crate::fonts::RichTextExt as _;
+use crate::ui_kit::{Container, Edge, Surface};
 use egui::{Align, Align2, Color32, Id, Layout, Rect, RichText, Sense, Stroke, pos2, vec2};
 
 use super::*;
@@ -95,7 +96,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         show_drop_hint(app, &ctx);
         return;
     }
-    if app.ui.layout == crate::shell::LayoutMode::Floating {
+    if Container::for_layout(app.ui.layout, Surface::Panel).floating() {
         floating(app, ui);
         show_drop_hint(app, &ctx);
         return;
@@ -105,12 +106,12 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     app.agent_chat.dock_space = Some(Rect::from_x_y_ranges(screen.x_range(), available.y_range()));
     let t = Tokens::get();
     let left = app.preferences.agent_chat_side == "left";
-    let side = |id: Id| if left { egui::Panel::left(id) } else { egui::Panel::right(id) };
+    let side = |id: Id| Container::new(ui.ctx(), Surface::Panel).edge(id, if left { Edge::Left } else { Edge::Right });
     if app.preferences.agent_chat_minimized {
         let r = side(Id::new("sc_agent_chat_strip"))
             .exact_size(STRIP)
             .resizable(false)
-            .frame(egui::Frame::NONE.fill(t.panel))
+            .frame(Container::new(ui.ctx(), Surface::Panel).edge_frame(t.panel))
             .show(ui, |ui| strip(app, ui));
         app.agent_chat.drop_rect = Some(r.response.rect);
         show_drop_hint(app, &ctx);
@@ -121,7 +122,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         .default_size(width)
         .size_range(MIN_WIDTH..=MAX_WIDTH)
         .resizable(true)
-        .frame(egui::Frame::NONE.fill(t.dialog_body))
+        .frame(Container::new(ui.ctx(), Surface::Panel).edge_frame(t.dialog_body))
         .show(ui, |ui| ui_kit::scope(ui, |ui| body(app, ui, left)));
     crate::scenario::publish_rect("agent_chat:panel", r.response.rect);
     app.agent_chat.panel_rect = Some(r.response.rect);
@@ -137,7 +138,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
 
 /// Horizontal room reserved before the history and browser when Assistant is on the left.
 pub(crate) fn left_inset(app: &SolveApp, available: Rect) -> f32 {
-    if app.ui.layout == crate::shell::LayoutMode::Floating
+    if Container::for_layout(app.ui.layout, Surface::Panel).floating()
         && shown(app)
         && app.agent_chat.open
         && !app.preferences.agent_chat_popped
@@ -197,10 +198,10 @@ fn floating(app: &mut SolveApp, ui: &mut egui::Ui) {
     let width = bounds.width();
     let height = bounds.height();
     let anchor = if left { bounds.left_top() } else { bounds.right_top() };
-    let frame = ui_kit::Panel::feature_frame(&ctx, crate::shell::LayoutMode::Floating, side);
+    let frame = ui_kit::Panel::feature_frame(&ctx, app.ui.layout, side);
     let inner = (vec2(width, height) - frame.total_margin().sum()).max(egui::Vec2::ZERO);
     let panel = ui_kit::Panel::new(tr("ui.assistant"), Id::new("sc_agent_chat_floating"), anchor, available, side, frame).width(width);
-    if let Some(card) = panel.window().fixed_size(inner).show(&ctx, |ui| {
+    if let Some(card) = panel.window(&ctx).fixed_size(inner).show(&ctx, |ui| {
         ui.set_min_size(inner);
         ui.set_max_size(inner);
         ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
@@ -290,7 +291,7 @@ fn gallery_window(app: &mut SolveApp, ctx: &egui::Context) {
     let mut step: isize = if left { -1 } else { isize::from(right) };
     let t = Tokens::get();
     let max = ctx.content_rect().size() * vec2(0.8, 0.7);
-    let modal = egui::Modal::new(Id::new("sc_agent_chat_gallery")).show(ctx, |ui| {
+    let modal = ui_kit::Container::new(ctx, ui_kit::Surface::Window).modal(Id::new("sc_agent_chat_gallery")).show(ctx, |ui| {
         ui.set_max_width(max.x);
         ui.horizontal(|ui| {
             let prev = ui_kit::button(ui, tr("ui.agent_chat_previous_picture"), ui_kit::Button::Enabled(count > 1));
@@ -409,8 +410,8 @@ fn window(app: &mut SolveApp, ctx: &egui::Context) {
     app.agent_chat.panel_rect = None;
     ctx.show_viewport_immediate(egui::ViewportId::from_hash_of("sc_agent_chat_window"), builder, |ui, class| {
         let t = Tokens::get();
-        let frame = egui::Frame::NONE.fill(t.dialog_body);
-        let r = egui::CentralPanel::default().frame(frame).show(ui, |ui| ui_kit::scope(ui, |ui| body(app, ui, false)));
+        let frame = Container::new(ui.ctx(), Surface::Panel).edge_frame(t.dialog_body);
+        let r = Container::new(ui.ctx(), Surface::Viewport).central().frame(frame).show(ui, |ui| ui_kit::scope(ui, |ui| body(app, ui, false)));
         // The picture viewer opens over this window, where the click was, not over the main one.
         gallery_window(app, ui.ctx());
         if class == egui::ViewportClass::EmbeddedWindow {
@@ -633,7 +634,7 @@ fn dock_drag(app: &mut SolveApp, ui: &egui::Ui, drag: &egui::Response, left: boo
         ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
         let to_left = target(p.x);
         let available = app.agent_chat.dock_space.unwrap_or(screen);
-        let zone = if app.ui.layout == crate::shell::LayoutMode::Floating {
+        let zone = if Container::for_layout(app.ui.layout, Surface::Panel).floating() {
             floating_bounds(app, available, to_left)
         } else {
             let w = app.preferences.agent_chat_width.clamp(MIN_WIDTH, MAX_WIDTH).min(available.width());
@@ -718,7 +719,9 @@ fn desktop_body(app: &mut SolveApp, ui: &mut egui::Ui) {
         (false, false)
     };
     let (mut send_clicked, mut stop_clicked, mut enter) = (false, false, false);
-    egui::Panel::bottom(Id::new("sc_agent_chat_composer")).resizable(false).show_separator_line(false).frame(egui::Frame::NONE).show(ui, |ui| {
+    let frame = Container::new(ui.ctx(), Surface::Viewport).edge_frame(egui::Color32::TRANSPARENT);
+    let composer = Container::new(ui.ctx(), Surface::Viewport).edge(Id::new("sc_agent_chat_composer"), Edge::Bottom);
+    composer.resizable(false).show_separator_line(false).frame(frame).show(ui, |ui| {
         ui_kit::assistant_composer_footer(ui, |ui| {
             ui_kit::assistant_composer(ui, focused, |ui| {
                 // The files for the next message (#1744), as chips of their own.
@@ -1266,50 +1269,55 @@ fn conversation(app: &mut SolveApp, ui: &mut egui::Ui) {
     let mut edit_buf = editing.as_ref().map(|(_, b)| b.clone());
     for (n, p) in app.agent_chat.pending.iter().enumerate() {
         ui.add_space(6.0);
-        egui::Frame::NONE.fill(t.panel).stroke(Stroke::new(1.0, t.accent)).corner_radius(6.0).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
-            ui.set_width(ui.available_width());
-            ui.horizontal(|ui| {
-                let tag = if stopped && !busy { "ui.agent_chat_queued_stopped" } else { "ui.agent_chat_queued" };
-                ui.label(RichText::new(tr(tag)).color(t.accent).semibold().size(crate::theme::Tokens::get().font_small));
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    let x = ui_kit::button(ui, "×", ui_kit::Button::Small).on_hover_text(tr("ui.agent_chat_remove"));
-                    crate::scenario::publish_handle(&format!("agent_chat:pending_remove:{n}"), x.rect.center());
-                    if x.clicked() {
-                        remove = Some(n);
-                    }
-                    if editing.as_ref().is_none_or(|(i, _)| *i != n) {
-                        let e = ui_kit::button(ui, tr("ui.agent_chat_edit"), ui_kit::Button::Small);
-                        crate::scenario::publish_handle(&format!("agent_chat:pending_edit:{n}"), e.rect.center());
-                        if e.clicked() {
-                            start_edit = Some((n, p.text.clone()));
+        Container::new(ui.ctx(), Surface::Panel)
+            .edge_frame(t.panel)
+            .stroke(Stroke::new(1.0, t.accent))
+            .corner_radius(6.0)
+            .inner_margin(egui::Margin::same(6))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.horizontal(|ui| {
+                    let tag = if stopped && !busy { "ui.agent_chat_queued_stopped" } else { "ui.agent_chat_queued" };
+                    ui.label(RichText::new(tr(tag)).color(t.accent).semibold().size(crate::theme::Tokens::get().font_small));
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        let x = ui_kit::button(ui, "×", ui_kit::Button::Small).on_hover_text(tr("ui.agent_chat_remove"));
+                        crate::scenario::publish_handle(&format!("agent_chat:pending_remove:{n}"), x.rect.center());
+                        if x.clicked() {
+                            remove = Some(n);
                         }
-                    }
-                });
-            });
-            match (&editing, edit_buf.as_mut()) {
-                (Some((i, _)), Some(buf)) if *i == n => {
-                    let te = ui_kit::message_field(ui, Id::new(("sc_agent_pending_input", n)), buf, "");
-                    crate::scenario::publish_rect("agent_chat:pending_input", te.rect);
-                    ui.horizontal(|ui| {
-                        if ui_kit::button(ui, tr("ui.agent_chat_save"), ui_kit::Button::Normal).clicked() {
-                            edit_done = Some((n, Some(buf.clone())));
-                        }
-                        if ui_kit::button(ui, tr("ui.agent_chat_cancel"), ui_kit::Button::Normal).clicked() {
-                            edit_done = Some((n, None));
+                        if editing.as_ref().is_none_or(|(i, _)| *i != n) {
+                            let e = ui_kit::button(ui, tr("ui.agent_chat_edit"), ui_kit::Button::Small);
+                            crate::scenario::publish_handle(&format!("agent_chat:pending_edit:{n}"), e.rect.center());
+                            if e.clicked() {
+                                start_edit = Some((n, p.text.clone()));
+                            }
                         }
                     });
-                }
-                _ => {
-                    if !p.text.is_empty() {
-                        ui.add(egui::Label::new(RichText::new(&p.text).color(t.text)).selectable(true).wrap());
+                });
+                match (&editing, edit_buf.as_mut()) {
+                    (Some((i, _)), Some(buf)) if *i == n => {
+                        let te = ui_kit::message_field(ui, Id::new(("sc_agent_pending_input", n)), buf, "");
+                        crate::scenario::publish_rect("agent_chat:pending_input", te.rect);
+                        ui.horizontal(|ui| {
+                            if ui_kit::button(ui, tr("ui.agent_chat_save"), ui_kit::Button::Normal).clicked() {
+                                edit_done = Some((n, Some(buf.clone())));
+                            }
+                            if ui_kit::button(ui, tr("ui.agent_chat_cancel"), ui_kit::Button::Normal).clicked() {
+                                edit_done = Some((n, None));
+                            }
+                        });
                     }
-                    if p.image {
-                        ui.label(RichText::new(tr("ui.agent_chat_view_attached")).color(t.text_dim).size(crate::theme::Tokens::get().font_small));
+                    _ => {
+                        if !p.text.is_empty() {
+                            ui.add(egui::Label::new(RichText::new(&p.text).color(t.text)).selectable(true).wrap());
+                        }
+                        if p.image {
+                            ui.label(RichText::new(tr("ui.agent_chat_view_attached")).color(t.text_dim).size(crate::theme::Tokens::get().font_small));
+                        }
+                        files_line(ui, p.files.iter().map(|f| f.name.as_str()));
                     }
-                    files_line(ui, p.files.iter().map(|f| f.name.as_str()));
                 }
-            }
-        });
+            });
     }
     if !app.agent_chat.pending.is_empty() && editing.is_none() {
         ui.horizontal(|ui| {

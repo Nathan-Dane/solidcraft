@@ -4,6 +4,7 @@
 //! number, description and revision through one `component.metadata.set` per definition. The
 //! toolbar's Bill of Materials (`ui.start` of `assembly.bom`) opens it.
 
+use crate::ui_kit::{Container, Surface};
 use egui::RichText;
 use serde_json::{Value, json};
 
@@ -90,7 +91,8 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     let rows: Vec<Value> = bom["rows"].as_array().cloned().unwrap_or_default();
     let (mut export, mut apply_row) = (None, None);
     let title = RichText::new(crate::i18n::tr_label("Bill of Materials")).strong().size(t.font_button);
-    crate::frame::window(ctx, title, crate::frame::Width::Wide).id(egui::Id::new("sc_bom")).open(&mut open).resizable(true).show(ctx, |ui| {
+    let window = Container::new(ctx, Surface::Window).report(ctx, title, crate::frame::Width::Wide);
+    window.id(egui::Id::new("sc_bom")).open(&mut open).resizable(true).show(ctx, |ui| {
         ui.horizontal_wrapped(|ui| {
             let was = (d.top, d.by_definition, d.group_children);
             let mut levels = usize::from(d.top);

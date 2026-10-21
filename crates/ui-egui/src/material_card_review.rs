@@ -78,7 +78,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         panel
     };
     let mut close = false;
-    panel.window().show(ctx, |ui| {
+    panel.window(ctx).show(ctx, |ui| {
         let (closed, action) = panel.feature(
             ui,
             ui_kit::FeatureOptions {

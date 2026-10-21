@@ -199,28 +199,6 @@ fn removed_legacy_helpers_stay_removed() {
     assert!(ALLOWED.is_empty(), "raw-control allowance table must stay empty");
 }
 
-// Main added these floating windows after the panels branch. The helper is live for them;
-// keep the bounded constructor until they migrate, and reject any new legacy callers.
-#[test]
-fn floating_window_helper_has_only_its_live_consumers() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
-    let frame = std::fs::read_to_string(root.join("frame.rs")).unwrap();
-    assert_eq!(legacy_declarations(&frame, &["window"]), ["window"]);
-    let mut callers = Vec::new();
-    for entry in std::fs::read_dir(&root).unwrap() {
-        let path = entry.unwrap().path();
-        if path.extension().is_some_and(|e| e == "rs") {
-            let source = std::fs::read_to_string(&path).unwrap();
-            // The guard's own expected-call string is test code.
-            if path.file_name().unwrap() != "ui_kit_guard_tests.rs" && source.contains("crate::frame::window(") {
-                callers.push(path.file_name().unwrap().to_str().unwrap().to_owned());
-            }
-        }
-    }
-    callers.sort();
-    assert_eq!(callers, ["bom_panel.rs", "messages.rs", "mouse_gesture.rs", "space_mouse_calibration.rs"]);
-}
-
 #[test]
 fn guard_detects_editor_constructors_aliases_and_legacy_declarations() {
     assert_eq!(
@@ -332,6 +310,16 @@ fn slider_guard(source: &str) -> SliderGuard {
         sliders: Vec<String>,
     }
     impl<'ast> Visit<'ast> for Imports {
+        fn visit_item(&mut self, item: &'ast syn::Item) {
+            let attrs = match item {
+                syn::Item::Mod(i) => &i.attrs,
+                syn::Item::Fn(i) => &i.attrs,
+                _ => return visit::visit_item(self, item),
+            };
+            if !test_only(attrs) {
+                visit::visit_item(self, item);
+            }
+        }
         fn visit_use_tree(&mut self, tree: &'ast syn::UseTree) {
             if let syn::UseTree::Rename(rename) = tree
                 && matches!(rename.ident.to_string().as_str(), "Slider" | "DragValue")
@@ -498,6 +486,16 @@ fn check_guard(source: &str) -> Vec<String> {
     #[derive(Default)]
     struct Imports(Vec<String>);
     impl<'ast> Visit<'ast> for Imports {
+        fn visit_item(&mut self, item: &'ast syn::Item) {
+            let attrs = match item {
+                syn::Item::Mod(i) => &i.attrs,
+                syn::Item::Fn(i) => &i.attrs,
+                _ => return visit::visit_item(self, item),
+            };
+            if !test_only(attrs) {
+                visit::visit_item(self, item);
+            }
+        }
         fn visit_use_tree(&mut self, tree: &'ast syn::UseTree) {
             if let syn::UseTree::Rename(rename) = tree
                 && matches!(rename.ident.to_string().as_str(), "Checkbox" | "RadioButton")
@@ -709,6 +707,16 @@ fn disclosure_guard(source: &str) -> DisclosureGuard {
     #[derive(Default)]
     struct Imports(Vec<String>);
     impl<'ast> Visit<'ast> for Imports {
+        fn visit_item(&mut self, item: &'ast syn::Item) {
+            let attrs = match item {
+                syn::Item::Mod(i) => &i.attrs,
+                syn::Item::Fn(i) => &i.attrs,
+                _ => return visit::visit_item(self, item),
+            };
+            if !test_only(attrs) {
+                visit::visit_item(self, item);
+            }
+        }
         fn visit_use_tree(&mut self, tree: &'ast syn::UseTree) {
             if let syn::UseTree::Rename(rename) = tree
                 && rename.ident == "CollapsingHeader"
@@ -931,4 +939,268 @@ fn context_and_history_menus_only_use_kit_surfaces_without_allowances() {
         assert!(guard.0.is_empty(), "{file}: native menu bypasses: {:?}", guard.0);
     }
     assert!(ALLOWED.is_empty());
+}
+
+/// Every production UI host, including nested modules and platform apps, goes through the
+/// universal container. Parse Rust rather than searching strings: aliases cannot bypass this.
+#[derive(Default)]
+struct ContainerGuard {
+    modules: Vec<String>,
+    aliases: Vec<String>,
+    found: Vec<String>,
+}
+
+impl ContainerGuard {
+    fn host(name: &str) -> bool {
+        matches!(name, "Area" | "Window" | "Modal" | "Panel" | "SidePanel" | "TopBottomPanel" | "CentralPanel" | "Popup" | "SubMenu")
+    }
+
+    fn imported(&mut self, tree: &syn::UseTree, egui: bool) {
+        match tree {
+            syn::UseTree::Path(p) => self.imported(
+                &p.tree,
+                p.ident == "egui"
+                    || self.modules.contains(&p.ident.to_string())
+                    || (egui && matches!(p.ident.to_string().as_str(), "containers" | "panel" | "window" | "area" | "popup" | "modal" | "frame")),
+            ),
+            syn::UseTree::Group(g) => {
+                for item in &g.items {
+                    self.imported(item, egui);
+                }
+            }
+            syn::UseTree::Name(n) if egui && (Self::host(&n.ident.to_string()) || n.ident == "Frame") => self.aliases.push(n.ident.to_string()),
+            syn::UseTree::Rename(r) if egui && (Self::host(&r.ident.to_string()) || r.ident == "Frame") => self.aliases.push(r.rename.to_string()),
+            syn::UseTree::Rename(r) if r.ident == "egui" || (egui && r.ident == "containers") => self.modules.push(r.rename.to_string()),
+            syn::UseTree::Glob(_) if egui => self.found.push("egui glob import hides container constructors".into()),
+            _ => {}
+        }
+    }
+}
+
+fn test_only(attrs: &[syn::Attribute]) -> bool {
+    attrs.iter().any(|a| a.path().is_ident("test") || (a.path().is_ident("cfg") && a.parse_args::<syn::Path>().is_ok_and(|p| p.is_ident("test"))))
+}
+
+impl<'ast> Visit<'ast> for ContainerGuard {
+    fn visit_item(&mut self, item: &'ast syn::Item) {
+        let attrs = match item {
+            syn::Item::Mod(i) => &i.attrs,
+            syn::Item::Fn(i) => &i.attrs,
+            _ => return visit::visit_item(self, item),
+        };
+        if !test_only(attrs) {
+            visit::visit_item(self, item);
+        }
+    }
+
+    fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
+        let before = self.aliases.len() + self.modules.len();
+        self.imported(&item.tree, false);
+        if !matches!(item.vis, syn::Visibility::Inherited) && self.aliases.len() + self.modules.len() > before {
+            self.found.push("raw host re-export bypasses the shared API".into());
+        }
+    }
+
+    fn visit_item_type(&mut self, item: &'ast syn::ItemType) {
+        if let syn::Type::Path(path) = item.ty.as_ref() {
+            let names: Vec<_> = path.path.segments.iter().map(|s| s.ident.to_string()).collect();
+            if names.iter().any(|n| Self::host(n) || self.aliases.contains(n))
+                && names.iter().any(|n| n == "egui" || self.modules.contains(n) || self.aliases.contains(n))
+            {
+                self.found.push(format!("raw host type alias {}", item.ident));
+            }
+        }
+        visit::visit_item_type(self, item);
+    }
+
+    fn visit_expr_call(&mut self, call: &'ast syn::ExprCall) {
+        if let syn::Expr::Path(path) = call.func.as_ref() {
+            let names: Vec<_> = path.path.segments.iter().map(|s| s.ident.to_string()).collect();
+            let constructor = names.last().is_some_and(|n| {
+                matches!(
+                    n.as_str(),
+                    "new" | "default" | "default_area" | "left" | "right" | "top" | "bottom" | "menu" | "context_menu" | "popup" | "window"
+                )
+            });
+            let raw = names.iter().any(|n| self.aliases.contains(n))
+                || (names.iter().any(|n| n == "egui" || self.modules.contains(n)) && names.iter().any(|n| Self::host(n) || n == "Frame"));
+            if constructor && raw {
+                self.found.push(names.join("::"));
+            }
+            if names.iter().any(|n| matches!(n.as_str(), "shell_card" | "dock_frame")) {
+                self.found.push(names.join("::"));
+            }
+        }
+        visit::visit_expr_call(self, call);
+    }
+
+    fn visit_expr_method_call(&mut self, call: &'ast syn::ExprMethodCall) {
+        fn container_root(expr: &syn::Expr) -> bool {
+            match expr {
+                syn::Expr::MethodCall(call) => container_root(&call.receiver),
+                syn::Expr::Call(call) => matches!(call.func.as_ref(), syn::Expr::Path(p) if p.path.segments.iter().any(|s| s.ident == "Container")),
+                _ => false,
+            }
+        }
+        if call.method == "frame" && container_root(&call.receiver) {
+            struct RawFrame<'a> {
+                aliases: &'a [String],
+                found: bool,
+            }
+            impl<'ast> Visit<'ast> for RawFrame<'_> {
+                fn visit_expr_path(&mut self, expr: &'ast syn::ExprPath) {
+                    self.found |= expr.path.segments.iter().any(|s| s.ident == "Frame" || self.aliases.contains(&s.ident.to_string()));
+                }
+            }
+            let mut frame = RawFrame { aliases: &self.aliases, found: false };
+            for arg in &call.args {
+                frame.visit_expr(arg);
+            }
+            if frame.found {
+                self.found.push("caller-defined frame on shared outer host".into());
+            }
+        }
+        if matches!(call.method.to_string().as_str(), "context_menu" | "menu_button" | "menu_image_button") {
+            let shared = if let syn::Expr::Call(receiver) = call.receiver.as_ref() {
+                if let syn::Expr::Path(path) = receiver.func.as_ref() { path.path.segments.iter().any(|s| s.ident == "Container") } else { false }
+            } else {
+                false
+            };
+            if !shared {
+                self.found.push(format!("raw popup shorthand .{}", call.method));
+            }
+        }
+        if call.method == "shadow" {
+            self.found.push("caller-defined outer shadow".into());
+        }
+        visit::visit_expr_method_call(self, call);
+    }
+}
+
+fn container_violations(source: &str) -> Vec<String> {
+    let ast = syn::parse_file(source).unwrap();
+    // Collect aliases before visiting calls, also when a use appears after its consumer.
+    struct Imports(ContainerGuard);
+    impl<'ast> Visit<'ast> for Imports {
+        fn visit_item(&mut self, item: &'ast syn::Item) {
+            let attrs = match item {
+                syn::Item::Mod(i) => &i.attrs,
+                syn::Item::Fn(i) => &i.attrs,
+                _ => return visit::visit_item(self, item),
+            };
+            if !test_only(attrs) {
+                visit::visit_item(self, item);
+            }
+        }
+        fn visit_item_use(&mut self, item: &'ast syn::ItemUse) {
+            self.0.imported(&item.tree, false);
+        }
+    }
+    let mut imports = Imports(ContainerGuard::default());
+    imports.visit_file(&ast);
+    imports.visit_file(&ast);
+    let mut guard = imports.0;
+    guard.visit_file(&ast);
+    guard.found
+}
+
+#[test]
+fn all_outer_hosts_use_the_universal_container() {
+    fn scan(path: &Path, failures: &mut Vec<String>) {
+        for entry in std::fs::read_dir(path).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                scan(&path, failures);
+            } else if path.extension().is_some_and(|e| e == "rs") && path != Path::new(env!("CARGO_MANIFEST_DIR")).join("src/ui_kit/container.rs") {
+                let found = container_violations(&std::fs::read_to_string(&path).unwrap());
+                if !found.is_empty() {
+                    failures.push(format!("{}: {found:?}", path.display()));
+                }
+            }
+        }
+    }
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+    let mut failures = Vec::new();
+    scan(&root.join("src"), &mut failures);
+    scan(&root.join("../../apps/solidcraft/src"), &mut failures);
+    scan(&root.join("../../apps/solidcraft-web/src"), &mut failures);
+    assert!(failures.is_empty(), "Use ui_kit::Container for outer hosts:\n{}", failures.join("\n"));
+}
+
+#[test]
+fn container_guard_rejects_aliases_nested_modules_and_preserves_state_queries() {
+    let bad = container_violations(
+        r#"
+        use egui::{Area as Floating, Frame as Card};
+        mod nested {
+            use egui::containers::Window as Dialog;
+            fn show() { Dialog::new("Title"); }
+        }
+        fn show() {
+            Floating::new(id); egui::Panel::left("side");
+            egui::Modal::new(id); Card::popup(style);
+            egui::CentralPanel::default(); frame.shadow(shadow);
+        }
+    "#,
+    );
+    assert_eq!(bad.len(), 7, "{bad:?}");
+    assert!(
+        container_violations(
+            r#"
+        fn show() {
+            ui_kit::Container::new(ctx, ui_kit::Surface::Panel).area(id);
+            ui_kit::Window::new(id, icon, title);
+            egui::Popup::is_any_open(ctx);
+            egui::containers::panel::PanelState::load(ctx, id);
+        }
+        #[cfg(test)] mod tests { fn fixture() { egui::Window::new("test"); } }
+    "#
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn container_guard_catches_module_and_type_aliases_and_popup_shorthand() {
+    let bad = container_violations(
+        r#"
+        use egui as gui;
+        use eframe::egui as toolkit;
+        use gui::Area as Other;
+        type Raw = gui::Window<'static>;
+        fn show(ui: &mut Ui) {
+            gui::Area::new(id); toolkit::Panel::right(id); Other::new(id);
+            response.context_menu(|ui| {}); ui.menu_button("More", |ui| {});
+        }
+    "#,
+    );
+    assert_eq!(bad.len(), 6, "{bad:?}");
+}
+
+#[test]
+fn container_guard_rejects_replacing_the_shared_outer_frame_but_allows_content_groups() {
+    assert_eq!(
+        container_violations(
+            r#"
+        fn show() {
+            ui_kit::Container::new(ctx, ui_kit::Surface::Panel).edge(id, edge).frame(egui::Frame::NONE.fill(fill));
+        }
+    "#
+        )
+        .len(),
+        1
+    );
+    assert!(
+        container_violations(
+            r#"
+        fn show(ui: &mut Ui) { egui::Frame::NONE.inner_margin(8).show(ui, |ui| {}); }
+    "#
+        )
+        .is_empty()
+    );
+}
+
+#[test]
+fn container_guard_rejects_raw_host_reexports() {
+    assert_eq!(container_violations("pub(crate) use egui::Window as OtherHost;").len(), 1);
 }

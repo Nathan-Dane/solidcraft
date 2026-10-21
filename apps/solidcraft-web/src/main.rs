@@ -231,7 +231,8 @@ mod web {
             }
             let mut open = true;
             let mut act: Option<(&'static str, String)> = None;
-            egui::Window::new("Files in this browser")
+            solidcraft_ui_egui::ui_kit::Container::new(ctx, solidcraft_ui_egui::ui_kit::Surface::Window)
+                .window("Files in this browser")
                 .open(&mut open)
                 .collapsible(false)
                 .resizable(true)
@@ -386,9 +387,12 @@ mod web {
         fn recovery_prompt(&mut self, ctx: &egui::Context) {
             let Some((name, path)) = self.files.recovery.borrow().clone() else { return };
             let mut answer = None;
-            egui::Window::new("Recover unsaved work?").collapsible(false).resizable(false).anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0]).show(
-                ctx,
-                |ui| {
+            solidcraft_ui_egui::ui_kit::Container::new(ctx, solidcraft_ui_egui::ui_kit::Surface::Window)
+                .window("Recover unsaved work?")
+                .collapsible(false)
+                .resizable(false)
+                .anchor(egui::Align2::CENTER_CENTER, [0.0, 0.0])
+                .show(ctx, |ui| {
                     ui.label(format!("“{name}” had unsaved changes when this page last closed."));
                     ui.horizontal(|ui| {
                         if ui.button("Recover").clicked() {
@@ -398,8 +402,7 @@ mod web {
                             answer = Some(false);
                         }
                     });
-                },
-            );
+                });
             let Some(recover) = answer else { return };
             *self.files.recovery.borrow_mut() = None;
             if recover {

@@ -5,6 +5,7 @@ use super::{
     metrics::*,
     text::paint_text,
 };
+use crate::ui_kit::{Container, Surface};
 use crate::{scenario, theme::Tokens};
 use egui::{Ui, vec2};
 
@@ -360,8 +361,9 @@ pub(crate) fn popup_list(
 ) -> Option<usize> {
     let t = crate::theme::Tokens::get();
     let mut chosen = None;
-    let area = crate::frame::area(id).order(egui::Order::Tooltip).fixed_pos(anchor.left_bottom() + egui::vec2(0.0, t.space_2)).show(ctx, |ui| {
-        egui::Frame::popup(ui.style())
+    let popup = Container::new(ctx, Surface::Popup).area(id);
+    let area = popup.order(egui::Order::Tooltip).fixed_pos(anchor.left_bottom() + egui::vec2(0.0, t.space_2)).show(ctx, |ui| {
+        Container::popup_frame(ui.style())
             .fill(t.control_fill)
             .stroke(egui::Stroke::new(1.0, t.dialog_border))
             .corner_radius(t.radius_lg)

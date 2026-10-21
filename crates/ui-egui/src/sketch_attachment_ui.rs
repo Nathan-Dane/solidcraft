@@ -155,7 +155,7 @@ pub fn panel(app: &mut SolveApp, ctx: &egui::Context) {
     let command = spec.as_ref().map_or("", |s| crate::i18n::tr_label(s.label));
     let title = crate::i18n::format("sketch_panel.redefine_title", &[("command", command), ("name", name)]);
     let panel = ui_kit::Panel::new(&title, egui::Id::new("sc_redefine"), anchor, viewport, side, frame);
-    let response = panel.window().show(ctx, |ui| {
+    let response = panel.window(ctx).show(ctx, |ui| {
         let (closed, action) = panel.feature(
             ui,
             ui_kit::FeatureOptions {

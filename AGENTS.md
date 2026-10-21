@@ -88,6 +88,12 @@ People trust SolidCraft with their designs; a crash loses their work. **This out
   egui/eframe/winit/wgpu/rfd. **The UI crate is swappable.** Only `crates/kernel` may use `truck`.
 - **The UI is thin**: panels read engine state and act through `app.run(id, params)` /
   `app.start(id)`. Colours come from `theme::Tokens`.
+- **One outer UI container**: all panels, floating sheets, menus, overlays and platform UI
+  windows use `ui_kit::Container` (directly or through `Panel`, `Window`, `Confirm`, `Menu`).
+  Declare the semantic `Surface`; workspace panels use its shared layout policy and chrome.
+  Do not construct raw egui hosts, outer popup/window frames or shadows in feature modules.
+  The recursive source guard covers the UI crate and desktop/web apps with no caller allowances.
+  See `docs/ui-container-audit.md` for the inventory and legitimate content/native exceptions.
 - **One set of camera controls**: every page or canvas with a camera (viewport, Render
   preview, future flat pattern or drawing pages) calls `navigation::handle` with its `NavCaps`
   (orbit off for flat 2D pages). New canvases must use `navigation::handle`; never hand-roll

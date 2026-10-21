@@ -1,5 +1,6 @@
 //! Table-driven layout/paint references in both themes. No window or GPU required.
 use super::*;
+use crate::ui_kit::{Container, Surface};
 use crate::{scenario, theme::Tokens};
 use egui::{Ui, vec2};
 
@@ -460,6 +461,9 @@ const ELEMENTS: &[Element] = &[
     }),
     element!("slider_integer_without_editor", |ui, _| {
         slider(ui, &mut 12.0, 0.0..=100.0, Slider { show_value: false, integer: true, ..Default::default() });
+    }),
+    element!("canvas_value_field", |ui, s| {
+        canvas_value_field(ui, ui.id().with("canvas_value"), &mut s.value);
     }),
     element!("placement_field", |ui, s| {
         placement_field(ui, ui.id().with("placement"), &mut s.value, "Distance");
@@ -1242,7 +1246,7 @@ fn history_example(ui: &mut Ui, names: bool) {
     let width = crate::timeline_left::strip_width(&app);
     let rect = ui.allocate_space(vec2(width, 650.0)).1;
     ui.scope_builder(egui::UiBuilder::new().max_rect(rect.shrink(5.0)), |ui| {
-        ui.painter().add(crate::frame::shell_card(Tokens::get().panel).paint(rect));
+        ui.painter().add(Container::new(ui.ctx(), Surface::Panel).frame(ui.ctx(), Tokens::get().panel, crate::frame::Side::Left).paint(rect));
         crate::timeline_left::left_timeline(&mut app, ui);
     });
 }

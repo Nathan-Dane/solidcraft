@@ -1238,7 +1238,7 @@ pub fn timeline_joints(app: &mut SolveApp, ui: &mut egui::Ui, p: &egui::Painter,
         if resp.secondary_clicked() && !app.tree.picked_joints.contains(&id) {
             pick_joint(app, id, false);
         }
-        resp.context_menu(|ui| joint_menu(app, ui, (id, kind, suppressed), &mut open, &mut run));
+        crate::ui_kit::Menu::context(&resp, |ui| joint_menu(app, ui, (id, kind, suppressed), &mut open, &mut run));
         x += 32.0;
     }
     if let Some((c, prm)) = run {
@@ -1296,7 +1296,7 @@ pub fn timeline_joints_vertical(app: &mut SolveApp, ui: &mut egui::Ui) {
         if response.secondary_clicked() && !app.tree.picked_joints.contains(&id) {
             pick_joint(app, id, false);
         }
-        response.context_menu(|ui| joint_menu(app, ui, (id, kind, suppressed), &mut open, &mut run));
+        crate::ui_kit::Menu::context(&response, |ui| joint_menu(app, ui, (id, kind, suppressed), &mut open, &mut run));
     }
     if let Some((command, params)) = run {
         if command == "selection.delete" {

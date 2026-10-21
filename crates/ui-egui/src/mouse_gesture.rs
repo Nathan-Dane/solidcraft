@@ -20,6 +20,7 @@
 //! [`Config`] (kept with the preferences, edited in [`editor`]) holds the person's own list for
 //! any of them: how many tools and in which place, clockwise from the top.
 
+use crate::ui_kit::{Container, Surface};
 use std::collections::BTreeMap;
 
 use egui::{Align2, Color32, FontId, Mesh, Painter, Pos2, Rect, Sense, Shape, Stroke, Vec2, pos2, vec2};
@@ -500,7 +501,7 @@ fn paint_open(app: &SolveApp, ctx: &egui::Context) {
     let t = Tokens::get();
     let pointer = ctx.input(|i| i.pointer.latest_pos());
     let area = Rect::from_center_size(wheel.centre, vec2(2.0 * (RING + 6.0), 2.0 * (RING + 6.0)));
-    crate::frame::area(egui::Id::new("sc_mouse_gesture")).fixed_pos(area.min).order(egui::Order::Foreground).show(ctx, |ui| {
+    Container::new(ctx, Surface::Canvas).area(egui::Id::new("sc_mouse_gesture")).fixed_pos(area.min).order(egui::Order::Foreground).show(ctx, |ui| {
         let (r, _) = ui.allocate_exact_size(area.size(), Sense::hover());
         paint(&ui.painter_at(r.expand(4.0)), wheel.centre, 1.0, wheel.studio, &list, pointer, t);
     });
@@ -616,7 +617,8 @@ fn editor(app: &mut SolveApp, ctx: &egui::Context) {
     let mut open = true;
     let mut studio = app.gesture.editor.studio;
     let mut config = app.preferences.mouse_gestures.clone();
-    crate::frame::window(ctx, crate::i18n::tr_label("Mouse gestures"), crate::frame::Width::Wide)
+    Container::new(ctx, Surface::Window)
+        .report(ctx, crate::i18n::tr_label("Mouse gestures"), crate::frame::Width::Wide)
         .id(egui::Id::new("sc_gesture_editor"))
         .open(&mut open)
         .show(ctx, |ui| {

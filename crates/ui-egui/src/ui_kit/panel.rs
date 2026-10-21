@@ -97,29 +97,22 @@ pub(crate) enum Part {
 
 impl<'a> Panel<'a> {
     /// Shared floating card surface for panels, windows and modal confirmations.
-    pub(super) fn card_frame() -> egui::Frame {
+    pub(super) fn card_frame(ctx: &egui::Context) -> egui::Frame {
         let t = Tokens::get();
-        crate::frame::shell_card(t.dialog_body).stroke(egui::Stroke::new(1.0, t.dialog_border)).corner_radius(t.radius_xl).inner_margin(0.0)
+        super::Container::new(ctx, super::Surface::Window).frame(ctx, t.dialog_body, crate::frame::Side::Right).inner_margin(0.0)
     }
 
     /// Feature surface; Tokens: dialog_body and shell_card/dock_frame's border/shadow tokens.
     pub(crate) fn feature_frame(ctx: &egui::Context, layout: crate::shell::LayoutMode, side: crate::frame::Side) -> egui::Frame {
-        let t = Tokens::get();
-        if layout == crate::shell::LayoutMode::Floating {
-            Self::card_frame()
-        } else {
-            crate::frame::dock_frame(ctx, side).fill(t.dialog_body).inner_margin(0.0)
-        }
+        super::Container::for_layout(layout, super::Surface::Feature).frame(ctx, Tokens::get().dialog_body, side).inner_margin(0.0)
     }
 
-    /// Palette surface; Tokens: panel, sketch_palette_alpha, radius_xl and shell/dock tokens.
+    /// Sketch palette uses the same layout policy as every other workspace panel.
     pub(crate) fn palette_frame(ctx: &egui::Context, layout: crate::shell::LayoutMode) -> egui::Frame {
         let t = Tokens::get();
-        if layout == crate::shell::LayoutMode::Floating {
-            crate::frame::shell_card(t.panel.gamma_multiply(t.sketch_palette_alpha)).corner_radius(t.radius_xl).inner_margin(0.0)
-        } else {
-            crate::frame::dock_frame(ctx, crate::frame::Side::Right).fill(t.panel.gamma_multiply(t.sketch_palette_alpha)).inner_margin(0.0)
-        }
+        super::Container::for_layout(layout, super::Surface::Palette)
+            .frame(ctx, t.panel.gamma_multiply(t.sketch_palette_alpha), crate::frame::Side::Right)
+            .inner_margin(0.0)
     }
 
     pub(crate) fn new(title: &'a str, id: egui::Id, anchor: egui::Pos2, viewport: egui::Rect, side: crate::frame::Side, frame: egui::Frame) -> Self {
@@ -164,7 +157,7 @@ impl<'a> Panel<'a> {
         egui::pos2(x, self.anchor.y.clamp(viewport.top(), (viewport.bottom() - chrome).max(viewport.top())))
     }
 
-    pub(crate) fn window(&self) -> egui::Window<'a> {
+    pub(crate) fn window(&self, ctx: &egui::Context) -> egui::Window<'a> {
         let gap = crate::shell::SHELL_GAP;
         let frame = self.frame;
         let viewport = self.viewport;
@@ -176,8 +169,8 @@ impl<'a> Panel<'a> {
         let height = (viewport.bottom() - anchor.y - gap).max(0.0);
         // Keep drawing safe when even the header/footer cannot fit. egui clips the contents to
         // the remaining viewport; the normal small-height case still keeps both actions visible.
-        egui::Window::new(self.title)
-            .enabled(!crate::issue_report::cad_input_blocked())
+        super::Container::new(ctx, super::Surface::Feature)
+            .window(self.title)
             .id(self.id)
             .title_bar(false)
             .pivot(match side {
@@ -499,11 +492,11 @@ impl<'a> Window<'a> {
 
     /// The same bounded card frame, either movable or an input-blocking modal.
     pub(super) fn surface(&self, ctx: &egui::Context, modal: bool, add: impl FnOnce(&mut Ui) -> (bool, super::Action)) -> (bool, super::Action) {
-        let frame = Panel::card_frame();
+        let frame = Panel::card_frame(ctx);
         let inner_width = (self.width.min(dimension(ctx.content_rect().width())) - frame.total_margin().sum().x).max(0.0);
         if modal {
-            let shown = egui::Modal::new(self.id)
-                .area(egui::Modal::default_area(self.id).fade_in(false))
+            let shown = super::Container::new(ctx, super::Surface::Window)
+                .modal(self.id)
                 .backdrop_color(Tokens::get().tab_on_fill_dark.gamma_multiply(0.35))
                 .frame(frame)
                 .show(ctx, |ui| {
@@ -513,8 +506,8 @@ impl<'a> Window<'a> {
             scenario::publish_rect("dialog:window", shown.response.rect);
             return shown.inner;
         }
-        let window = egui::Window::new(self.title)
-            .enabled(!crate::issue_report::cad_input_blocked())
+        let window = super::Container::new(ctx, super::Surface::Window)
+            .window(self.title)
             .id(self.id)
             .title_bar(false)
             .collapsible(false)

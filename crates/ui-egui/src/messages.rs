@@ -2,6 +2,7 @@
 //! the status chip has faded. Help › Messages… and a click on the chip open the window; the
 //! control channel reads them as `ui.messages`.
 
+use crate::ui_kit::{Container, Surface};
 use std::collections::VecDeque;
 
 use egui::{RichText, vec2};
@@ -110,18 +111,19 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
     let t = Tokens::get();
     let now = crate::now_ms();
     let mut open = true;
-    crate::frame::window(ctx, tr("messages.title"), crate::frame::Width::Normal)
+    Container::new(ctx, Surface::Window)
+        .report(ctx, tr("messages.title"), crate::frame::Width::Normal)
         .id(egui::Id::new("sc_messages"))
         .open(&mut open)
         .default_size(vec2(460.0, 360.0))
         .show(ctx, |ui| {
             ui.horizontal(|ui| {
-                let copy = ui.add_enabled(app.messages.iter().len() > 0, egui::Button::new(tr("messages.copy_all")));
+                let copy = crate::ui_kit::button(ui, tr("messages.copy_all"), crate::ui_kit::Button::Enabled(app.messages.iter().len() > 0));
                 crate::scenario::publish_handle("messages:copy", copy.rect.center());
                 if copy.clicked() {
                     ctx.copy_text(app.messages.as_text(now));
                 }
-                let clear = ui.add_enabled(app.messages.iter().len() > 0, egui::Button::new(tr("messages.clear")));
+                let clear = crate::ui_kit::button(ui, tr("messages.clear"), crate::ui_kit::Button::Enabled(app.messages.iter().len() > 0));
                 crate::scenario::publish_handle("messages:clear", clear.rect.center());
                 if clear.clicked() {
                     app.messages.clear();

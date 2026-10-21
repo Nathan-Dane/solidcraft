@@ -1,5 +1,6 @@
 //! The left feature-history panel: named rows, folders, rollback and drag-and-drop.
 
+use crate::ui_kit::{Container, Edge, Surface};
 use egui::{Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
@@ -136,7 +137,7 @@ fn column_rects_at(app: &SolveApp, available: Rect, browser_fold: f32, history_f
     let mut available = available;
     available.min.x += crate::agent_chat::left_inset(app, available);
     let gap = crate::shell::SHELL_GAP;
-    let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
+    let top_gap = if !Container::for_layout(app.ui.layout, Surface::Panel).floating() { gap } else { 0.0 };
     let column = crate::browser::floating_bounds(available, None, crate::browser::browser_width(app.preferences.browser_width), top_gap);
     if !app.ui.show_browser {
         let height = egui::lerp(column.height()..=header_outer_height().min(column.height()), history_fold);
@@ -159,7 +160,7 @@ pub(crate) fn floating_rect(app: &SolveApp, available: Rect) -> Rect {
         return stacked_rects(app, available).1;
     }
     let gap = crate::shell::SHELL_GAP;
-    let top_gap = if app.ui.layout == crate::shell::LayoutMode::Docked { gap } else { 0.0 };
+    let top_gap = if !Container::for_layout(app.ui.layout, Surface::Panel).floating() { gap } else { 0.0 };
     let min = pos2(
         (available.left() + crate::agent_chat::left_inset(app, available) + gap).min(available.right()),
         (available.top() + top_gap).min(available.bottom()),
@@ -172,26 +173,30 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let available = ui.available_rect_before_wrap();
     app.shell.history_dock_space = Some(available);
-    if app.ui.layout == crate::shell::LayoutMode::Floating || stacked(app) {
+    if Container::for_layout(app.ui.layout, Surface::Panel).floating() || stacked(app) {
         let bounds = floating_rect(app, available);
         app.shell.history = None;
         if !bounds.is_finite() || bounds.width() < crate::ui_kit::history_width(false) || bounds.height() < t.control_height {
             return;
         }
-        let frame = crate::frame::shell_card(t.panel).inner_margin(t.space_4);
+        let frame = Container::new(ui.ctx(), Surface::Panel).frame(ui.ctx(), t.panel, crate::frame::Side::Left).inner_margin(t.space_4);
         let inner = (bounds.size() - frame.total_margin().sum()).max(egui::Vec2::ZERO);
-        let card = crate::frame::area(egui::Id::new("sc_timeline_left_card")).fixed_pos(bounds.min).order(egui::Order::Middle).show(ui.ctx(), |ui| {
-            let response = frame.show(ui, |ui| {
-                ui.set_min_size(inner);
-                ui.set_max_size(inner);
-                ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
-                left_timeline(app, ui);
+        let card = Container::new(ui.ctx(), Surface::Panel)
+            .area(egui::Id::new("sc_timeline_left_card"))
+            .fixed_pos(bounds.min)
+            .order(egui::Order::Middle)
+            .show(ui.ctx(), |ui| {
+                let response = frame.show(ui, |ui| {
+                    ui.set_min_size(inner);
+                    ui.set_max_size(inner);
+                    ui.set_clip_rect(ui.clip_rect().intersect(Rect::from_min_size(ui.max_rect().min, inner)));
+                    left_timeline(app, ui);
+                });
+                if stacked(app) {
+                    let width = crate::browser::browser_width(app.preferences.browser_width);
+                    crate::browser::resize_column(app, ui, response.response.rect, width, "left-history-rail");
+                }
             });
-            if stacked(app) {
-                let width = crate::browser::browser_width(app.preferences.browser_width);
-                crate::browser::resize_column(app, ui, response.response.rect, width, "left-history-rail");
-            }
-        });
         app.shell.history = Some(card.response.rect);
         crate::scenario::publish_rect("history:vertical", card.response.rect);
         if !stacked(app) {
@@ -202,10 +207,11 @@ pub fn left_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         if width < crate::ui_kit::history_width(false) {
             return;
         }
-        let response = egui::Panel::left("sc_timeline_left")
+        let response = Container::new(ui.ctx(), Surface::Panel)
+            .edge("sc_timeline_left", Edge::Left)
             .exact_size(width)
             .resizable(false)
-            .frame(egui::Frame::NONE.fill(t.panel).inner_margin(t.space_4))
+            .frame(Container::new(ui.ctx(), Surface::Panel).edge_frame(t.panel).inner_margin(t.space_4))
             .show(ui, |ui| left_timeline(app, ui));
         crate::scenario::publish_rect("history:vertical", response.response.rect);
         app.shell.history = Some(response.response.rect);
@@ -221,23 +227,26 @@ fn names_fit(width: f32) -> bool {
 fn seam_handle(app: &mut SolveApp, ui: &mut egui::Ui, card: Rect) {
     let seam = crate::ui_kit::HistorySeam::new(card);
     let bounds = seam.edge.union(seam.pill);
-    crate::frame::area(egui::Id::new("history_seam_overlay")).order(egui::Order::Foreground).fixed_pos(bounds.min).show(ui.ctx(), |ui| {
-        ui.set_min_size(bounds.size());
-        ui.set_clip_rect(ui.ctx().content_rect());
-        let result = crate::ui_kit::history_seam(ui, card, card.width() >= crate::ui_kit::history_width(true));
-        if let Some(width) = result.width {
-            app.shell.history_drag_width = Some(width);
-            ui.ctx().request_repaint();
-            if result.released {
-                let _ = app.run("view.history_layout", json!({"width": width}));
-                app.shell.history_drag_width = None;
+    Container::new(ui.ctx(), Surface::Canvas).area(egui::Id::new("history_seam_overlay")).order(egui::Order::Foreground).fixed_pos(bounds.min).show(
+        ui.ctx(),
+        |ui| {
+            ui.set_min_size(bounds.size());
+            ui.set_clip_rect(ui.ctx().content_rect());
+            let result = crate::ui_kit::history_seam(ui, card, card.width() >= crate::ui_kit::history_width(true));
+            if let Some(width) = result.width {
+                app.shell.history_drag_width = Some(width);
+                ui.ctx().request_repaint();
+                if result.released {
+                    let _ = app.run("view.history_layout", json!({"width": width}));
+                    app.shell.history_drag_width = None;
+                }
+            } else if result.toggle {
+                let width = crate::ui_kit::history_width(card.width() < crate::ui_kit::history_width(true));
+                let _ = app.run("view.history_layout", json!({"width":width}));
+                ui.ctx().request_repaint();
             }
-        } else if result.toggle {
-            let width = crate::ui_kit::history_width(card.width() < crate::ui_kit::history_width(true));
-            let _ = app.run("view.history_layout", json!({"width":width}));
-            ui.ctx().request_repaint();
-        }
-    });
+        },
+    );
 }
 
 /// Width alone chooses icons, names, horizontal transport and the optional title.
@@ -368,7 +377,7 @@ pub(crate) fn dock_drag(app: &mut SolveApp, ui: &egui::Ui, drag: &egui::Response
         if let Some(target) = target {
             let zone = match target {
                 Dock::Bottom => {
-                    if app.ui.layout == crate::shell::LayoutMode::Floating {
+                    if Container::for_layout(app.ui.layout, Surface::Panel).floating() {
                         crate::timeline::floating_rect(available)
                     } else {
                         Rect::from_min_max(pos2(available.left(), (available.bottom() - 40.0).max(available.top())), available.max)
@@ -376,7 +385,7 @@ pub(crate) fn dock_drag(app: &mut SolveApp, ui: &egui::Ui, drag: &egui::Response
                 }
                 Dock::Left => {
                     let mut rect = available;
-                    let gap = if app.ui.layout == crate::shell::LayoutMode::Floating { crate::shell::SHELL_GAP } else { 0.0 };
+                    let gap = if Container::for_layout(app.ui.layout, Surface::Panel).floating() { crate::shell::SHELL_GAP } else { 0.0 };
                     rect.min.x += gap;
                     rect.max.x = (rect.left() + strip_width(app)).min(available.right() - gap);
                     rect.max.y -= gap;

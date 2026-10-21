@@ -3,6 +3,7 @@
 //! button or the first document tab; selecting a design returns to its view.
 
 use crate::fonts::RichTextExt as _;
+use crate::ui_kit::{Container, Surface};
 use std::collections::HashMap;
 
 use egui::{Color32, CornerRadius, RichText, Sense, Stroke, vec2};
@@ -530,7 +531,8 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
     }
     let mut action: Option<Box<dyn FnOnce(&mut SolveApp)>> = None;
-    egui::CentralPanel::default().frame(egui::Frame::NONE.fill(t.panel).inner_margin(egui::Margin::symmetric(36, 24))).show(ui, |ui| {
+    let page = Container::new(ui.ctx(), Surface::Viewport).central();
+    page.frame(Container::new(ui.ctx(), Surface::Viewport).edge_frame(t.panel).inner_margin(egui::Margin::symmetric(36, 24))).show(ui, |ui| {
         egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.label(RichText::new("SolidCraft").size(crate::theme::Tokens::get().font_display).semibold().color(t.text));
@@ -637,7 +639,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
                     let response = card(ui, Pic::Ready(app.home.thumbs.get(p.as_str()).and_then(Option::as_ref)), &name, &sub, missing)
                         .on_hover_text(p.as_str());
                     crate::scenario::publish_handle(&format!("home:recent:{i}"), response.rect.center());
-                    response.context_menu(|ui| {
+                    crate::ui_kit::Menu::context(&response, |ui| {
                         if crate::context_menu::button(ui, crate::i18n::tr_label("Remove from list"), "delete").clicked() {
                             app.home.recent.retain(|x| x != p);
                             app.home.opened_at.remove(p);

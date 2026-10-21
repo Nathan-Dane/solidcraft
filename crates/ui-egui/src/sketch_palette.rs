@@ -370,7 +370,7 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
         frame,
     )
     .width(width(vp));
-    let response = panel.window().show(ctx, |ui| {
+    let response = panel.window(ctx).show(ctx, |ui| {
         panel.palette(ui, bottom, top, |ui, part| match part {
             crate::ui_kit::Part::Header => {
                 let status = if !solved || !geometry || remaining == 0 {
