@@ -4,9 +4,7 @@ use egui::{Rect, Sense, Stroke, pos2, vec2};
 use serde_json::json;
 
 use crate::theme::Tokens;
-use crate::timeline::{
-    TimelineKind, clipboard_buttons, delete_feature, delete_features, icon_of, message_button, selected_feature_ids, transport_glyph,
-};
+use crate::timeline::{TimelineKind, clipboard_buttons, delete_feature, delete_features, icon_of, message_button, selected_feature_ids};
 use crate::{SolveApp, icons};
 
 const FOLDER_INDENT: f32 = 14.0;
@@ -256,9 +254,8 @@ pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
 
 fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
     let t = Tokens::get();
-    let n = app.session.doc.features.len();
-    let marker = app.session.doc.marker.unwrap_or(n);
-    let height = if names { crate::ui_kit::TREE_ROW_HEIGHT } else { t.control_height * 3.0 + t.space_2 * 2.0 };
+    let count = crate::ui_kit::HistoryTransport::ALL.len() as f32;
+    let height = if names { crate::ui_kit::TREE_ROW_HEIGHT } else { t.control_height * count + t.space_2 * (count - 1.0) };
     let (header, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
     crate::scenario::publish_rect("history:transport", header);
     crate::scenario::publish_rect("history:header", header);
@@ -284,7 +281,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
                 .layout(egui::Layout::left_to_right(egui::Align::Center)),
         );
         let handle = crate::ui_kit::panel_grip(&mut grip).rect;
-        let controls_width = t.space_24 * 3.0 + t.space_2 * 2.0;
+        let controls_width = crate::ui_kit::history_transport_width();
         let title = crate::i18n::tr("ui.history_title");
         let galley = ui.painter().layout_no_wrap(title.to_owned(), crate::fonts::semibold(t.font_heading), t.text);
         let text_left = handle.right() + t.space_8;
@@ -301,49 +298,18 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
         crate::scenario::publish_handle("history:grip", drag_rect.center());
         dock_drag(app, ui, &drag);
     }
-    for (i, (what, target, key)) in [
-        ("back", Some(marker.saturating_sub(1)), "ui.history_back"),
-        ("last", None, "ui.history_play"),
-        ("forward", Some(marker.saturating_add(1).min(n)), "ui.history_forward"),
-    ]
-    .into_iter()
-    .enumerate()
-    {
+    for (i, control) in crate::ui_kit::HistoryTransport::ALL.into_iter().enumerate() {
         let side = if names { t.space_24 } else { t.control_height };
         let rect = if names {
             Rect::from_min_size(
-                pos2(controls_right - t.space_24 * 3.0 - t.space_2 * 2.0 + i as f32 * (side + t.space_2), header.center().y - side / 2.0),
+                pos2(controls_right - crate::ui_kit::history_transport_width() + i as f32 * (side + t.space_2), header.center().y - side / 2.0),
                 vec2(side, side),
             )
         } else {
             Rect::from_min_size(pos2(header.center().x - side / 2.0, header.top() + i as f32 * (side + t.space_2)), vec2(side, side))
         };
-        let response = ui.interact(rect, ui.id().with(("history_transport", what)), Sense::click());
-        crate::scenario::publish_handle(&format!("history:{what}"), rect.center());
-        if response.hovered() {
-            ui.painter().rect_filled(rect, t.radius_sm, t.hover);
-        }
-        transport_glyph(
-            ui.painter(),
-            rect.center(),
-            match what {
-                "back" => "first",
-                "last" => "forward",
-                _ => "last",
-            },
-            t.icon,
-        );
-        let first = what == "back" && response.double_clicked();
-        if response.on_hover_text(crate::i18n::tr(key)).clicked() {
-            let params = if first {
-                json!({"position":0})
-            } else {
-                match target {
-                    Some(position) if position < n => json!({"position":position}),
-                    _ => json!({}),
-                }
-            };
-            let _ = app.run_heavy("timeline.roll_to", params);
+        if control.show(ui, rect).clicked() {
+            crate::timeline::run_transport(app, control);
         }
     }
 }
@@ -1336,8 +1302,65 @@ mod tests {
     }
 
     #[test]
+    fn all_four_transport_buttons_move_to_their_named_positions_in_every_layout() {
+        for mode in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
+            for (dock, width) in
+                [("bottom", 130.0), ("left", 56.0), ("left", crate::ui_kit::history_width(true)), ("left", 320.0), ("under_browser", 170.0)]
+            {
+                let mut h = Harness::new();
+                h.app.home.open = false;
+                h.app.ui.layout = mode;
+                h.app.preferences.browser_width = 170.0;
+                h.app.run("view.history_layout", json!({"dock":dock,"width":width})).unwrap();
+                for i in 0..3 {
+                    h.app
+                        .run(
+                            "solid.box",
+                            json!({"length":10,"width":10,"height":10,"corner":[i*20,0,0],"operation":"new_body","name":format!("Step {i}")}),
+                        )
+                        .unwrap();
+                }
+                h.settle();
+                let features = h.app.session.doc.features.clone();
+                for control in crate::ui_kit::HistoryTransport::ALL {
+                    let button = crate::scenario::rect_of(&format!("history:{}", control.id())).unwrap();
+                    let header = crate::scenario::rect_of(if dock == "bottom" {
+                        if mode == crate::shell::LayoutMode::Floating { "history:card" } else { "history:strip" }
+                    } else {
+                        "history:header"
+                    })
+                    .unwrap();
+                    assert!(header.contains_rect(button), "{mode:?} {dock} {width}: transport button {button:?} outside {header:?}");
+                }
+                for (control, position) in [
+                    ("first", Some(0)),
+                    ("back", Some(0)),
+                    ("forward", Some(1)),
+                    ("forward", Some(2)),
+                    ("back", Some(1)),
+                    ("last", None),
+                    ("back", Some(2)),
+                    ("back", Some(1)),
+                    ("forward", Some(2)),
+                    ("forward", None),
+                    ("forward", None),
+                    ("first", Some(0)),
+                    ("last", None),
+                ] {
+                    h.step(&json!({"click":{"handle":format!("history:{control}")}})).unwrap();
+                    h.settle();
+                    assert_eq!(h.app.session.doc.marker, position, "{mode:?} {dock} {width}: {control}");
+                    assert_eq!(h.app.session.model.state().bodies.len(), position.unwrap_or(3));
+                    assert_eq!(h.app.session.doc.features, features, "transport only moves the marker");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn seam_snaps_only_between_thin_and_medium_and_persists_free_widths() {
-        for (width, delta, expected) in [(56.0, 40.0, 112.0), (112.0, -40.0, 56.0), (112.0, 63.0, 175.0), (320.0, -41.0, 279.0)] {
+        let medium = crate::ui_kit::history_width(true);
+        for (width, delta, expected) in [(56.0, 40.0, medium), (medium, -40.0, 56.0), (medium, 63.0, medium + 63.0), (320.0, -41.0, 279.0)] {
             let mut h = Harness::new();
             h.app.preferences.timeline_left = true;
             h.app.preferences.timeline_left_width = width;
@@ -1358,7 +1381,7 @@ mod tests {
 
     #[test]
     fn contents_follow_measured_width_without_a_names_setting() {
-        for width in [56.0, 112.0, 168.0, 213.0, 320.0] {
+        for width in [56.0, crate::ui_kit::history_width(true), 168.0, 213.0, 320.0] {
             let mut h = Harness::new();
             h.app.preferences.timeline_left = true;
             h.app.preferences.timeline_left_width = width;
@@ -1373,7 +1396,7 @@ mod tests {
             if width == crate::ui_kit::history_width(true) {
                 assert!(crate::scenario::rect_of("history:title").is_none());
             }
-            if width >= 168.0 {
+            if width >= 213.0 {
                 assert!(crate::scenario::rect_of("history:title").is_some());
             }
             assert!(!crate::shortcut_box::search(&h.app, "history names").iter().any(|row| row.0 == "view.history_names"));

@@ -1,6 +1,5 @@
 //! The timeline (bottom): features in order, the rollback marker, errors and warnings.
 
-pub(crate) use crate::icons::glyphs::transport_glyph;
 use egui::{Rect, Sense, Stroke, UiBuilder, pos2, vec2};
 use serde_json::{Value, json};
 use solidcraft_engine::doc::{
@@ -10,6 +9,21 @@ use solidcraft_engine::doc::{
 
 use crate::SolveApp;
 use crate::theme::Tokens;
+
+/// Apply transport actions from the current marker; endpoints stay bounded, including an
+/// empty design. All orientations reach the same rollback command.
+pub(crate) fn run_transport(app: &mut SolveApp, control: crate::ui_kit::HistoryTransport) {
+    let n = app.session.doc.features.len();
+    let marker = app.session.doc.marker.unwrap_or(n);
+    let position = match control {
+        crate::ui_kit::HistoryTransport::First => 0,
+        crate::ui_kit::HistoryTransport::Back => marker.saturating_sub(1),
+        crate::ui_kit::HistoryTransport::Forward => marker.saturating_add(1).min(n),
+        crate::ui_kit::HistoryTransport::Last => n,
+    };
+    let params = if position < n { json!({"position":position}) } else { json!({}) };
+    let _ = app.run_heavy("timeline.roll_to", params);
+}
 
 // Snapshot only the data used by timeline interactions. Cloning FeatureKind here would
 // also copy imported mesh vertices and triangles on every frame.
@@ -302,8 +316,8 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
     let grip = crate::ui_kit::panel_grip(&mut grip_ui).rect;
     x += t.space_10 + t.space_8;
     let mut drag_rect = grip;
-    if r.width() >= crate::ui_kit::history_width(true) {
-        let label = p.layout_no_wrap(crate::i18n::tr("ui.history_title").to_string(), crate::fonts::semibold(t.font_heading), t.text);
+    let label = p.layout_no_wrap(crate::i18n::tr("ui.history_title").to_string(), crate::fonts::semibold(t.font_heading), t.text);
+    if x + label.size().x + t.space_12 + crate::ui_kit::history_transport_width() <= r.right() {
         let title_rect = Rect::from_min_size(pos2(x, r.center().y - label.size().y / 2.0), label.size());
         p.galley(title_rect.min, label.clone(), t.text);
         drag_rect = drag_rect.union(title_rect);
@@ -312,31 +326,12 @@ fn timeline_contents(app: &mut SolveApp, ui: &mut egui::Ui, floating: bool) {
     let response = ui.interact(drag_rect, egui::Id::new("sc_history_dock_grip"), Sense::drag());
     crate::scenario::publish_handle("history:grip", drag_rect.center());
     crate::timeline_left::dock_drag(app, ui, &response);
-    let controls = [("first", Some(0usize)), ("back", Some(marker.saturating_sub(1))), ("forward", Some((marker + 1).min(n))), ("last", None)];
-    for (what, target) in controls {
-        let br = Rect::from_center_size(pos2(x + 11.0, r.center().y), vec2(22.0, 22.0));
-        crate::scenario::publish_handle(&format!("history:{what}"), br.center());
-        let resp = ui.interact(br, ui.id().with(("tl", what)), Sense::click());
-        if resp.hovered() {
-            p.rect_filled(br, 3.0, t.hover);
+    for control in crate::ui_kit::HistoryTransport::ALL {
+        let br = Rect::from_center_size(pos2(x + t.space_24 / 2.0, r.center().y), vec2(t.space_24, t.space_24));
+        if control.show(ui, br).clicked() {
+            run_transport(app, control);
         }
-        transport_glyph(&p, br.center(), what, t.icon);
-        if resp
-            .on_hover_text(match what {
-                "first" => "Roll back to the start",
-                "back" => "Step back one feature",
-                "forward" => "Step forward one feature",
-                _ => "Play to the end",
-            })
-            .clicked()
-        {
-            let pos = match target {
-                Some(k) if k < n => json!({"position": k}),
-                _ => json!({}),
-            };
-            let _ = app.run_heavy("timeline.roll_to", pos);
-        }
-        x += 24.0;
+        x += t.space_24 + t.space_2;
     }
     x += 14.0;
     // The features scroll horizontally in the space right of the playback controls.

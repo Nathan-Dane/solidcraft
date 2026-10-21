@@ -28,6 +28,15 @@ macro_rules! element {
 
 // One entry per element/variant: names, rendering and geometry expectations stay together.
 const ELEMENTS: &[Element] = &[
+    element!("history_transport", |ui, _| {
+        ui.horizontal(|ui| {
+            let side = Tokens::get().space_24;
+            for control in HistoryTransport::ALL {
+                let (rect, _) = ui.allocate_exact_size(vec2(side, side), egui::Sense::hover());
+                control.show(ui, rect);
+            }
+        });
+    }),
     element!("history_marker", |ui, _| {
         let t = Tokens::get();
         let accent = crate::theme::TabAccent::for_tab(&t, "SURFACE");
