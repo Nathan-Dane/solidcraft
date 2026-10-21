@@ -254,17 +254,17 @@ pub(crate) fn history_seam(ui: &mut egui::Ui, card: Rect, names: bool) -> Histor
     if !dragging && button.hovered() {
         ui.ctx().set_cursor_icon(egui::CursorIcon::PointingHand);
     }
-    let active = edge.hovered() || button.hovered() || button.has_focus();
+    let hovered = edge.hovered() || button.hovered();
     let state = if dragging {
         HistoryHandleState::Drag
-    } else if active {
+    } else if hovered {
         HistoryHandleState::Hover
     } else {
         HistoryHandleState::Rest
     };
     seam.paint(ui.painter(), card, names, state);
     let response = button.clone().union(edge.clone());
-    if active && !dragging {
+    if hovered && !dragging {
         let mut tip = egui::Tooltip::for_widget(&response);
         let t = Tokens::get();
         let frame = egui::Frame::NONE
