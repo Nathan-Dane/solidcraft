@@ -859,7 +859,7 @@ fn vertical_group_row(
     let centre = pos2(rect.left() + 9.0 + offset, rect.center().y);
     crate::ui_kit::disclosure(ui.painter(), centre, open, t.text_dim);
     let icon = Rect::from_center_size(pos2(rect.left() + 27.5 + offset, rect.center().y), vec2(17.0, 17.0));
-    icons::paint(ui.painter(), icon, "folder", t.icon, t.icon_fill, t.accent);
+    icons::paint_icon(ui.painter(), icon, "folder", f32::from(t.icon.a()) / 255.0);
     let renaming = timeline_group_name(app, ui, group, rect, offset, names, &t);
     crate::scenario::publish_handle(&format!("timeline-folder:{}", group.name), rect.center());
     let fold_rect = Rect::from_min_max(pos2(rect.left() + offset, rect.top()), pos2(rect.left() + offset + 18.0, rect.bottom()));

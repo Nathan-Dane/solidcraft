@@ -1225,7 +1225,7 @@ pub fn timeline_joints(app: &mut SolveApp, ui: &mut egui::Ui, p: &egui::Painter,
             t.timeline_item
         };
         p.rect(br, 3.0, bg, Stroke::new(1.0, t.border), egui::StrokeKind::Inside);
-        crate::icons::paint(p, br.shrink(4.0), "joint", if suppressed { t.border } else { t.icon }, t.icon_fill, t.accent);
+        crate::icons::paint_icon(p, br.shrink(4.0), "joint", f32::from((if suppressed { t.border } else { t.icon }).a()) / 255.0);
         if suppressed {
             p.line_segment([br.left_bottom() + vec2(4.0, -4.0), br.right_top() + vec2(-4.0, 4.0)], Stroke::new(1.5, t.text_dim));
         }
@@ -1276,7 +1276,7 @@ pub fn timeline_joints_vertical(app: &mut SolveApp, ui: &mut egui::Ui) {
             ui.painter().rect_filled(rect, 3.0, t.hover);
         }
         let icon = egui::Rect::from_min_size(egui::pos2(rect.left() + 4.0, rect.top() + 4.0), vec2(22.0, 22.0));
-        crate::icons::paint(ui.painter(), icon, "joint", if suppressed { t.border } else { t.icon }, t.icon_fill, t.accent);
+        crate::icons::paint_icon(ui.painter(), icon, "joint", f32::from((if suppressed { t.border } else { t.icon }).a()) / 255.0);
         if suppressed {
             ui.painter().line_segment([icon.left_bottom(), icon.right_top()], Stroke::new(1.5, t.text_dim));
         }

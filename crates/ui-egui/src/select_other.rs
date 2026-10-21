@@ -541,13 +541,11 @@ pub fn show(app: &mut SolveApp, ctx: &egui::Context) {
                             hovered = Some(i);
                             ui.painter().rect_filled(r.shrink2(vec2(2.0, 1.0)), 4.0, t.hover);
                         }
-                        crate::icons::paint(
+                        crate::icons::paint_icon(
                             ui.painter(),
                             Rect::from_center_size(pos2(r.left() + 16.0, r.center().y), vec2(16.0, 16.0)),
                             row.icon,
-                            t.icon,
-                            t.icon_fill,
-                            t.accent,
+                            f32::from(t.icon.a()) / 255.0,
                         );
                         ui.painter().text(
                             pos2(r.left() + 32.0, r.center().y),

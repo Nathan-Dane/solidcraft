@@ -106,7 +106,7 @@ impl<'a> Panel<'a> {
         super::Container::new(ctx, super::Surface::Window).frame(ctx, t.dialog_body, crate::frame::Side::Right).inner_margin(0.0)
     }
 
-    /// Feature surface; Tokens: dialog_body and shell_card/dock_frame's border/shadow tokens.
+    /// Feature surface; shared container policy supplies the border and shadow.
     pub(crate) fn feature_frame(ctx: &egui::Context, layout: crate::shell::LayoutMode, side: crate::frame::Side) -> egui::Frame {
         super::Container::for_layout(layout, super::Surface::Feature).frame(ctx, Tokens::get().dialog_body, side).inner_margin(0.0)
     }

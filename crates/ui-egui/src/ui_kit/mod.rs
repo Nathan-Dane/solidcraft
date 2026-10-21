@@ -24,6 +24,7 @@ mod table;
 mod text;
 
 pub(crate) use actions::*;
+pub use actions::{Button, button};
 pub(crate) use assistant::*;
 pub(crate) use assistant_entry::*;
 pub(crate) use checks::*;
@@ -32,6 +33,7 @@ pub(crate) use color::*;
 pub(crate) use confirm::{Confirm, Tone};
 pub use container::{Container, Edge, Surface};
 pub(crate) use disclosure::*;
+pub use fields::cell_editor;
 pub(crate) use fields::*;
 pub(crate) use history::*;
 pub(crate) use layout::*;

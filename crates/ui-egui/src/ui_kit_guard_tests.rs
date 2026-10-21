@@ -100,7 +100,7 @@ fn violations(source: &str) -> Vec<String> {
 }
 
 #[test]
-fn dense_panels_use_ui_kit_elements() {
+fn all_ui_and_apps_use_ui_kit_controls() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let mut failures = Vec::new();
     fn scan(dir: &Path, prefix: &str, failures: &mut Vec<String>) {
@@ -118,10 +118,7 @@ fn dense_panels_use_ui_kit_elements() {
                 continue;
             }
             let source = std::fs::read_to_string(&path).unwrap();
-            // Covers dense adapters and every future Panel caller, including imported Panel aliases.
-            if name != "dialogs_dense.rs" && name != "sketch_palette.rs" && !source.contains("ui_kit") {
-                continue;
-            }
+            // Scan every feature module, including ones that have not imported the kit yet.
             let found = violations(&source);
             let allowed = ALLOWED.iter().find(|(file, _, _)| *file == relative).map_or(0, |(_, count, _)| *count);
             if found.len() > allowed {
@@ -130,6 +127,7 @@ fn dense_panels_use_ui_kit_elements() {
         }
     }
     scan(&root, "", &mut failures);
+    scan(&Path::new(env!("CARGO_MANIFEST_DIR")).join("../../apps"), "apps/", &mut failures);
     failures.sort();
     assert!(failures.is_empty(), "Use crate::ui_kit controls:\n{}", failures.join("\n"));
 }
@@ -192,8 +190,14 @@ fn removed_legacy_helpers_stay_removed() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("src");
     let files: &[(&str, &[&str])] = &[
         ("ui_kit/container.rs", &["report"]),
+        ("icons.rs", &["paint"]),
+        ("preview.rs", &["draw_active"]),
+        ("sketch_tools.rs", &["click_glyph"]),
+        ("edit_clipboard.rs", &["can_copy"]),
+        ("tool_modifiers.rs", &["ctrl_name", "alt_name", "matches_exact"]),
+        ("fonts.rs", &["install_cjk_font"]),
         ("frame.rs", &["docked", "docked_on", "heading", "add_outlined", "content_width", "remember_width", "right_aligned"]),
-        ("dialogs.rs", &["form_row", "publish_row"]),
+        ("dialogs.rs", &["form_row", "publish_row", "is_wide"]),
         ("dialogs_appearance.rs", &["swatch", "swatch_rows"]),
         (
             "ui_kit/actions.rs",

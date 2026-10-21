@@ -987,12 +987,6 @@ impl Dialog {
         })
     }
 
-    /// Dialogs holding a table get the wide limit.
-    pub fn is_wide(&self) -> bool {
-        (matches!(self.kind, Kind::PatternRect { .. }) && self.inputs.first().is_some_and(|i| i.accept == selection::FEATURES))
-            || matches!(&self.kind, Kind::Motion(k) if k.wide())
-    }
-
     pub fn wants_picks(&self) -> bool {
         !self.inputs.is_empty()
     }

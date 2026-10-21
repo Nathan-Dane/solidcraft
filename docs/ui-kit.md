@@ -194,7 +194,7 @@ helpers private. Add interaction tests when the element introduces an action.
 
 The gallery checks geometry, label alignment, handles and effective paint bounds in
 both themes. Field/footer/panel tests retain focus, completion and action coverage.
-`ui_kit_guard_tests` scans kit callers recursively, rejects raw control constructors
+`ui_kit_guard_tests` scans every UI feature module recursively, rejects raw control constructors
 and methods (including aliases), and rejects removed legacy helpers. The raw-control
 allowance table is empty and guarded against additions. Standard colour/font guards,
 Clippy, wasm, i18n, assets, icons and layers still apply.

@@ -561,13 +561,11 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
                     };
                     ui.painter().rect(r, t.radius_md, fill, Stroke::new(1.0, if primary { t.accent } else { t.border }), egui::StrokeKind::Inside);
                     let ink = if primary { t.on_accent } else { t.icon };
-                    crate::icons::paint(
+                    crate::icons::paint_icon(
                         ui.painter(),
                         egui::Rect::from_center_size(r.left_center() + vec2(30.0, 0.0), vec2(30.0, 30.0)),
                         icon,
-                        ink,
-                        t.icon_fill,
-                        ink,
+                        f32::from(ink.a()) / 255.0,
                     );
                     ui.painter().galley(r.left_center() + vec2(56.0, -galley.size().y / 2.0), galley, ink_text);
                     resp.clicked()
@@ -729,7 +727,7 @@ fn card(ui: &mut egui::Ui, pic: Pic, name: &str, sub: &str, dim: bool) -> egui::
     match pic {
         Pic::Icon(icon) => {
             ui.painter().rect_filled(img, CornerRadius::same(t.radius_sm), t.panel_header);
-            crate::icons::paint(ui.painter(), egui::Rect::from_center_size(img.center(), vec2(56.0, 56.0)), icon, t.icon, t.icon_fill, t.icon);
+            crate::icons::paint_icon(ui.painter(), egui::Rect::from_center_size(img.center(), vec2(56.0, 56.0)), icon, f32::from(t.icon.a()) / 255.0);
         }
         Pic::Ready(Some(tx)) => {
             let tint = if dim { Color32::from_white_alpha(90) } else { Color32::WHITE };

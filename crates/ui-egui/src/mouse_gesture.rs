@@ -341,7 +341,7 @@ pub(crate) fn paint(painter: &Painter, c: Pos2, scale: f32, studio: Studio, item
             let at = c + vec2(a.sin(), -a.cos()) * (hub + ring) / 2.0;
             let ink = if item.enabled { t.icon } else { t.border };
             let side = (24.0 * scale).max(12.0);
-            crate::icons::paint(painter, Rect::from_center_size(at, vec2(side, side)), &item.icon, ink, t.icon_fill, t.accent);
+            crate::icons::paint_icon(painter, Rect::from_center_size(at, vec2(side, side)), &item.icon, f32::from(ink.a()) / 255.0);
         }
     }
     match hot.and_then(|k| items.get(k)).filter(|i| i.enabled) {

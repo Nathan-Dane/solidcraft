@@ -258,7 +258,7 @@ mod tests;
 
 /// Stable-ID inline editor for tables. Completion is owned by the caller so Enter can commit
 /// a cell without submitting its panel. Tokens: control_height/fill, form_inset, font_label, text/error.
-pub(crate) fn cell_editor(ui: &mut Ui, id: egui::Id, value: &mut String, hint: &str, invalid: bool) -> Response {
+pub fn cell_editor(ui: &mut Ui, id: egui::Id, value: &mut String, hint: &str, invalid: bool) -> Response {
     bounded_cell_editor(ui, id, value, hint, invalid, usize::MAX)
 }
 

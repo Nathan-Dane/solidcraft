@@ -74,3 +74,18 @@ shadow or mode-specific frame in the feature module. Body groups, message bubble
 field backgrounds and image frames are content; they may use local zero-shadow
 frames or existing kit controls. Add new surface policies in the universal module
 and test both modes and themes. Never add a per-file allowance to bypass the guard.
+
+## Retired implementation cleanup
+
+The old report-window builder, window-width enum, heading-band colours and
+caller-coloured icon API have been removed. Theme palettes and built-in theme
+files no longer carry procedural command-icon colours; SVG artwork has one
+palette authority. Only marker/pointer colours remain in the native glyph palette.
+Older theme exports discard retired colour names at import so active overrides
+still work; these names do not create renderer tokens or appear in new exports.
+Unused History height state and superseded click/preview/modifier helpers are
+also removed. The remaining `frame` helpers implement dragging and bounded
+anchors used by current `Panel` compositions, rather than a second host or style.
+Buttons and editors use shared kit controls too, including Assistant code-block
+actions. The control guard scans all UI feature modules, even without a kit import,
+so adding a new module cannot silently bypass the shared controls.
