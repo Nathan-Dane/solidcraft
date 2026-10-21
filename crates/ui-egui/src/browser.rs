@@ -810,7 +810,8 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, c
     let stacked = crate::timeline_left::stacked(app);
     if collapsible
         && (if stacked {
-            app.preferences.timeline_left_browser_collapsed && app.shell.history_folding.is_none_or(|p| p[0] >= 1.0)
+            (app.preferences.timeline_left_browser_collapsed && app.shell.history_folding.is_none_or(|p| p[0] >= 1.0))
+                || ui.available_height() <= t.space_3
         } else {
             app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left)
         })
@@ -937,6 +938,8 @@ fn rows_scrolling(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, shr
     prepare_model(app);
     acts.lit = Lit::of(app);
     egui::ScrollArea::vertical()
+        // The card may animate all the way down to its header.
+        .min_scrolled_height(0.0)
         .auto_shrink([false, shrink_height])
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| {

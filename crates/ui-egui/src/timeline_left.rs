@@ -238,13 +238,17 @@ pub fn left_timeline(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let names = names_fit(ui.available_width());
     timeline_transport(app, ui, names);
-    if stacked(app) && app.preferences.timeline_collapsed && app.shell.history_folding.is_none_or(|p| p[1] >= 1.0) {
+    if stacked(app)
+        && ((app.preferences.timeline_collapsed && app.shell.history_folding.is_none_or(|p| p[1] >= 1.0)) || ui.available_height() <= t.space_3)
+    {
         return;
     }
     ui.painter().hline(ui.max_rect().x_range(), ui.cursor().top(), Stroke::new(1.0, t.border));
     ui.add_space(t.space_3);
     egui::ScrollArea::vertical()
         .id_salt("sc_left_timeline_scroll")
+        // The animated card owns its height, including the last few closing frames.
+        .min_scrolled_height(0.0)
         .auto_shrink([false, false])
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| vertical_features(app, ui, names));
