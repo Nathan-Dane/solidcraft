@@ -768,12 +768,6 @@ pub fn floating(app: &mut SolveApp, ui: &mut egui::Ui, available: Rect) {
     finish_browser(app, ui, acts);
 }
 
-/// Both the header and the collapsed rail are painted inside the card's shared inset.
-fn paint_browser_hover(painter: &egui::Painter, rect: Rect) {
-    let t = Tokens::get();
-    painter.rect_filled(rect, t.radius_lg.saturating_sub(CARD_INSET as u8), crate::theme::TabAccent::current(painter.ctx()).soft);
-}
-
 fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     let t = Tokens::get();
     let title_top = t.space_24 + ui.spacing().item_spacing.y;
@@ -783,7 +777,7 @@ fn browser_collapsed_rail(app: &mut SolveApp, ui: &mut egui::Ui) {
     let response =
         ui.interact(rect.expand(CARD_INSET + 1.0), ui.id().with("browser_header"), Sense::click()).on_hover_cursor(egui::CursorIcon::PointingHand);
     if response.hovered() || response.has_focus() {
-        paint_browser_hover(ui.painter(), rect);
+        crate::ui_kit::panel_header_hover(ui.painter(), rect);
     }
     let disclosure = Rect::from_min_size(rect.min, vec2(rect.width(), t.space_24));
     crate::ui_kit::disclosure(ui.painter(), disclosure.center(), false, t.text_dim);
@@ -846,7 +840,7 @@ fn browser_header(app: &mut SolveApp, ui: &mut egui::Ui, collapsible: bool) {
         crate::scenario::publish_handle("left-browser-toggle", rect.center());
     }
     if collapsible && (response.hovered() || response.has_focus()) {
-        paint_browser_hover(ui.painter(), rect);
+        crate::ui_kit::panel_header_hover(ui.painter(), rect);
     }
     let title = crate::i18n::tr("ui.browser_title").to_string();
     let kind = if collapsible { egui::WidgetType::Button } else { egui::WidgetType::Label };

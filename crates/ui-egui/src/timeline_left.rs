@@ -216,7 +216,7 @@ fn timeline_transport(app: &mut SolveApp, ui: &mut egui::Ui, names: bool) {
     let mut controls_right = header.right();
     if names && stacked(app) {
         let fold = Rect::from_center_size(pos2(controls_right - t.space_24 / 2.0, header.center().y), vec2(t.space_24, t.space_24));
-        let response = crate::ui_kit::disclosure_button_at(
+        let response = crate::ui_kit::panel_disclosure_button_at(
             ui,
             fold,
             !app.preferences.timeline_collapsed,
