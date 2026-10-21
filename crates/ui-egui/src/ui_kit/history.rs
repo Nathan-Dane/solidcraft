@@ -159,6 +159,18 @@ pub(crate) fn history_snap_names(width: f32) -> bool {
     history_clamp_width(width) >= (history_width(false) + history_width(true)) / 2.0
 }
 
+/// The same six-dot grip is used by Assistant and History headers.
+pub(crate) fn panel_grip(ui: &mut egui::Ui) -> egui::Response {
+    let t = Tokens::get();
+    let (rect, response) = ui.allocate_exact_size(vec2(t.space_10, t.space_16 + t.space_2), egui::Sense::hover());
+    for row in 0..3 {
+        for col in 0..2 {
+            ui.painter().circle_filled(rect.left_top() + vec2(2.5 + col as f32 * 5.0, 4.0 + row as f32 * 5.0), 1.1, t.text_dim);
+        }
+    }
+    response
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub(crate) enum HistoryHandleState {
     Rest,
