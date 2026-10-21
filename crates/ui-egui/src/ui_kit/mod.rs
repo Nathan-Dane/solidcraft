@@ -37,7 +37,7 @@ pub(crate) use disclosure::*;
 pub use fields::cell_editor;
 pub(crate) use fields::*;
 pub(crate) use history::*;
-pub(crate) use file_view::{FileView, RecentRow, SampleCard};
+pub(crate) use file_view::{FileView, RecentRow, RecoveryMessage, SampleCard};
 pub(crate) use layout::*;
 pub(crate) use menu::{Menu, MenuItem, rename_menu, workspace_menu};
 pub(crate) use metrics::{ContentWidth, header_height, row_height, table_row_height};
