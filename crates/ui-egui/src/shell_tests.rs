@@ -329,7 +329,7 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             assert!(card.left() > projection.left() && card.right() < projection.right());
             assert!(card.bottom() < projection.bottom());
             let content = h.app.shell.content.expect("content");
-            assert!((card.top() - content.top() - SHELL_GAP).abs() < 1.0, "full-height top: {card:?} {content:?}");
+            assert!((card.top() - content.top()).abs() < 1.0, "full-height top: {card:?} {content:?}");
             assert!((card.bottom() - content.bottom()).abs() < 1.0, "full-height bottom: {card:?} {content:?}");
             assert!(covered(&h.app, card.center()), "chat shields viewport input");
             if side == "right" {
@@ -341,6 +341,7 @@ fn assistant_floats_without_changing_projection_and_shields_the_model() {
             } else {
                 let browser = h.app.shell.browser.expect("browser card");
                 assert!(card.right() < browser.left(), "left Assistant precedes browser");
+                assert!((card.top() - browser.top()).abs() < 1.0, "Assistant and browser share the top margin");
             }
             let camera = h.app.cam;
             let at = card.center();

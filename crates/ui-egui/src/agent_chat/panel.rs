@@ -156,6 +156,8 @@ fn floating_bounds(app: &SolveApp, available: Rect, left: bool) -> Rect {
     let t = Tokens::get();
     let gap = crate::shell::SHELL_GAP;
     let mut bounds = available.shrink(gap);
+    // The ribbon already supplies the top gap shared by browser and history cards.
+    bounds.min.y = available.top();
     if let Some(history) = app.shell.history.filter(|_| app.ui.show_timeline && !app.preferences.timeline_left) {
         bounds.max.y = (history.top() - gap).min(bounds.bottom()).max(bounds.top());
     }
