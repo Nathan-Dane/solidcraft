@@ -29,7 +29,16 @@ pub(crate) fn icon_button_at(ui: &mut Ui, rect: egui::Rect, icon: &str, label: &
     icon_button_colored(ui, rect, icon, label, None)
 }
 
+/// Quiet secondary action: a small, muted glyph with the normal full-size hit target.
+pub(crate) fn quiet_icon_button_at(ui: &mut Ui, rect: egui::Rect, icon: &str, label: &str) -> Response {
+    icon_button_presentation(ui, rect, icon, label, None, true)
+}
+
 pub(super) fn icon_button_colored(ui: &mut Ui, rect: egui::Rect, icon: &str, label: &str, ink: Option<egui::Color32>) -> Response {
+    icon_button_presentation(ui, rect, icon, label, ink, false)
+}
+
+fn icon_button_presentation(ui: &mut Ui, rect: egui::Rect, icon: &str, label: &str, ink: Option<egui::Color32>, quiet: bool) -> Response {
     let t = Tokens::get();
     let response = ui.interact(rect, ui.make_persistent_id(("icon_button", icon, label)), egui::Sense::click());
     if response.clicked() {
@@ -40,9 +49,15 @@ pub(super) fn icon_button_colored(ui: &mut Ui, rect: egui::Rect, icon: &str, lab
     }
     crate::icons::paint_ink(
         ui.painter(),
-        rect.shrink(t.form_icon_inset),
+        if quiet { egui::Rect::from_center_size(rect.center(), vec2(t.space_12, t.space_12)) } else { rect.shrink(t.form_icon_inset) },
         icon,
-        ink.unwrap_or(if response.hovered() || response.has_focus() { t.form_ink } else { t.form_dim }),
+        ink.unwrap_or(if response.hovered() || response.has_focus() {
+            t.form_ink
+        } else if quiet {
+            t.form_dim.lerp_to_gamma(t.control_fill, 0.35)
+        } else {
+            t.form_dim
+        }),
     );
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), crate::i18n::tr_label(label)));
     pointer_on_hover(ui, &response);
@@ -252,6 +267,8 @@ pub(crate) fn button_pair(ui: &mut egui::Ui, key: &str, states: [bool; 2], butto
 /// Secondary button variants preserve native sizing and enabled-button translation.
 pub enum Button {
     Normal,
+    Ghost,
+    SmallSelected,
     Small,
     Enabled(bool),
 }
@@ -261,6 +278,16 @@ pub fn button(ui: &mut Ui, label: impl Into<egui::WidgetText>, options: Button) 
     let key = label.text().to_owned();
     let draw = |ui: &mut Ui, label| match options {
         Button::Small => ui.small_button(label),
+        Button::Ghost => ui.add(egui::Button::new(label).frame(false)),
+        Button::SmallSelected => {
+            let t = Tokens::get();
+            ui.add(
+                egui::Button::new(RichText::new(key.clone()).color(t.selected_ink))
+                    .small()
+                    .fill(t.selected_bg)
+                    .stroke(egui::Stroke::new(1.0, t.form_primary)),
+            )
+        }
         _ => ui.button(label),
     };
     let response = match options {
