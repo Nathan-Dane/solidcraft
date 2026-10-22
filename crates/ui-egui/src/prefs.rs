@@ -1491,6 +1491,7 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     }
     for theme in &new.custom_themes {
         theme.validate_radii()?;
+        crate::theme_files::parse_borders(&theme.borders)?;
     }
     if !crate::i18n::is_supported(&new.language) {
         return Err(format!("`language` must be one of: {}", crate::i18n::LOCALES.iter().map(|locale| locale.id).collect::<Vec<_>>().join(", ")));
@@ -1730,7 +1731,7 @@ mod tests {
             solidcraft_engine::render::Rgb(hard.viewport_top.r(), hard.viewport_top.g(), hard.viewport_top.b())
         );
 
-        let file = json!({"format": "solidcraft-theme/1", "name": "Paper", "base": "light", "colors": {"panel": "#fffdf0", "accent": "#aa3300"}, "radii": {"radius_sm": 0, "control_radius": 0, "radius_xl": 16}});
+        let file = json!({"format": "solidcraft-theme/1", "name": "Paper", "base": "light", "colors": {"panel": "#fffdf0", "accent": "#aa3300"}, "borders":{"primary":{"width":2,"color":"#ffffff"},"tertiary":{"width":0,"color":"#000000"}}, "radii": {"radius_sm": 0, "control_radius": 0, "radius_xl": 16}});
         let out = h.call("ui.prefs", json!({"theme_import": file, "theme_export": true}));
         assert_eq!(out["result"]["theme_imported"], "paper", "{out}");
         assert_eq!((out["result"]["theme"].as_str(), out["result"]["dark"].as_bool()), (Some("paper"), Some(false)));
@@ -1740,6 +1741,7 @@ mod tests {
         assert_eq!(exported["radii"]["control_radius"], 0);
         assert_eq!(exported["radii"]["radius_xl"], 16);
         assert_eq!(exported["radii"]["radius_md"], 6);
+        assert_eq!(exported["borders"]["primary"]["width"], 2.0);
         assert_eq!(exported["colors"]["text"].as_str().map(str::len), Some(7), "an export is complete: {exported}");
         h.frames(2);
         assert_eq!((Tokens::get().panel, Tokens::get().text), (egui::Color32::from_rgb(0xff, 0xfd, 0xf0), Tokens::light().text));
@@ -1761,6 +1763,7 @@ mod tests {
         other.load_prefs(&h.app.prefs());
         assert_eq!((other.preferences.theme.as_str(), other.preferences.custom_themes.len()), ("paper", 1));
         assert_eq!(other.preferences.custom_themes[0].radii, h.app.preferences.custom_themes[0].radii);
+        assert_eq!(other.preferences.custom_themes[0].borders, h.app.preferences.custom_themes[0].borders);
 
         let out = h.call("ui.prefs", json!({"theme_remove": "paper"}));
         assert_eq!((out["result"]["theme"].as_str(), out["result"]["dark"].as_bool()), (Some("light"), Some(false)), "{out}");
