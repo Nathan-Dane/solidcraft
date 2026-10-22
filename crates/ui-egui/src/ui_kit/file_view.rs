@@ -31,7 +31,10 @@ pub(crate) struct FileView;
 
 impl FileView {
     pub(crate) fn page<R>(ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
-        super::Container::new(ui.ctx(), super::Surface::Viewport).central().frame(super::Container::new(ui.ctx(), super::Surface::Viewport).edge_frame(Tokens::get().file_background)).show(ui, add)
+        super::Container::new(ui.ctx(), super::Surface::Viewport)
+            .central()
+            .frame(super::Container::new(ui.ctx(), super::Surface::Viewport).edge_frame(Tokens::get().file_background))
+            .show(ui, add)
     }
 
     pub(crate) fn content<R>(ui: &mut Ui, narrow: bool, add: impl FnOnce(&mut Ui) -> R) -> InnerResponse<R> {
