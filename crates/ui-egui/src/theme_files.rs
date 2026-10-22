@@ -556,7 +556,7 @@ mod tests {
         for id in ["platinum-9", "green-phosphor", "amber-phosphor"] {
             assert_eq!(values(id), [0; 6], "{id}");
         }
-        assert_eq!(values("solidcraft-95"), [3; 6]);
+        assert_eq!(values("solidcraft-95"), [3, 3, 4, 4, 3, 3]);
         assert_eq!(values("blueprint"), [4, 6, 8, 10, 6, 7]);
         assert_eq!(values("cupertino"), [6, 8, 12, 16, 8, 9]);
         let defaults = radius_values(Tokens::dark());
