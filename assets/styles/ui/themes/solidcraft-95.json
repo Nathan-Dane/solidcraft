@@ -203,8 +203,8 @@
   "radii": {
     "radius_sm": 3,
     "radius_md": 3,
-    "radius_lg": 3,
-    "radius_xl": 3,
+    "radius_lg": 4,
+    "radius_xl": 4,
     "control_radius": 3,
     "sketch_mode_radius": 3
   }
