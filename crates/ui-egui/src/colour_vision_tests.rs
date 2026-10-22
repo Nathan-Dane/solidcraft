@@ -387,6 +387,7 @@ const NO_MEANING: &[(&str, &str)] = &[
     ("borders.control", "structural chrome: hierarchy uses width, pattern and placement, not hue"),
     ("borders.primary_inset", "structural chrome: hierarchy uses width, pattern and placement, not hue"),
     ("borders.bevel", "structural chrome: hierarchy uses width, pattern and placement, not hue"),
+    ("icon_palette", "optional SVG palette; actual roles and theme contrast are guarded in icon and theme tests"),
     ("file_dim", "File view secondary text, WCAG guarded in theme tests"),
     ("file_recovery_well", "decorative recovery icon ground"),
     ("file_action_height", "layout dimension"),

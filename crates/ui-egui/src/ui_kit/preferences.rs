@@ -498,7 +498,7 @@ pub(crate) fn scale_specimen(ui: &mut Ui, scale: f32) {
         crate::fonts::semibold(t.font_label * scale),
         t.selected_ink,
     );
-    p.text(feature.right_center() - vec2(t.space_8, 0.0), egui::Align2::RIGHT_CENTER, "12.5 mm", font, t.form_dim);
+    p.text(feature.right_center() - vec2(t.space_8, 0.0), egui::Align2::RIGHT_CENTER, "12.5 mm", font, t.selected_ink);
 }
 
 /// Font picker and auxiliary actions share one line, with the specimen below.

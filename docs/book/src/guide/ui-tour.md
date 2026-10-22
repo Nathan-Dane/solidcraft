@@ -215,3 +215,8 @@ SolidCraft 95 also defines optional `borders.bevel`: a per-band `width` and the
 `highlight`, `light`, `shadow` and `dark_shadow` colours. The shared UI uses these
 for raised panels/buttons, recessed fields and reversed pressed-button lighting.
 Themes that omit this setting keep their existing flat borders.
+
+Theme files may also set `icon_palette`: opaque colours for SVG display roles,
+and three-colour pale/medium/strong ramps for Solid, Surface, Mesh, Form, Sketch,
+constraints and construction. These settings colour the existing command artwork
+without changing its shapes. Omitted roles keep the default light/dark palette.

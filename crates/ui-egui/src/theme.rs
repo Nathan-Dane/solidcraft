@@ -286,12 +286,31 @@ impl TabAccent {
             // Model and shared utility tabs retain their existing selection exactly.
             _ => (t.accent, t.selected_ink, t.accent_soft),
         };
+        let ink = if contrast_ratio(ink, soft) >= 4.5 {
+            ink
+        } else if contrast_ratio(color, soft) >= 4.5 {
+            color
+        } else if contrast_ratio(t.text, soft) >= 4.5 {
+            t.text
+        } else if contrast_ratio(Color32::BLACK, soft) >= contrast_ratio(Color32::WHITE, soft) {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        };
         Self { color, ink, soft }
     }
 
     /// Small text on a tab's solid pill. Brighter fills need dark ink in either theme.
     pub fn on_fill(self, t: &Tokens) -> Color32 {
-        if contrast_ratio(t.on_accent, self.color) >= 4.5 { t.on_accent } else { t.tab_on_fill_dark }
+        if contrast_ratio(t.on_accent, self.color) >= 4.5 {
+            t.on_accent
+        } else if contrast_ratio(t.tab_on_fill_dark, self.color) >= 4.5 {
+            t.tab_on_fill_dark
+        } else if contrast_ratio(Color32::BLACK, self.color) >= contrast_ratio(Color32::WHITE, self.color) {
+            Color32::BLACK
+        } else {
+            Color32::WHITE
+        }
     }
 
     pub fn current(ctx: &egui::Context) -> Self {
@@ -729,6 +748,8 @@ pub struct Tokens {
     pub continuity: [Color32; 4],
     pub analysis: AnalysisColors,
     pub icons: IconColors,
+    /// Optional SVG display roles and semantic ramps from the active theme file.
+    pub icon_palette: Option<crate::icon_svg::Palette>,
     /// The SolidCraft mark on the application bar: light, mid and dark faces, and its edge.
     pub logo: [Color32; 4],
 }
