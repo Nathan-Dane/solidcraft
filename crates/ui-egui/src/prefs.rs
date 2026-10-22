@@ -1491,6 +1491,7 @@ pub fn set(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::Valu
     }
     for theme in &new.custom_themes {
         theme.validate_radii()?;
+        crate::theme_files::parse_icon_palette(&theme.icon_palette)?;
         crate::theme_files::parse_borders(&theme.borders)?;
     }
     if !crate::i18n::is_supported(&new.language) {

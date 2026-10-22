@@ -541,3 +541,11 @@ non-finite/out-of-range numbers and missing required settings. Invalid hand-edit
 border settings safely fall back to legacy styling. The optional field requires no format
 version change. There is no general border editor in Preferences; theme file import/export
 and the existing preference/control workflow own this extension.
+
+## Theme icon and tab colours
+
+Theme files optionally supply `icon_palette` SVG roles and semantic ramps. The
+shared renderer snapshots that palette into the icon look and cache identity;
+callers continue to request semantic icon IDs and surface-specific monochrome ink.
+See [the shipped-theme colour audit](theme-colour-audit.md) for the schema,
+workspace assignments, accessibility rules and intentionally monochrome themes.

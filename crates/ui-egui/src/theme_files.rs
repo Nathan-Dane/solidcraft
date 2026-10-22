@@ -82,6 +82,9 @@ pub struct ThemeFile {
     /// Optional border roles; absent entries retain the existing surface-specific styling.
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
     pub borders: BTreeMap<String, Value>,
+    /// SVG display roles and three-colour semantic ramps; omitted values keep compiled defaults.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub icon_palette: BTreeMap<String, Value>,
 }
 
 /// Maximum imported radius, in logical UI points; widgets clamp to their own bounds.
@@ -186,6 +189,55 @@ pub(crate) fn parse_borders(values: &BTreeMap<String, Value>) -> Result<crate::t
     Ok(borders)
 }
 
+/// Import only known, opaque SVG roles and bounded semantic ramps. GAP remains an eraser.
+pub(crate) fn parse_icon_palette(values: &BTreeMap<String, Value>) -> Result<Option<crate::icon_svg::Palette>, String> {
+    use crate::icon_svg::{ACCENT_NAMES, Palette, ROLE_NAMES};
+    if values.is_empty() {
+        return Ok(None);
+    }
+    if values.len() > ROLE_NAMES.len() + ACCENT_NAMES.len() + 1 {
+        return Err("too many icon palette entries".into());
+    }
+    let mut palette = Palette::default();
+    for (name, value) in values {
+        let ramp = if name == "solid" { Some(0) } else { ACCENT_NAMES.iter().position(|a| *a == name).map(|a| a + 1) };
+        let role = ROLE_NAMES.iter().position(|r| *r == name && *r != "gap");
+        if ramp.is_none() && role.is_none() {
+            return Err(format!("`icon_palette.{name}` is not an SVG role or semantic ramp"));
+        }
+        let colors = colors_of(value, if ramp.is_some() { 3 } else { 1 }).map_err(|e| format!("`icon_palette.{name}` {e}"))?;
+        if colors.iter().any(|c| c.a() != 255) {
+            return Err(format!("`icon_palette.{name}` must use opaque colours"));
+        }
+        let rgb = |c: &Color32| [c.r(), c.g(), c.b()];
+        if let Some(slot) = ramp.and_then(|r| palette.accents.get_mut(r)) {
+            if let [a, b, c] = colors.as_slice() {
+                *slot = Some([rgb(a), rgb(b), rgb(c)]);
+            }
+        } else if let Some((slot, color)) = role.and_then(|r| palette.roles.get_mut(r)).zip(colors.first()) {
+            *slot = Some(rgb(color));
+        }
+    }
+    Ok(Some(palette))
+}
+
+fn export_icon_palette(palette: Option<crate::icon_svg::Palette>) -> BTreeMap<String, Value> {
+    let mut out = BTreeMap::new();
+    let Some(palette) = palette else { return out };
+    let hex = |[r, g, b]: [u8; 3]| format!("#{r:02x}{g:02x}{b:02x}");
+    for (name, color) in crate::icon_svg::ROLE_NAMES.iter().zip(palette.roles) {
+        if let Some(rgb) = color {
+            out.insert((*name).into(), json!(hex(rgb)));
+        }
+    }
+    for (name, ramp) in std::iter::once("solid").chain(crate::icon_svg::ACCENT_NAMES.iter().copied()).zip(palette.accents) {
+        if let Some(colors) = ramp {
+            out.insert(name.into(), json!(colors.map(hex)));
+        }
+    }
+    out
+}
+
 /// The settable colours: a key, and where it lives in [`Tokens`]. `one` keys take a colour,
 /// `many` keys a list of exactly as many colours as the token has; `icons.*` are the colours
 /// viewport glyphs draw of their own. The destructuring below fails to build when a token is added
@@ -214,7 +266,7 @@ macro_rules! theme_keys {
             // Not colours: the hover lift is a grey step, the analysis colours belong to shaders.
             let Tokens {
                 $($one: _,)* $($many: _,)*
-                hover_face_lift: _, analysis: _, icons: _, borders: _,
+                hover_face_lift: _, analysis: _, icons: _, borders: _, icon_palette: _,
                 file_action_height: _, file_back_height: _, file_recovery_icon: _, file_grid_gap: _,
                 file_nav_width: _, file_nav_height: _, file_tile_height: _, file_tile_icon: _, file_recent_height: _,
                 file_sample_image_height: _, file_content_inset_x: _, file_content_inset_y: _, file_section_gap: _, font_start_title: _,
@@ -358,7 +410,13 @@ pub fn from_value(v: &Value) -> Result<ThemeFile, String> {
         Some(_) => return Err("`borders` must be an object of border roles".into()),
     };
     parse_borders(&borders)?;
-    Ok(ThemeFile { id: slug(name), name: name.to_string(), base, colors: src.into_iter().collect(), radii, borders })
+    let icon_palette = match v.get("icon_palette") {
+        None => BTreeMap::new(),
+        Some(Value::Object(values)) => values.iter().map(|(k, v)| (k.clone(), v.clone())).collect(),
+        Some(_) => return Err("`icon_palette` must be an object of SVG roles and ramps".into()),
+    };
+    parse_icon_palette(&icon_palette)?;
+    Ok(ThemeFile { id: slug(name), name: name.to_string(), base, colors: src.into_iter().collect(), radii, borders, icon_palette })
 }
 
 /// An id from a name: lower-case letters, digits and dashes.
@@ -395,6 +453,7 @@ pub fn resolve(theme: &ThemeFile) -> Tokens {
     }
     // Malformed hand-edited saved settings cannot introduce non-finite drawing geometry.
     t.borders = parse_borders(&theme.borders).unwrap_or_default();
+    t.icon_palette = parse_icon_palette(&theme.icon_palette).unwrap_or_default();
     t
 }
 
@@ -437,7 +496,8 @@ pub fn export(name: &str, base: Base, t: &Tokens) -> Value {
             "light": format_color(bevel.light), "shadow": shadow, "dark_shadow": format_color(bevel.dark_shadow)}),
         );
     }
-    json!({"format": FORMAT, "name": name, "base": base, "colors": colors, "radii": radii, "borders": borders})
+    let icon_palette = export_icon_palette(t.icon_palette);
+    json!({"format": FORMAT, "name": name, "base": base, "colors": colors, "radii": radii, "borders": borders, "icon_palette": icon_palette})
 }
 
 /// The theme files that come with SolidCraft (original files; Gruvbox, Tokyo Night, Solarized, Nord, Nosferatu and Catppuccin map open-source palettes, MIT).
@@ -593,6 +653,49 @@ mod tests {
         }
         for theme in builtin() {
             assert_eq!(resolve(theme).borders.bevel.is_some(), theme.id == "solidcraft-95", "{}", theme.id);
+        }
+    }
+
+    #[test]
+    fn icon_palette_import_export_is_bounded_and_keeps_legacy_defaults() {
+        let source = json!({"format":FORMAT,"name":"Icons","base":"dark","icon_palette": {
+            "ink":"#123456", "line":"#abcdef", "solid":["#c0d0e0","#456789","#123456"],
+            "sketch":["#c0e0d0","#458967","#125634"] }});
+        let file = from_value(&source).unwrap();
+        let tokens = resolve(&file);
+        assert!(tokens.icon_palette.is_some());
+        assert_eq!(resolve(&from_value(&export("Icons", file.base, &tokens)).unwrap()), tokens);
+        for (key, value) in [
+            ("gap", json!("#ffffff")),
+            ("unknown", json!("#ffffff")),
+            ("ink", json!("#ffffff80")),
+            ("solid", json!(["#ffffff"])),
+            ("surface", json!(["#ffffff", "#ffffff", "no"])),
+        ] {
+            let mut bad = source.clone();
+            bad["icon_palette"][key] = value;
+            assert!(from_value(&bad).is_err(), "{bad}");
+        }
+        let old = from_value(&json!({"format":FORMAT,"name":"Legacy","base":"light"})).unwrap();
+        assert!(resolve(&old).icon_palette.is_none());
+        let damaged = ThemeFile { icon_palette: BTreeMap::from([("gap".into(), json!("#ffffff"))]), ..Default::default() };
+        assert!(resolve(&damaged).icon_palette.is_none());
+    }
+
+    #[test]
+    fn shipped_themes_have_readable_distinct_workspace_colours_and_icon_palettes() {
+        use crate::theme::{TabAccent, contrast_ratio};
+        assert_eq!(builtin().len(), BUILTIN.len(), "all shipped themes must be valid");
+        for file in builtin() {
+            let t = resolve(file);
+            assert!(t.icon_palette.is_some(), "{} has no icon palette", file.id);
+            let mut fills = std::collections::HashSet::new();
+            for tab in ["MODEL", "SURFACE", "MESH", "FORM", "SHEET METAL", "RENDER", "SKETCH"] {
+                let accent = TabAccent::for_tab(&t, tab);
+                assert!(fills.insert(accent.color), "{} repeats {tab}", file.id);
+                assert!(contrast_ratio(accent.ink, accent.soft) >= 4.5, "{} {tab} soft text", file.id);
+                assert!(contrast_ratio(accent.on_fill(&t), accent.color) >= 4.5, "{} {tab} pill text", file.id);
+            }
         }
     }
 
