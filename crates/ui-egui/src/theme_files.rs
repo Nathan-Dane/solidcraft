@@ -346,6 +346,19 @@ fn colors_of(v: &Value, len: usize) -> Result<Vec<Color32>, String> {
     list.into_iter().map(|c| c.as_str().and_then(parse_color).ok_or_else(|| format!("`{c}` is not a colour such as \"#282828\""))).collect()
 }
 
+// The application mark now has three faces and no outline. Older theme exports and
+// saved preferences carry a fourth, retired outline colour; keep their face colours.
+fn colors_for_key(key: &str, value: &Value, len: usize) -> Result<Vec<Color32>, String> {
+    if key == "logo"
+        && len == 3
+        && let Value::Array(colors) = value
+        && colors.len() == 4
+    {
+        return colors_of(&Value::Array(colors.iter().take(len).cloned().collect()), len);
+    }
+    colors_of(value, len)
+}
+
 /// A theme file's text, checked: the format tag, a name, a base and only known keys with valid
 /// colours and bounded radii. Nothing is taken from a file with any error; the message names every bad key.
 pub fn parse(text: &str) -> Result<ThemeFile, String> {
@@ -385,7 +398,7 @@ pub fn from_value(v: &Value) -> Result<ThemeFile, String> {
         match slot(&mut probe, k) {
             None => bad.push(format!("`{k}` is not a theme colour")),
             Some(s) => {
-                if let Err(e) = colors_of(c, s.len()) {
+                if let Err(e) = colors_for_key(k, c, s.len()) {
                     bad.push(format!("`{k}` {e}"));
                 }
             }
@@ -450,7 +463,7 @@ pub fn resolve(theme: &ThemeFile) -> Tokens {
     let mut t = if theme.base.is_dark() { Tokens::dark() } else { Tokens::light() };
     for (k, v) in &theme.colors {
         if let Some(s) = slot(&mut t, k)
-            && let Ok(c) = colors_of(v, s.len())
+            && let Ok(c) = colors_for_key(k, v, s.len())
         {
             s.copy_from_slice(&c);
         }
@@ -737,11 +750,15 @@ mod tests {
         let mut file = export("Older theme", Base::Dark, &Tokens::dark());
         let colors = file.get_mut("colors").and_then(Value::as_object_mut).unwrap();
         colors.insert("panel".into(), json!("#102030"));
+        colors.insert("logo".into(), json!(["#102030", "#405060", "#708090", "#000000"]));
         for key in RETIRED_COLORS {
             colors.insert((*key).into(), json!("#abcdef"));
         }
         let imported = from_value(&file).unwrap();
         assert_eq!(resolve(&imported).panel, Color32::from_rgb(0x10, 0x20, 0x30));
+        let resolved = resolve(&imported);
+        assert_eq!(resolved.logo, [parse_color("#102030").unwrap(), parse_color("#405060").unwrap(), parse_color("#708090").unwrap()]);
+        assert_eq!(export("Current", Base::Dark, &resolved)["colors"]["logo"].as_array().unwrap().len(), 3);
         assert_eq!(imported.colors.len(), keys().len());
         assert!(RETIRED_COLORS.iter().all(|key| !imported.colors.contains_key(*key)));
     }
