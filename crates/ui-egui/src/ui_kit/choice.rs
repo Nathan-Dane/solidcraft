@@ -403,12 +403,11 @@ pub(crate) fn add_choice(ui: &mut Ui, label: &str) -> egui::Response {
         ui.painter().rect_filled(rect, t.control_radius, t.hover);
     }
     let r = rect.shrink(t.space_2);
-    ui.painter().add(egui::Shape::dashed_line(
-        &[r.left_top(), r.right_top(), r.right_bottom(), r.left_bottom(), r.left_top()],
-        egui::Stroke::new(1.0, t.control_border),
-        t.space_3,
-        t.space_3,
-    ));
+    let mut outline = super::preferences::rounded_perimeter(r, f32::from(t.control_radius));
+    if let Some(first) = outline.first().copied() {
+        outline.push(first);
+    }
+    ui.painter().add(egui::Shape::dashed_line(&outline, egui::Stroke::new(1.0, t.control_border), t.space_3, t.space_3));
     ui.painter().text(rect.center(), egui::Align2::CENTER_CENTER, "+", egui::FontId::proportional(t.font_subtitle), t.form_dim);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), label));
     response.on_hover_text(label)

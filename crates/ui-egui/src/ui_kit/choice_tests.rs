@@ -164,3 +164,37 @@ fn thumbnail_choices_with_ready_images_preserve_names_and_full_chip_stride() {
         });
     });
 }
+
+#[test]
+fn save_shot_dashes_leave_rounded_corners_at_the_chip_radius() {
+    fn endpoints(shape: &egui::Shape, color: egui::Color32, points: &mut Vec<egui::Pos2>) {
+        match shape {
+            egui::Shape::Vec(shapes) => {
+                for shape in shapes {
+                    endpoints(shape, color, points);
+                }
+            }
+            egui::Shape::LineSegment { points: line, stroke } if stroke.color == color => points.extend(line),
+            egui::Shape::Path(path) if matches!(path.stroke.color, egui::epaint::ColorMode::Solid(ink) if ink == color) => {
+                points.extend(&path.points)
+            }
+            _ => {}
+        }
+    }
+    let ctx = crate::fonts::test_context();
+    let mut rect = egui::Rect::NOTHING;
+    let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+        rect = add_choice(ui, "Save Shot").rect;
+    });
+    let t = crate::theme::Tokens::get();
+    let mut points = Vec::new();
+    for shape in &output.shapes {
+        endpoints(&shape.shape, t.control_border, &mut points);
+    }
+    assert!(!points.is_empty());
+    let border = rect.shrink(t.space_2);
+    for corner in [border.left_top(), border.right_top(), border.right_bottom(), border.left_bottom()] {
+        assert!(points.iter().all(|point| point.distance(corner) > f32::from(t.control_radius) / 4.0), "dashes must follow the rounded perimeter");
+    }
+    output.textures_delta.clear();
+}

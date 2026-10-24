@@ -83,8 +83,7 @@ fn shots_pill(app: &mut SolveApp, ui: &mut egui::Ui, free: Rect) {
         free.left_bottom() + vec2(Tokens::get().space_8, -Tokens::get().space_8),
         egui::Align2::LEFT_BOTTOM,
         |ui| {
-            let response =
-                ui_kit::button(ui, crate::i18n::tr_label("Shots"), ui_kit::Button::Normal).on_hover_text(crate::i18n::tr_label("Show Shots strip"));
+            let response = ui_kit::strip_toggle(ui, false, crate::i18n::tr_label("Shots")).on_hover_text(crate::i18n::tr_label("Show Shots strip"));
             crate::scenario::publish_target("render:shots:show", response.rect);
             if response.clicked() {
                 let _ = app.run("view.shots_strip", serde_json::json!({"visible":true}));

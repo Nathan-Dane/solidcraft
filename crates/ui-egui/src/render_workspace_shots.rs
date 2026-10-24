@@ -42,8 +42,7 @@ pub(crate) fn contents(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::Panel::strip_contents(
         ui,
         |ui| {
-            let response =
-                ui_kit::button(ui, crate::i18n::tr_label("Hide"), ui_kit::Button::Normal).on_hover_text(crate::i18n::tr_label("Hide Shots strip"));
+            let response = ui_kit::strip_toggle(ui, true, crate::i18n::tr_label("Hide Shots strip"));
             crate::scenario::publish_target("render:shots:hide", response.rect);
             hide = response.clicked();
             let response = ui.add_enabled_ui(ready.is_ok(), |ui| ui_kit::primary_button(ui, app.tr("cmd.render_start"))).inner;
@@ -64,7 +63,9 @@ pub(crate) fn contents(app: &mut SolveApp, ui: &mut egui::Ui) {
             ui_kit::text(ui, &result_label, ui_kit::Text::Inline);
         },
         |ui| {
-            ui_kit::text(ui, crate::i18n::tr_label("Shots"), ui_kit::Text::Inline);
+            let heading = ui_kit::StripHeading::new(ui.painter(), crate::i18n::tr_label("Shots"));
+            let response = heading.show(ui);
+            crate::scenario::publish_rect("render:shots:heading", response.rect);
             let response = ui.add_enabled_ui(super::setups::snapshot(app).is_ok(), |ui| ui_kit::add_choice(ui, app.tr("render.shots_save"))).inner;
             crate::scenario::publish_target("render:shots:save", response.rect);
             save = response.clicked();

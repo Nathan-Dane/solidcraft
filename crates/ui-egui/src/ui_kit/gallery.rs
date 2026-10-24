@@ -91,6 +91,18 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("strip_toggle", |ui, _| {
+        ui.horizontal(|ui| {
+            strip_toggle(ui, true, "Hide Shots strip");
+            strip_toggle(ui, false, "Shots");
+        });
+    }),
+    element!("strip_heading", |ui, _| {
+        StripHeading::new(ui.painter(), "History").show(ui);
+    }),
+    element!("choice_chip_selected", |ui, _| {
+        choice_chip(ui, "saved", "Hero", true);
+    }),
     element!("add_choice", |ui, _| {
         add_choice(ui, "Save Shot");
     }),
@@ -2115,6 +2127,22 @@ fn render_workspace_shots_strip_evidence() {
             }
             output.textures_delta.clear();
             std::thread::sleep(std::time::Duration::from_millis(10));
+        }
+        app.run("view.shots_strip", serde_json::json!({"visible":false})).unwrap();
+        for frame in 0..3 {
+            let input = egui::RawInput { screen_rect: Some(bounds), time: Some(1.0 + f64::from(frame) / 60.0), focused: true, ..Default::default() };
+            let mut output = ctx.run_ui(input, |ui| {
+                app.logic(ui.ctx());
+                app.ui(ui);
+            });
+            textures_update(&mut textures, &output.textures_delta);
+            if frame == 2 {
+                assert!(scenario::handle_at("render:shots:show").is_some());
+                raster(&ctx, output.shapes.clone(), output.pixels_per_point, bounds, &textures)
+                    .save(dir.join(format!("shots-{}-restore-pill.png", if dark { "dark" } else { "light" })))
+                    .unwrap();
+            }
+            output.textures_delta.clear();
         }
     }
     crate::theme::set_dark(previous);

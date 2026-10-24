@@ -2962,6 +2962,10 @@ fn render_workspace_shots_toggle_persists_and_design_roundtrip_preserves_state()
     h.frames(3);
     assert!(crate::scenario::rect_of("render:shots_strip").is_none());
     assert!(crate::scenario::rect_of("render:shots:show").is_some());
+    h.step(&json!({"click":{"handle":"render:shots:show"}})).unwrap();
+    assert!(h.app.preferences.render_shots_strip);
+    h.step(&json!({"click":{"handle":"render:shots:hide"}})).unwrap();
+    assert!(!h.app.preferences.render_shots_strip);
     let saved = h.app.prefs();
     let mut next = Harness::new();
     next.app.load_prefs(&saved);
@@ -3669,4 +3673,34 @@ fn render_workspace_shots_thumbnail_keys_include_name_scene_revision_and_complet
     ] {
         assert_ne!(key, thumbnails::Key::new("Hero".into(), 1, 2, changed));
     }
+}
+
+#[test]
+fn render_workspace_shots_heading_matches_design_history_typography_and_strip_baseline() {
+    fn heading(h: &mut Harness, title: &str, strip: &str) -> (egui::FontId, Color32) {
+        let mut output = h.ctx.run_ui(
+            egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1440.0, 1000.0))), ..Default::default() },
+            |ui| {
+                h.app.logic(ui.ctx());
+                h.app.ui(ui);
+            },
+        );
+        let rect = crate::scenario::rect_of(strip).unwrap();
+        let text = crate::test_support::text_shapes(&output).find(|text| text.galley.text() == title && rect.contains(text.pos)).unwrap();
+        let format = &text.galley.job.sections.first().unwrap().format;
+        assert!((text.pos.y + text.galley.size().y / 2.0 - rect.center().y).abs() <= 1.0, "{title} centred on its strip");
+        let appearance = (format.font_id.clone(), format.color);
+        output.textures_delta.clear();
+        appearance
+    }
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":10,"width":10,"height":10})).unwrap();
+    h.app.ui.layout = crate::shell::LayoutMode::Docked;
+    h.app.preferences.timeline_left = false;
+    h.app.ui.show_timeline = true;
+    h.frames(3);
+    let history = heading(&mut h, "History", "history:strip");
+    enter(&mut h.app, true).unwrap();
+    h.frames(3);
+    assert_eq!(heading(&mut h, "Shots", "render:shots_strip"), history);
 }
