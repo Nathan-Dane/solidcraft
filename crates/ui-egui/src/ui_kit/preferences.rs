@@ -184,9 +184,6 @@ pub(super) fn theme_rail_arrow(ui: &mut Ui, rect: Rect, direction: f32, label: &
     } else {
         crate::icons::paint_ink(ui.painter(), icon, "chevron_right", ink);
     }
-    if response.clicked() {
-        response.request_focus();
-    }
     if response.has_focus() {
         ui.painter().rect_stroke(rect, t.control_radius, Stroke::new(t.space_2, t.form_primary), egui::StrokeKind::Inside);
     }
