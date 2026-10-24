@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Position a light by its highlight</title>
-  <circle cx="27.45" cy="29.45" r="21" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M33.45 8.45Q35.45 19.45 46.45 21.45Q35.45 23.45 33.45 34.45Q31.45 23.45 20.45 21.45Q31.45 19.45 33.45 8.45Z" fill="#236ead"/>
-  <path d="M43.45 33.45L43.45 54.45L49.45 48.45L56.45 48.45Z" fill="#ffffff" stroke="#ffffff" stroke-width="4.75" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M43.45 33.45L43.45 54.45L49.45 48.45L56.45 48.45Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Light by highlight — dotted aim stem and sphere target</title>
+  <circle cx="32" cy="9" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="16" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="23" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="42" r="15" fill="#e2e8ef"/>
+  <path d="M44.29 33.4A15 15 0 0 1 23.4 54.29A19.62 19.62 0 0 0 44.29 33.4Z" fill="#b8c3cf"/>
+  <circle cx="32" cy="42" r="15" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="37.5" r="5.5" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

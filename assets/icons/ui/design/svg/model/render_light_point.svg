@@ -1,5 +1,8 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Point light</title>
-  <circle cx="32" cy="32" r="10" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 7L32 16M32 48L32 57M7 32L16 32M48 32L57 32M14 14L20 20M44 44L50 50M14 50L20 44M44 20L50 14" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Point light — source disc and dotted direction stem</title>
+  <circle cx="32" cy="23" r="15" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="23" r="2.125" fill="#34465b"/>
+  <circle cx="32" cy="44" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="51" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="58" r="2.125" fill="#236ead"/>
 </svg>

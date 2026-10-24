@@ -313,10 +313,10 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | assets/icons/ui/design/svg/model/render_ground.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_lens.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_library.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_light_area.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_light_by_highlight.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_light_point.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_light_spot.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_light_area.svg | SolidCraft contributors | original Lights draft (64 grid): angled panel and dotted direction stem | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_light_by_highlight.svg | SolidCraft contributors | original Lights draft (64 grid): shaded sphere, highlight target and dotted aim stem | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_light_point.svg | SolidCraft contributors | original Lights draft (64 grid): source disc, inner dot and dotted direction stem | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_light_spot.svg | SolidCraft contributors | original Lights draft (64 grid): cone source and dotted direction stem | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_lighting_presets.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_output_size.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_paint.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
@@ -328,8 +328,8 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | assets/icons/ui/design/svg/model/render_same_look.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_shot.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_shots_strip.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_solo_light.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_sun.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_solo_light.svg | SolidCraft contributors | original Lights draft (64 grid): point source and dotted stem inside focus brackets | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_sun.svg | SolidCraft contributors | original Lights draft (64 grid): source disc and short radial rays | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_transparent_background.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_update_shot.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 

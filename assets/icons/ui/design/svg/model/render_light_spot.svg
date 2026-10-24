@@ -1,6 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Spot light</title>
-  <path d="M27 22.58L14 52.58M32 27.58L32 55.58M37 22.58L50 52.58" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M24 7.58L40 7.58L47 24.58Q32 32.58 17 24.58Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M20 23.58Q32 29.58 44 23.58" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Spot light — cone source and dotted direction stem</title>
+  <path d="M32 8L49 33Q32 43 15 33Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="44" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="51" r="2.125" fill="#236ead"/>
+  <circle cx="32" cy="58" r="2.125" fill="#236ead"/>
 </svg>
