@@ -43,6 +43,9 @@ mod materials;
 #[path = "render_workspace_setups.rs"]
 mod setups;
 
+#[path = "render_workspace_shots.rs"]
+pub(crate) mod shots;
+
 #[path = "render_ui/scene.rs"]
 pub(crate) mod scene;
 
@@ -51,6 +54,9 @@ mod studio;
 #[path = "render_workspace_transport.rs"]
 mod transport;
 
+#[path = "render_workspace_thumbnails.rs"]
+mod thumbnails;
+
 #[cfg(test)]
 #[path = "render_workspace_tests.rs"]
 mod tests;
@@ -58,6 +64,7 @@ mod tests;
 type PathFactory = Box<dyn FnOnce() -> Result<ImageHost, String> + Send>;
 
 pub struct State {
+    thumbnails: thumbnails::Cache,
     pending_setup: Option<PathFactory>,
     pub host: Option<ExecutorDescriptor>,
     pub path_host: PathHost,
@@ -211,6 +218,8 @@ fn setup_progress(ui: &mut egui::Ui, app: &SolveApp, started: std::time::Instant
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.
 #[derive(Clone, Debug)]
 pub struct ViewState {
+    job_shot: Option<String>,
+    save_shot_name: Option<String>,
     pub name: String,
     by_look: bool,
     draft: RenderSetup,
@@ -266,6 +275,8 @@ impl ImageMethod {
 impl Default for ViewState {
     fn default() -> Self {
         Self {
+            job_shot: None,
+            save_shot_name: None,
             name: "Studio".into(),
             by_look: false,
             draft: RenderSetup::default(),
@@ -297,6 +308,7 @@ impl Default for ViewState {
 impl Default for State {
     fn default() -> Self {
         Self {
+            thumbnails: Default::default(),
             host: None,
             path_host: PathHost::default(),
             pending_setup: None,
@@ -466,6 +478,7 @@ pub(crate) fn invalidate_images(app: &mut SolveApp) {
 }
 
 pub fn invalidate_scene(app: &mut SolveApp) {
+    app.render_workspace.thumbnails = Default::default();
     app.render_workspace.revision = u64::MAX;
     app.render_workspace.scene_signature = None;
     app.render_workspace.scene = None;

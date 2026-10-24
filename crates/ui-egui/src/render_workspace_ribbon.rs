@@ -132,6 +132,7 @@ pub(super) fn perform_job(app: &mut SolveApp, id: &str) -> Result<(), String> {
             let reply = app.run(id, request)?;
             let job = serde_json::from_value(reply["job"].clone()).map_err(|e| format!("invalid render job identity: {e}"))?;
             app.render_workspace.view.job = Some(job);
+            app.render_workspace.view.job_shot = Some(app.render_workspace.view.name.clone());
         }
         "render.result.regrade" => {
             let source = app.render_workspace.view.completed.ok_or_else(|| app.tr("render.ribbon_no_result").to_string())?;

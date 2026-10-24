@@ -91,6 +91,21 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("add_choice", |ui, _| {
+        add_choice(ui, "Save Shot");
+    }),
+    element!("compact_dropdown_menu", |ui, _| {
+        compact_dropdown_menu(ui, "gallery_strip_size", "1920 × 1080", |ui| {
+            list_picker(ui, "full_hd", "Full HD", true);
+        });
+    }),
+    element!("thumbnail_choice", |ui, _| {
+        ui.horizontal(|ui| {
+            thumbnail_choice(ui, "hero", "Hero", ThumbnailChoice { selected: true, modified: true, ..Default::default() });
+            thumbnail_choice(ui, "front", "Front", ThumbnailChoice { progress: Some(0.6), ..Default::default() });
+            add_choice(ui, "Save Shot");
+        });
+    }),
     element!("settings_form", |ui, state| {
         settings_form(ui, Tokens::get().form_label_width, |ui| {
             row(ui, "Sample", |ui| {
@@ -2041,6 +2056,65 @@ fn material_widgets_board_in_both_themes() {
         if let Some(dir) = std::env::var_os("SOLIDCRAFT_MATERIAL_WIDGET_EVIDENCE") {
             std::fs::create_dir_all(&dir).unwrap();
             image.save(std::path::Path::new(&dir).join(if dark { "material-widgets-dark.png" } else { "material-widgets-light.png" })).unwrap();
+        }
+    }
+    crate::theme::set_dark(previous);
+}
+
+/// Actual application strip and camera Inspector, optionally rasterized for review without a window.
+#[test]
+fn render_workspace_shots_strip_evidence() {
+    let Some(dir) = std::env::var_os("SOLIDCRAFT_SHOTS_EVIDENCE") else { return };
+    use super::checks::tests::{raster, textures_update};
+    let dir = std::path::PathBuf::from(dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let previous = crate::theme::is_dark();
+    for dark in [false, true] {
+        let mut app = crate::test_support::sample_app();
+        app.render_workspace.image_host = Some(solidcraft_engine::render::job::CpuHost::cooperative());
+        crate::render_workspace::enter(&mut app, true).unwrap();
+        app.pending_fit = None;
+        let camera = app.cam;
+        for (name, delta) in [("Hero", 0.0), ("Front", 0.7), ("Detail", 1.2)] {
+            let camera = solidcraft_engine::render::Camera { yaw: camera.yaw + delta, ..camera };
+            app.run("render.settings.set", serde_json::json!({"name":name,"set":{"camera":camera}})).unwrap();
+        }
+        app.render_workspace.view.name = "Hero".into();
+        app.start("render.camera.get");
+        app.cam.yaw += 0.2;
+        app.preferences.theme = if dark { "dark" } else { "light" }.into();
+        app.ui.dark = dark;
+        crate::theme::set_dark(dark);
+        let ctx = crate::fonts::test_context();
+        crate::theme::apply(&ctx);
+        let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, vec2(1440.0, 1000.0));
+        let mut textures = std::collections::HashMap::new();
+        for frame in 0..30 {
+            let mut input = egui::RawInput { screen_rect: Some(bounds), time: Some(f64::from(frame) / 60.0), focused: true, ..Default::default() };
+            app.raw_input_hook(&mut input);
+            let mut output = ctx.run_ui(input, |ui| {
+                app.logic(ui.ctx());
+                app.ui(ui);
+            });
+            textures_update(&mut textures, &output.textures_delta);
+            if frame == 24 {
+                app.start("render.start");
+            }
+            if frame == 23 || frame == 29 {
+                let strip = scenario::rect_of("render:shots_strip").unwrap();
+                assert!(bounds.contains_rect(strip));
+                assert!(scenario::rect_of("dialog:list:shot:Hero:modified").is_some());
+                let capture = raster(&ctx, output.shapes.clone(), output.pixels_per_point, bounds, &textures);
+                capture
+                    .save(dir.join(format!(
+                        "shots-{}-{}.png",
+                        if dark { "dark" } else { "light" },
+                        if frame == 23 { "modified" } else { "rendering" }
+                    )))
+                    .unwrap();
+            }
+            output.textures_delta.clear();
+            std::thread::sleep(std::time::Duration::from_millis(10));
         }
     }
     crate::theme::set_dark(previous);

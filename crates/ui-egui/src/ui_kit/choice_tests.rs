@@ -127,3 +127,40 @@ fn beveled_segments_share_fill_corners_at_internal_joins() {
         }
     }
 }
+
+#[test]
+fn thumbnail_choice_states_share_geometry_and_publish_modified_and_running_indicators() {
+    let ctx = crate::fonts::test_context();
+    let previous = crate::theme::is_dark();
+    for dark in [false, true] {
+        crate::theme::set_dark(dark);
+        crate::theme::apply(&ctx);
+        let mut dimensions = Vec::new();
+        for (selected, modified, progress) in [(false, false, None), (true, false, None), (true, true, Some(0.4))] {
+            scenario::clear_handles();
+            frame(&ctx, vec![], |ui| {
+                let response = thumbnail_choice(ui, "shot", "Hero", ThumbnailChoice { selected, modified, progress, ..Default::default() });
+                dimensions.push(response.rect.size());
+            });
+            assert_eq!(scenario::rect_of("dialog:list:shot:modified").is_some(), modified);
+            assert_eq!(scenario::rect_of("dialog:list:shot:progress").is_some(), progress.is_some());
+        }
+        assert!(dimensions.iter().all(|size| *size == dimensions[0]));
+        assert_eq!(dimensions[0].y, 38.0);
+    }
+    crate::theme::set_dark(previous);
+}
+
+#[test]
+fn thumbnail_choices_with_ready_images_preserve_names_and_full_chip_stride() {
+    let ctx = crate::fonts::test_context();
+    let texture = ctx.load_texture("shot", egui::ColorImage::filled([104, 60], egui::Color32::GRAY), Default::default());
+    frame(&ctx, vec![], |ui| {
+        ui.horizontal(|ui| {
+            let first = thumbnail_choice(ui, "detail", "Detail", ThumbnailChoice { texture: Some(texture.id()), ..Default::default() });
+            let second = thumbnail_choice(ui, "front", "Front", ThumbnailChoice { texture: Some(texture.id()), ..Default::default() });
+            assert!(first.rect.right() <= second.rect.left(), "loaded images must not move the cursor back over the preceding name");
+            assert!(first.rect.width() > 52.0 + 24.0, "reserve the shot name beside the thumbnail");
+        });
+    });
+}

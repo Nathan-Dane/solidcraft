@@ -270,8 +270,23 @@ pub(crate) fn dropdown(ui: &mut Ui, id: &str, selected: &mut usize, options: &[&
 /// Dropdown with caller-supplied kit choices/actions, including disabled entries and stable
 /// application handles. Tokens: dropdown tokens. Use `dropdown` for a simple indexed list.
 pub(crate) fn dropdown_menu(ui: &mut Ui, id: impl egui::AsIdSalt, current: &str, add: impl FnOnce(&mut Ui)) -> Response {
+    dropdown_menu_width(ui, id, current, false, add)
+}
+
+/// Intrinsic-width variant for horizontal toolbars and bottom strips.
+pub(crate) fn compact_dropdown_menu(ui: &mut Ui, id: impl egui::AsIdSalt, current: &str, add: impl FnOnce(&mut Ui)) -> Response {
+    dropdown_menu_width(ui, id, current, true, add)
+}
+
+fn dropdown_menu_width(ui: &mut Ui, id: impl egui::AsIdSalt, current: &str, compact: bool, add: impl FnOnce(&mut Ui)) -> Response {
+    let t = Tokens::get();
+    let width = if compact {
+        ui.painter().layout_no_wrap(current.to_owned(), egui::FontId::proportional(t.font_label), t.form_ink).size().x + t.space_24 + t.space_8
+    } else {
+        dimension(ui.available_width())
+    };
     let response = egui::ComboBox::from_id_salt(id)
-        .width(dimension(ui.available_width()))
+        .width(width)
         .height(Tokens::get().space_24 * 14.0)
         .selected_text(current)
         .icon(dropdown_arrow)

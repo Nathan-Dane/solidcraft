@@ -3514,3 +3514,159 @@ fn render_workspace_browser_shot_switch_keeps_the_existing_dirty_confirmation() 
     assert_eq!(h.app.render_workspace.view.draft.width, 321);
     assert!(!h.app.render_workspace.view.dirty);
 }
+
+#[test]
+fn render_workspace_shots_modified_dot_update_and_revert_follow_only_camera() {
+    let mut h = Harness::new();
+    enter(&mut h.app, true).unwrap();
+    h.frames(3);
+    setups::save(&mut h.app).unwrap();
+    h.app.render_workspace.view.inspector.page = inspector::Page::Camera;
+    h.frames(3);
+    assert!(!shots::camera_modified(&h.app, "Studio"));
+    assert!(crate::scenario::rect_of("dialog:list:shot:Studio:modified").is_none());
+    let saved = h.app.session.doc.render.setups["Studio"].clone();
+    h.app.render_workspace.view.draft.width = 317;
+    h.frames(2);
+    assert!(!shots::camera_modified(&h.app, "Studio"), "output settings must not mark the camera");
+    h.app.cam.yaw += 0.3;
+    h.frames(3);
+    assert!(crate::scenario::rect_of("dialog:list:shot:Studio:modified").is_some());
+    assert!(crate::scenario::handle_at("render:shots:update").is_some());
+    h.step(&json!({"click":{"handle":"render:shots:update"}})).unwrap();
+    h.frames(2);
+    let mut expected = saved.clone();
+    expected.camera = h.app.cam;
+    assert_eq!(h.app.session.doc.render.setups["Studio"], expected, "Update must preserve saved output and lighting");
+    assert_eq!(h.app.render_workspace.view.draft.width, 317, "Update must preserve the editor draft");
+    assert!(!shots::camera_modified(&h.app, "Studio"));
+    assert!(crate::scenario::rect_of("dialog:list:shot:Studio:modified").is_none());
+    assert!(crate::scenario::handle_at("render:shots:update").is_none());
+    h.app.cam.roll += 0.2;
+    h.frames(3);
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"click":{"handle":"render:shots:revert"}})).unwrap();
+    h.frames(2);
+    assert_eq!(h.app.cam, expected.camera);
+    assert!(!shots::camera_modified(&h.app, "Studio"));
+    assert_eq!(h.app.session.doc, document);
+    assert_eq!(h.app.session.undo.len(), undo);
+}
+
+#[test]
+fn render_workspace_shots_save_prompt_and_size_dropdown_use_existing_commands() {
+    let mut h = Harness::new();
+    enter(&mut h.app, true).unwrap();
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:shots:save"}})).unwrap();
+    assert!(inspector::confirmation_open(&h.app));
+    h.app.render_workspace.view.save_shot_name = Some("Hero".into());
+    h.frames(3);
+    assert_eq!(crate::scenario::count_of("dialog:ok:enabled"), Some(1.0));
+    h.step(&json!({"click":{"handle":"dialog:ok"}})).unwrap();
+    assert!(h.app.session.doc.render.setups.contains_key("Hero"));
+    assert_eq!(h.app.render_workspace.view.name, "Hero");
+    assert!(!inspector::confirmation_open(&h.app));
+    assert_eq!(h.app.session.doc.render.setups["Hero"].camera, h.app.cam);
+    let doc = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"click":{"handle":"render:shots:size"}})).unwrap();
+    h.step(&json!({"click":{"handle":"dialog:list:Full HD"}})).unwrap();
+    assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (1920, 1080));
+    assert_eq!(h.app.session.doc, doc);
+    assert_eq!(h.app.session.undo.len(), undo);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+#[test]
+fn render_workspace_shots_thumbnails_bound_invalidate_and_never_replace_results_or_history() {
+    use std::time::{Duration, Instant};
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":20,"width":15,"height":10})).unwrap();
+    enter(&mut h.app, true).unwrap();
+    for index in 0..20 {
+        h.app.run("render.settings.set", json!({"name":format!("Shot {index:02}"),"set":{"camera":h.app.cam}})).unwrap();
+    }
+    // A real completed frame stays available, including its exact PNG and retained texture.
+    let id = completed_preview(&mut h, [20, 40, 60]);
+    h.app.render_workspace.view.job = Some(id);
+    cache_render_images(&mut h.app, &h.ctx);
+    h.app.render_workspace.view.job = None;
+    let png = h.app.session.render_job_handle(id).unwrap().frame().unwrap().unwrap().png().to_vec();
+    let retained = h.app.render_workspace.image.as_ref().unwrap().1.as_ref().unwrap().id();
+    let doc = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    let deadline = Instant::now() + Duration::from_secs(20);
+    while h.app.render_workspace.thumbnails.entries.len() < thumbnails::LIMIT {
+        assert!(Instant::now() < deadline, "thumbnail worker did not complete");
+        thumbnails::refresh(&mut h.app, &h.ctx);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    assert_eq!(h.app.render_workspace.thumbnails.entries.len(), 16);
+    assert!(h.app.render_workspace.thumbnails.entries.values().all(|texture| texture.as_ref().is_some_and(|texture| texture.size() == [104, 60])));
+    assert_eq!(h.app.render_workspace.image.as_ref().unwrap().1.as_ref().unwrap().id(), retained);
+    assert_eq!(h.app.render_workspace.view.completed, Some(id));
+    assert_eq!(h.app.session.render_job_handle(id).unwrap().frame().unwrap().unwrap().png(), png);
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert_eq!(h.app.session.doc, doc);
+    assert_eq!(h.app.session.undo.len(), undo);
+    // Later shots must get previews on selection/scrolling rather than keeping the first 16 forever.
+    h.app.render_workspace.view.name = "Shot 19".into();
+    h.app.render_workspace.thumbnails.show(vec!["Shot 18".into(), "Shot 19".into()], &h.ctx);
+    thumbnails::refresh(&mut h.app, &h.ctx);
+    while h.app.render_workspace.thumbnails.texture("Shot 19").is_none() || h.app.render_workspace.thumbnails.texture("Shot 18").is_none() {
+        assert!(Instant::now() < deadline, "visible thumbnail worker did not complete");
+        thumbnails::refresh(&mut h.app, &h.ctx);
+        assert!(h.app.render_workspace.thumbnails.entries.len() <= 16);
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    let old = h.app.render_workspace.thumbnails.entries.keys().cloned().collect::<Vec<_>>();
+    // Camera, scene revision and visibility invalidate stale previews.
+    let camera = Camera { yaw: 0.7, ..h.app.cam };
+    h.app.run("render.settings.set", json!({"name":"Shot 00","set":{"camera":camera}})).unwrap();
+    thumbnails::refresh(&mut h.app, &h.ctx);
+    assert!(h.app.render_workspace.thumbnails.entries.keys().all(|key| !old.contains(key)));
+    h.app.session.visibility.hidden_bodies.push("Body1".into());
+    thumbnails::refresh(&mut h.app, &h.ctx);
+    invalidate_scene(&mut h.app);
+    assert!(h.app.render_workspace.thumbnails.entries.is_empty());
+    thumbnails::refresh(&mut h.app, &h.ctx);
+    reset_document(&mut h.app);
+    assert!(h.app.render_workspace.thumbnails.entries.is_empty());
+}
+
+#[test]
+fn render_workspace_shots_running_ring_stays_with_the_submitted_shot() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":20,"width":15,"height":10})).unwrap();
+    enter(&mut h.app, true).unwrap();
+    h.app.render_workspace.view.name = "A".into();
+    setups::save(&mut h.app).unwrap();
+    h.app.run("render.settings.set", json!({"name":"B","set":{}})).unwrap();
+    h.app.start("render.start");
+    assert_eq!(h.app.render_workspace.view.job_shot.as_deref(), Some("A"));
+    h.app.render_workspace.view.name = "B".into();
+    h.frames(2);
+    assert!(crate::scenario::rect_of("dialog:list:shot:A:progress").is_some());
+    assert!(crate::scenario::rect_of("dialog:list:shot:B:progress").is_none());
+    h.app.start("render.cancel");
+}
+
+#[test]
+fn render_workspace_shots_thumbnail_keys_include_name_scene_revision_and_complete_camera() {
+    let camera = Camera::default();
+    let key = thumbnails::Key::new("Hero".into(), 1, 2, camera);
+    assert_eq!(key, thumbnails::Key::new("Hero".into(), 1, 2, camera));
+    assert_ne!(key, thumbnails::Key::new("Front".into(), 1, 2, camera));
+    assert_ne!(key, thumbnails::Key::new("Hero".into(), 2, 2, camera));
+    assert_ne!(key, thumbnails::Key::new("Hero".into(), 1, 3, camera));
+    for changed in [
+        Camera { yaw: camera.yaw + 0.1, ..camera },
+        Camera { roll: camera.roll + 0.1, ..camera },
+        Camera { fov: 0.7, ..camera },
+        Camera { up: solidcraft_engine::render::UpAxis::Y, ..camera },
+    ] {
+        assert_ne!(key, thumbnails::Key::new("Hero".into(), 1, 2, changed));
+    }
+}
