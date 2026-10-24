@@ -1,7 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Render all shots — queue</title>
-  <path d="M12 8.5L40 8.5A4 4 0 0 1 44 12.5L44 31.5A4 4 0 0 1 40 35.5L12 35.5A4 4 0 0 1 8 31.5L8 12.5A4 4 0 0 1 12 8.5Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M18 16.5L46 16.5A4 4 0 0 1 50 20.5L50 39.5A4 4 0 0 1 46 43.5L18 43.5A4 4 0 0 1 14 39.5L14 20.5A4 4 0 0 1 18 16.5Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M24 24.5L52 24.5A4 4 0 0 1 56 28.5L56 51.5A4 4 0 0 1 52 55.5L24 55.5A4 4 0 0 1 20 51.5L20 28.5A4 4 0 0 1 24 24.5Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 31.5L48 40.5L32 49.5Z" fill="#236ead"/>
+  <title>Render all shots — a batch of saved camera views</title>
+  <path d="M18 11L52 11A5 5 0 0 1 57 16L57 38A5 5 0 0 1 52 43L18 43A5 5 0 0 1 13 38L13 16A5 5 0 0 1 18 11Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M9 19L12 19L15 12Q15.6 10 17.5 10L22.5 10Q24.4 10 25 12L28 19L43 19Q48 19 48 24L48 46Q48 51 43 51L9 51Q4 51 4 46L4 24Q4 19 9 19Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="26" cy="35" r="10.5" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="47.5" cy="47.5" r="14" fill="#ffffff"/>
+  <circle cx="47.5" cy="47.5" r="12" fill="#236ead"/>
+  <path d="M43.9 41.7L53.3 47.5L43.9 53.3Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
