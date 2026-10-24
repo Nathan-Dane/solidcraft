@@ -343,6 +343,12 @@ pub(crate) struct Row<'a> {
     pub(crate) badges: &'a [&'a str],
     /// Lit by the selection or the 3D view's pointer: the item's own row, or a row leading to it.
     pub(crate) mark: Mark,
+    /// Optional document appearance and shared trailing text slots.
+    pub(crate) swatch: Option<Color32>,
+    pub(crate) secondary: &'a str,
+    pub(crate) count: &'a str,
+    pub(crate) modified: bool,
+    pub(crate) radio_hint: &'a str,
 }
 
 /// How a row relates to what the selection and the 3D view's pointer light.
@@ -460,6 +466,12 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
         icons::paint_icon(ui.painter(), ir, row.icon, if row.dim { DIM_ICON_OPACITY } else { 1.0 });
         x += 21.0;
     }
+    if let Some(color) = row.swatch {
+        let swatch = Rect::from_center_size(pos2(x + t.space_6, cy), vec2(t.space_12, t.space_12));
+        ui.painter().rect_filled(swatch, t.radius_sm, color);
+        ui.painter().rect_stroke(swatch, t.radius_sm, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside);
+        x += t.space_16;
+    }
     let col =
         if row.selected { crate::theme::TabAccent::current(ui.ctx()).ink } else { row.color.unwrap_or(if row.dim { t.text_dim } else { t.text }) };
     let label_display = if row.name { crate::i18n::tr_name(row.label) } else { crate::i18n::tr_dyn(row.label) };
@@ -467,7 +479,25 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
     // The label stops before the badges and the card's edge; a longer name ends in an ellipsis
     // and its full text is in the tooltip.
     let badges_width = row.badges.len() as f32 * 15.0;
-    let room = (r.right() - 4.0 - badges_width - x).max(0.0);
+    let mut right = r.right() - t.space_4 - badges_width;
+    for text in [row.count, row.secondary] {
+        if text.is_empty() {
+            continue;
+        }
+        let max_width = (right - x).max(0.0) * 0.45;
+        let mut job = egui::text::LayoutJob::simple(text.to_string(), FontId::proportional(t.font_small), t.text_dim, max_width);
+        job.wrap.max_rows = 1;
+        job.wrap.overflow_character = Some('\u{2026}');
+        let galley = ui.painter().layout_job(job);
+        right -= galley.size().x;
+        ui.painter().with_clip_rect(ui.clip_rect().intersect(r)).galley(pos2(right, cy - galley.size().y / 2.0), galley, t.text_dim);
+        right -= t.space_6;
+    }
+    if row.modified {
+        right -= t.space_8;
+        ui.painter().circle_filled(pos2(right, cy), t.space_2, t.accent);
+    }
+    let room = (right - x).max(0.0);
     let mut job = egui::text::LayoutJob::simple(label_display.to_string(), font, col, room);
     job.wrap.max_rows = 1;
     job.wrap.break_anywhere = true;
@@ -487,11 +517,15 @@ pub(crate) fn draw_row(ui: &mut egui::Ui, id: egui::Id, row: &Row) -> RowResp {
     let tip = match hover_on {
         1 => Some(if row.fold == Some(true) { crate::i18n::tr("ui.collapse") } else { crate::i18n::tr("ui.expand") }),
         2 => Some(if row.eye == Some(true) { crate::i18n::tr("ui.hide") } else { crate::i18n::tr("ui.show") }),
+        3 if !row.radio_hint.is_empty() => Some(row.radio_hint),
         3 => Some(if row.radio == Some(true) { crate::i18n::tr("ui.active_component") } else { crate::i18n::tr("ui.activate") }),
         _ => None,
     };
     let resp = match tip {
         Some(t) => resp.on_hover_text(t),
+        None if !row.secondary.is_empty() || !row.count.is_empty() => {
+            resp.on_hover_text(format!("{label_display}\n{}\n{}", row.secondary, row.count))
+        }
         None if elided => resp.on_hover_text(label_display.to_string()),
         None => resp,
     };
@@ -1068,7 +1102,14 @@ fn rows_scrolling(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, shr
         .scroll_source(egui::scroll_area::ScrollSource { scroll_bar: true, mouse_wheel: true, ..egui::scroll_area::ScrollSource::NONE })
         .show(ui, |ui| {
             ui.spacing_mut().item_spacing.y = 0.0;
-            component_rows(app, ui, 0, 0, acts);
+            if crate::render_workspace::active(app) {
+                crate::render_workspace::scene::sections(app, ui);
+                if !crate::render_workspace::scene::objects(app, ui, &mut acts.hover_bodies) {
+                    component_rows(app, ui, 0, 1, acts);
+                }
+            } else {
+                component_rows(app, ui, 0, 0, acts);
+            }
         });
     // The row was reached and scrolled to, or isn't in the tree (a body a later feature removes):
     // either way the reveal is done.
@@ -1116,6 +1157,7 @@ fn component_rows(app: &mut SolveApp, ui: &mut egui::Ui, id: u64, depth: usize, 
     let faded = app.session.active_component != 0 && !app.session.doc.component_within(id, app.session.active_component) && !active;
     let name = component_name(app, id);
     let badges: &[&str] = if grounded { &["pin"] } else { &[] };
+    let appearance = crate::render_workspace::scene::decoration(app, &bodies);
     let row = Row {
         depth,
         fold: Some(open),
@@ -1127,6 +1169,9 @@ fn component_rows(app: &mut SolveApp, ui: &mut egui::Ui, id: u64, depth: usize, 
         dim: faded,
         radio: Some(active),
         badges,
+        swatch: appearance.swatch,
+        secondary: &appearance.name,
+        count: &appearance.count,
         // The design holds everything the tree lists.
         mark: if id == 0 && acts.lit.any() { Mark::Branch } else { Mark::None },
         ..Default::default()
@@ -1183,7 +1228,7 @@ fn component_rows(app: &mut SolveApp, ui: &mut egui::Ui, id: u64, depth: usize, 
         return;
     }
     let d = depth + 1;
-    if id == 0 {
+    if id == 0 && !crate::render_workspace::active(app) {
         doc_settings(app, ui, d);
         named_view_rows(app, ui, d, acts);
         origin_rows(app, ui, d, acts);
@@ -1191,11 +1236,14 @@ fn component_rows(app: &mut SolveApp, ui: &mut egui::Ui, id: u64, depth: usize, 
         analysis_rows(app, ui, d, acts);
     }
     let _ = t;
-    for folder in ["bodies", "sketches", "construction"] {
+    let render = crate::render_workspace::active(app);
+    for folder in ["bodies", "sketches", "construction"].into_iter().filter(|folder| !render || *folder == "bodies") {
         folder_rows(app, ui, id, folder, d, acts);
     }
-    features::rows(app, ui, id, &[], d, acts);
-    if id == 0 {
+    if !render {
+        features::rows(app, ui, id, &[], d, acts);
+    }
+    if id == 0 && !render {
         crate::dialogs_assembly::browser_joints(app, ui, d);
     }
     let children = model_children(app, id);
@@ -1227,6 +1275,7 @@ fn occurrence_rows(app: &mut SolveApp, ui: &mut egui::Ui, path: Vec<u64>, depth:
     let faded = app.session.active_occurrence_path.as_ref().is_some_and(|p| !path.starts_with(p) && !p.starts_with(&path));
     let badges: &[&str] = if placement.grounded { &["pin"] } else { &[] };
     let label = crate::dialogs_part_size::browser_label(app, placement.component, &placement.name);
+    let appearance = crate::render_workspace::scene::decoration(app, &app.session.occurrence_bodies(&path, true).unwrap_or_default());
     app.tree.order.push(key.clone());
     let r = draw_row(
         ui,
@@ -1237,6 +1286,9 @@ fn occurrence_rows(app: &mut SolveApp, ui: &mut egui::Ui, path: Vec<u64>, depth:
             eye: Some(own_visible),
             icon: "component",
             label: &label,
+            swatch: appearance.swatch,
+            secondary: &appearance.name,
+            count: &appearance.count,
             name: true,
             selected,
             dim: faded || !visible,
@@ -1300,10 +1352,13 @@ fn occurrence_rows(app: &mut SolveApp, ui: &mut egui::Ui, path: Vec<u64>, depth:
     if !open {
         return;
     }
-    for folder in ["bodies", "sketches", "construction"] {
+    let render = crate::render_workspace::active(app);
+    for folder in ["bodies", "sketches", "construction"].into_iter().filter(|folder| !render || *folder == "bodies") {
         occurrence_folder_rows(app, ui, placement.component, &path, folder, depth + 1, acts);
     }
-    features::rows(app, ui, placement.component, &path, depth + 1, acts);
+    if !render {
+        features::rows(app, ui, placement.component, &path, depth + 1, acts);
+    }
     let children = model_children(app, placement.component);
     if path.len() < 64 {
         for occurrence in children {
@@ -2131,6 +2186,7 @@ fn entry_row(
     let patterns_open = is_open(app, &pattern_key, true);
     let badges: &[&str] = if e.locked { &["lock"] } else { &[] };
     let (selected, mark) = lit_row(acts.lit.entry(folder, e));
+    let appearance = crate::render_workspace::scene::decoration(app, &e.bodies);
     let r = draw_row(
         ui,
         ui.id().with(("item", &e.row_key)),
@@ -2144,6 +2200,9 @@ fn entry_row(
             selected,
             dim: !e.visible || parent_hidden,
             color: e.color,
+            swatch: appearance.swatch,
+            secondary: &appearance.name,
+            count: &appearance.count,
             badges,
             mark,
             ..Default::default()

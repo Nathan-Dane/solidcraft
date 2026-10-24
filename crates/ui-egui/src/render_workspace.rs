@@ -43,6 +43,9 @@ mod materials;
 #[path = "render_workspace_setups.rs"]
 mod setups;
 
+#[path = "render_ui/scene.rs"]
+pub(crate) mod scene;
+
 #[path = "render_workspace_studio.rs"]
 mod studio;
 #[path = "render_workspace_transport.rs"]
@@ -209,6 +212,7 @@ fn setup_progress(ui: &mut egui::Ui, app: &SolveApp, started: std::time::Instant
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub name: String,
+    by_look: bool,
     draft: RenderSetup,
     dirty: bool,
     clean_setup: Option<RenderSetup>,
@@ -263,6 +267,7 @@ impl Default for ViewState {
     fn default() -> Self {
         Self {
             name: "Studio".into(),
+            by_look: false,
             draft: RenderSetup::default(),
             dirty: false,
             clean_setup: None,

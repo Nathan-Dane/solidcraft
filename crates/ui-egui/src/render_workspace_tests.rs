@@ -3400,3 +3400,107 @@ fn render_workspace_component_filter_keeps_nested_repeated_occurrences_distinct(
         assert_eq!(candidate(&h.app, &[hit]).unwrap().1, Sel::Occurrence { path });
     }
 }
+
+#[test]
+fn render_workspace_browser_sections_and_lights_describe_only_current_job_entries() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1440,"height":1100}));
+    enter(&mut h.app, true).unwrap();
+    h.frames(3);
+    let rows: Vec<_> = crate::browser::drawn_rows().into_iter().map(|r| r.0).collect();
+    for section in ["Environment", "Lights", "Shots", "Objects"] {
+        assert!(rows.iter().any(|label| label == section), "{section}: {rows:?}");
+    }
+    assert!(scene::light_types(&h.app).is_empty());
+    assert_eq!(scene::environment(&h.app).0, "Fixed studio");
+    h.app.render_workspace.view.method = ImageMethod::CpuRaytrace;
+    h.app.render_workspace.view.raytrace = serde_json::from_value(json!({
+        "lights":[{"direction":[0,0,-1],"color":[1,1,1],"intensity":1}],
+        "punctual_lights":[
+            {"position_mm":[0,0,10],"color":[1,1,1],"intensity":1,"reference_distance_mm":10,"minimum_distance_mm":0.1},
+            {"position_mm":[0,0,10],"color":[1,1,1],"intensity":1,"reference_distance_mm":10,"minimum_distance_mm":0.1,
+             "cone":{"emitted_axis":[0,0,-1],"inner_half_angle_radians":0.1,"outer_half_angle_radians":0.2}}
+        ],
+        "area_lights":[{"center_mm":[0,0,10],"edge_u_mm":[1,0,0],"edge_v_mm":[0,-1,0],"color":[1,1,1],"intensity":1}]
+    }))
+    .unwrap();
+    assert_eq!(scene::light_types(&h.app), ["render.tree_directional", "render.tree_point", "render.tree_spot", "render.tree_rectangle"]);
+    h.app.render_workspace.view.raytrace.lights = Some(vec![]);
+    h.app.render_workspace.view.raytrace.punctual_lights = None;
+    h.app.render_workspace.view.raytrace.area_lights = None;
+    assert!(scene::light_types(&h.app).is_empty(), "empty explicit rig must stay empty");
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
+    let studio = &mut h.app.render_workspace.view.studio;
+    studio.sun_enabled = true;
+    assert!(scene::light_types(&h.app).is_empty(), "disabled rig must not expose editor defaults");
+    h.app.render_workspace.view.studio.lighting_enabled = true;
+    h.app
+        .render_workspace
+        .view
+        .studio
+        .area_lights
+        .push(serde_json::from_value(json!({"center":[0,0,10],"u":[1,0,0],"v":[0,-1,0],"radiance":[1,1,1]})).unwrap());
+    assert_eq!(scene::light_types(&h.app), ["render.tree_sun", "render.tree_rectangle"]);
+    h.app.render_workspace.view.studio.environment = studio::Environment::Sky;
+    h.app.render_workspace.view.studio.rotation_rad = std::f64::consts::FRAC_PI_2;
+    h.app.render_workspace.view.studio.intensity = 2.5;
+    assert_eq!(scene::environment(&h.app), ("Sky".into(), "90° · 2.50×".into()));
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:tree:environment:current"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Environment);
+    h.step(&json!({"click":{"browser":"Sun"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Lighting);
+}
+
+#[test]
+fn render_workspace_browser_look_lens_counts_distinct_objects_and_selects_them() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1440,"height":1100}));
+    for (name, x) in [("A", 0), ("B", 20), ("C", 40)] {
+        h.app.run("solid.box", json!({"corner":[x,0,0],"length":10,"width":10,"height":10,"body_name":name})).unwrap();
+    }
+    h.app.run("appearance.assign", json!({"bodies":["A","B"],"appearance":"ABS - Red"})).unwrap();
+    h.app.run("appearance.assign", json!({"bodies":["C"],"appearance":"ABS - Blue"})).unwrap();
+    // Two faces on C use the same look as A and B: still only one additional user.
+    h.app.run("appearance.assign", json!({"body":"C","faces":[[40,5,5],[45,0,5]],"appearance":"ABS - Red"})).unwrap();
+    enter(&mut h.app, true).unwrap();
+    let groups = scene::groups(&h.app);
+    let red = groups.iter().position(|g| g.look.as_ref().is_some_and(|l| l.name == "ABS - Red")).unwrap();
+    assert_eq!(groups[red].objects, ["A", "B", "C"]);
+    assert_eq!(groups.len(), 2);
+    h.app.render_workspace.view.by_look = true;
+    h.frames(3);
+    h.step(&json!({"click":{"handle":format!("render:tree:look:{red}")}})).unwrap();
+    assert_eq!(h.app.session.selection.len(), 3);
+    for name in ["A", "B", "C"] {
+        assert!(h.app.session.selection.contains(&solidcraft_engine::Sel::Body { name: name.into() }));
+    }
+    h.step(&json!({"click":{"handle":"eye:A"}})).unwrap();
+    assert!(h.app.session.visibility.hidden_bodies.contains(&"A".into()));
+    let menu = crate::context_menu::items(&h.app, &crate::context_menu::Target::Body { name: "A".into() });
+    for id in ["select.set", "select.same_look", "ui.isolate", "ui.show"] {
+        assert!(menu.iter().any(|i| i.id == id));
+    }
+}
+
+#[test]
+fn render_workspace_browser_shot_switch_keeps_the_existing_dirty_confirmation() {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1440,"height":1100}));
+    enter(&mut h.app, true).unwrap();
+    h.app.render_workspace.view.name = "A".into();
+    setups::save(&mut h.app).unwrap();
+    h.app.run("render.settings.set", json!({"name":"B","set":{"width":321,"job":{"method":"raster"}}})).unwrap();
+    h.app.render_workspace.view.draft.width = 123;
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:tree:shot:B"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.name, "A");
+    assert!(inspector::confirmation_open(&h.app));
+    h.step(&json!({"widget":h.app.tr("render.keep_editing")})).unwrap();
+    assert_eq!(h.app.render_workspace.view.draft.width, 123);
+    h.step(&json!({"click":{"handle":"render:tree:shot:B"}})).unwrap();
+    h.step(&json!({"widget":h.app.tr("render.discard_continue")})).unwrap();
+    assert_eq!(h.app.render_workspace.view.name, "B");
+    assert_eq!(h.app.render_workspace.view.draft.width, 321);
+    assert!(!h.app.render_workspace.view.dirty);
+}

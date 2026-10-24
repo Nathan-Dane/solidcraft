@@ -61,3 +61,69 @@ fn appearance_and_browser_folds_keep_handles_and_render_both_states() {
     }
     theme::set_dark(previous);
 }
+
+#[test]
+fn render_browser_uses_shared_rows_in_both_lenses_and_themes() {
+    let dir = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../target/render-browser-review");
+    std::fs::create_dir_all(&dir).unwrap();
+    for dark in [false, true] {
+        let mut h = Harness::new();
+        h.app.home.open = false;
+        h.app.session.run_script(&solidcraft_engine::sample::script()).unwrap();
+        h.app.run("solid.box", json!({"corner":[60,0,0],"length":10,"width":10,"height":10,"body_name":"Detail block"})).unwrap();
+        h.app.run("appearance.assign", json!({"bodies":["Plate"],"appearance":"ABS - Red"})).unwrap();
+        h.app.run("appearance.assign", json!({"bodies":["Detail block"],"appearance":"ABS - Blue"})).unwrap();
+        h.call("ui.resize", json!({"width":1100,"height":1500}));
+        h.call("ui.set", json!({"dark":dark}));
+        h.app.preferences.render_browser_width = 360.0;
+        h.call("ui.workspace", json!({"workspace":"render"}));
+        h.app.run("render.settings.set", json!({"name":"Studio","set":{"job":{"method":"raster"}}})).unwrap();
+        h.app.run("render.settings.set", json!({"name":"Detail","set":{"job":{"method":"raster"}}})).unwrap();
+        h.ctx = egui::Context::default();
+        solidcraft_ui_egui::fonts::setup_fonts(&h.ctx);
+        theme::apply(&h.ctx);
+        let mut textures: HashMap<TextureId, ColorImage> = HashMap::new();
+        for _ in 0..8 {
+            raster::paint(&mut h, &mut textures, vec![]);
+        }
+        for lens in ["object", "look"] {
+            if lens == "look" {
+                let at = scenario::rect_of("render:tree:by-look").unwrap().center();
+                // Capture texture uploads from the input frames too: the look rows may
+                // introduce glyphs that were absent from the object lens.
+                for pressed in [true, false] {
+                    raster::paint(
+                        &mut h,
+                        &mut textures,
+                        vec![
+                            egui::Event::PointerMoved(at),
+                            egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: egui::Modifiers::NONE },
+                        ],
+                    );
+                }
+            }
+            for _ in 0..4 {
+                raster::paint(&mut h, &mut textures, vec![]);
+            }
+            let output = raster::paint(&mut h, &mut textures, vec![]);
+            for section in ["environment", "lights", "shots", "objects"] {
+                assert!(scenario::rect_of(&format!("render:tree:{section}")).is_some());
+            }
+            assert_eq!(theme::is_dark(), dark);
+            assert_eq!(scenario::rect_of("render:tree:look:0").is_some(), lens == "look");
+            let browser = scenario::rect_of("browser:card").unwrap();
+            let screenshot = raster::raster(&mut h, &textures, output);
+            let ppp = h.ctx.pixels_per_point();
+            image::imageops::crop_imm(
+                &screenshot,
+                (browser.left() * ppp) as u32,
+                (browser.top() * ppp) as u32,
+                (browser.width() * ppp) as u32,
+                (browser.height() * ppp) as u32,
+            )
+            .to_image()
+            .save(dir.join(format!("{}-{lens}.png", if dark { "dark" } else { "light" })))
+            .unwrap();
+        }
+    }
+}
