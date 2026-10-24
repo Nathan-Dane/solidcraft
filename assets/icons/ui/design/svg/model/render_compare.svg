@@ -1,7 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Compare render results</title>
-  <path d="M11 12L53 12A4 4 0 0 1 57 16L57 48A4 4 0 0 1 53 52L11 52A4 4 0 0 1 7 48L7 16A4 4 0 0 1 11 12Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="32" cy="32" r="12" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 20A12 12 0 0 1 32 44Z" fill="#328bd3"/>
-  <path d="M32 8L32 56" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Compare — live preview and render side by side</title>
+  <path d="M9 12L55 12A5 5 0 0 1 60 17L60 47A5 5 0 0 1 55 52L9 52A5 5 0 0 1 4 47L4 17A5 5 0 0 1 9 12Z" fill="#e2e8ef"/>
+  <defs><clipPath id="cmpL"><path d="M4 12L32 12L32 52L4 52Z" fill="none"/></clipPath></defs>
+  <g clip-path="url(#cmpL)">
+  <path d="M9 12L55 12A5 5 0 0 1 60 17L60 47A5 5 0 0 1 55 52L9 52A5 5 0 0 1 4 47L4 17A5 5 0 0 1 9 12Z" fill="#b8c3cf"/>
+  </g>
+  <defs><clipPath id="cmp"><path d="M9 12L55 12A5 5 0 0 1 60 17L60 47A5 5 0 0 1 55 52L9 52A5 5 0 0 1 4 47L4 17A5 5 0 0 1 9 12Z" fill="none"/></clipPath></defs>
+  <g clip-path="url(#cmp)">
+  <path d="M4 44L20.8 28.8L36.48 41.6L45.44 35.2L60 46.4L60 52L4 52Z" fill="#8e9faf"/>
+  </g>
+  <path d="M9 12L55 12A5 5 0 0 1 60 17L60 47A5 5 0 0 1 55 52L9 52A5 5 0 0 1 4 47L4 17A5 5 0 0 1 9 12Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 5L32 59" fill="none" stroke="#ffffff" stroke-width="8.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="9.5" fill="#ffffff"/>
+  <path d="M32 5L32 59" fill="none" stroke="#236ead" stroke-width="5.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="32" cy="32" r="8" fill="#236ead"/>
+  <path d="M27 32L30.6 28.2L30.6 35.8Z" fill="#ffffff"/>
+  <path d="M37 32L33.4 28.2L33.4 35.8Z" fill="#ffffff"/>
 </svg>
