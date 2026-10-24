@@ -41,6 +41,38 @@ const ELEMENTS: &[Element] = &[
             }
         });
     }),
+    element!("choice_chip", |ui, sample| {
+        ui.horizontal(|ui| {
+            for (index, label) in ["All", "Metal", "Plastic"].iter().enumerate() {
+                if choice_chip(ui, label, label, sample.selected == index).clicked() {
+                    sample.selected = index;
+                }
+            }
+        });
+    }),
+    element!("sphere_grid", |ui, _| {
+        let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };
+        let tiles = ["gallery:grid:a", "gallery:grid:b", "gallery:grid:c"].map(|id| SphereTile {
+            id,
+            name: "Satin",
+            sphere,
+            selected: id.ends_with('b'),
+            users: 1,
+            tip: "Satin",
+        });
+        sphere_grid(ui, &tiles);
+    }),
+    element!("sphere_tile", "gallery:tile", Some("gallery:tile"), |ui, _| {
+        SphereTile {
+            id: "gallery:tile",
+            name: "Satin metal",
+            sphere: Sphere { color: Tokens::get().render_accent, kind: FinishKind::Metal, opacity: None },
+            selected: true,
+            users: 3,
+            tip: "Satin metal",
+        }
+        .show(ui);
+    }),
     element!("look_chain", "gallery:chain", Some("gallery:chain:body"), |ui, _| {
         let t = Tokens::get();
         look_chain(

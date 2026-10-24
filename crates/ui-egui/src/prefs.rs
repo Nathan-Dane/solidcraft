@@ -573,6 +573,9 @@ preference_settings! {
     render_inspector_width: f32 = crate::frame::DIALOG_MAX_W;
     render_browser_side: String = "left".into();
     render_browser_width: f32 = DEFAULT_BROWSER_WIDTH;
+    /// Resource identities and history belong to the user, never the design.
+    render_library_favorites: std::collections::BTreeSet<(String, String)> = Default::default();
+    render_library_recent: std::collections::VecDeque<(String, String)> = Default::default();
     /// Draw the parts browser on a translucent card over the 3D view instead of a column of its
     /// own, so the workspace keeps the whole window width.
     browser_float: bool = false, PAGE_INTERFACE;
@@ -2079,6 +2082,9 @@ fn theme_file(app: &SolveApp, id: &str, system_dark: bool) -> serde_json::Value 
 /// calibration that can't be used as it is (a hand edit) is dropped, so the device is read as it
 /// reports rather than spinning the view.
 pub fn migrate(mut p: Prefs) -> Prefs {
+    let valid_resource = |(kind, id): &(String, String)| !kind.is_empty() && kind.len() <= 64 && !id.is_empty() && id.len() <= 4096;
+    p.render_library_favorites = p.render_library_favorites.into_iter().filter(valid_resource).take(256).collect();
+    p.render_library_recent = p.render_library_recent.into_iter().filter(valid_resource).take(32).collect();
     if p.orbit_cursor {
         p.orbit_around = OrbitAround::Cursor;
         p.orbit_cursor = false;

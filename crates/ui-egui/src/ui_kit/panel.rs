@@ -21,6 +21,18 @@ pub(crate) fn collapsible_header(ui: &mut Ui, icon: &str, title: &str, collapsed
 }
 
 fn header_impl(ui: &mut Ui, icon: &str, title: &str, collapsed: Option<&mut bool>, closeable: bool, on_close: impl FnOnce()) {
+    header_actions(ui, icon, title, collapsed, closeable, on_close, None);
+}
+
+fn header_actions(
+    ui: &mut Ui,
+    icon: &str,
+    title: &str,
+    collapsed: Option<&mut bool>,
+    closeable: bool,
+    on_close: impl FnOnce(),
+    actions: Option<&mut dyn FnMut(&mut Ui)>,
+) {
     let t = Tokens::get();
     let (rect, _) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), header_height()), egui::Sense::hover());
     // Shared card chrome: 12 pt left inset, 19 pt icon, 8 pt gap and 26 pt close target.
@@ -40,7 +52,15 @@ fn header_impl(ui: &mut Ui, icon: &str, title: &str, collapsed: Option<&mut bool
             on_close();
         }
     }
-    let right = if let Some(collapsed) = collapsed {
+    let right = if let Some(actions) = actions {
+        let action_rect = egui::Rect::from_center_size(
+            egui::pos2(rect.right() - t.space_8 - t.control_height, rect.center().y),
+            vec2(t.control_height * 2.0, t.control_height),
+        );
+        let mut action_ui = ui.new_child(egui::UiBuilder::new().max_rect(action_rect));
+        actions(&mut action_ui);
+        action_rect.left() - t.space_8
+    } else if let Some(collapsed) = collapsed {
         let fold = egui::Rect::from_min_size(egui::pos2(close_rect.left() - t.form_close_size - t.space_4, close_rect.top()), close_rect.size());
         let response = super::disclosure_button_at(ui, fold, !*collapsed, crate::i18n::tr_label(if *collapsed { "Expand" } else { "Collapse" }));
         scenario::publish_handle("dialog:collapse", response.rect.center());
@@ -83,6 +103,7 @@ pub(crate) struct WorkspaceOptions<'a> {
     pub icon: &'a str,
     pub bounds: egui::Rect,
     pub fill_height: bool,
+    pub header_actions: Option<&'a mut dyn FnMut(&mut Ui)>,
 }
 
 pub(crate) struct FeatureOptions<'a> {
@@ -108,6 +129,17 @@ pub(crate) enum Part {
 }
 
 impl<'a> Panel<'a> {
+    /// Shared vertical dock policy: reserve room for a second card, then place it
+    /// below the measured first card with the standard container gap.
+    pub(crate) fn stack_first_bounds(mut bounds: egui::Rect) -> egui::Rect {
+        bounds.max.y = bounds.top() + bounds.height() * 0.4;
+        bounds
+    }
+
+    pub(crate) fn stack_next_bounds(mut bounds: egui::Rect, previous: egui::Rect) -> egui::Rect {
+        bounds.min.y = (previous.bottom() + super::Container::floating_card(super::Surface::Panel).gap()).min(bounds.bottom());
+        bounds
+    }
     /// Pinned inline actions inside an existing feature/card surface. This is not
     /// a second window or painted card: the parent owns the chrome. Tokens:
     /// control_height, space_24/8; bounded row count preserves finite geometry.
@@ -189,7 +221,7 @@ impl<'a> Panel<'a> {
                 let band = egui::Rect::from_min_size(ui.cursor().min, vec2(ui.available_width(), header_height()));
                 let grip = ui.interact(band, ui.id().with("workspace_grip"), egui::Sense::drag()).on_hover_cursor(egui::CursorIcon::Grab);
                 scenario::publish_target(&format!("{}:grip", options.id), grip.rect);
-                header_impl(ui, options.icon, options.title, None, false, || {});
+                header_actions(ui, options.icon, options.title, None, false, || {}, options.header_actions);
                 scenario::publish_rect(&format!("{}:header", options.id), band);
                 if grip.dragged() {
                     let frame_nr = ui.ctx().cumulative_frame_nr();

@@ -28,7 +28,8 @@ preferences, manager cards, prompts, context menus and the sketch palette. Impor
 - `Panel::workspace` owns grip-based left/right placement and bounded width resizing for
   floating workspace cards, including in Compact ribbon layouts. It reuses the 40 pt
   Panel/Window header and padded body, with no second top inset below the ribbon.
-  Persistent workspace cards omit the close action. `Panel::bottom_strip`
+  Persistent workspace cards omit the close action. Optional header actions share the title band;
+  `stack_first_bounds` and `stack_next_bounds` stack companion cards with the standard gap. `Panel::bottom_strip`
   uses `Container::bottom_strip_rect`, the same placement as Design History.
   `Container::navigation_card` supplies the shared Navigation surface for anchored HUDs.
   Register measured card rectangles and reserved edges with `shell::register_panel` so
@@ -122,6 +123,7 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | `tool_choices`, `ToolChoice`, `toggle_icon` | Wrapped command modes or independent icon toggles | sketch mode/icon tokens, `accent` |
 | `list_picker` | Selectable row with caller identity and native checked state | `control_height`, form selection tokens |
 | `popup_list`, `PopupOption` | Focus-neutral suggestions; owner retains keyboard routing | `space_2`, `form_label_width`, `control_height`, form tokens |
+| sphere: `sphere_thumbnail`, `SphereTile`, `sphere_grid` | Deterministic lit material samples; matte/satin/gloss/metal/glass finishes. Catalog tiles centre a 52 pt sphere in a 56 pt rounded cell with a two-line name, active-tab selection ring, user-count badge and shared Container tooltip. The grid owns three columns and token gaps. | `control_height`, `radius_xl`, `space_2/3/4/8/16`, `font_small/badge`, `control_fill`, `dialog_rule`, active-tab accent, `on_accent` |
 | `color_swatch`, `swatch_grid`, `color_thumbnail` | 30 pt draggable samples, 6 pt grid step gap, selected outer ring and checker pattern under transparent colours; caller payloads retained; local-library thumbnails use 16 pt | `control_height/radius`, `border`, `form_primary`, `control_fill`, `space_2/6/8` |
 | `assistant_entry`, `AssistantEntryState` | Application-bar chat icon with quiet, ready, busy, auth, stopped and approval count marks; caller owns state and target | `app_bar`, `agent_ok/busy`, `warning/error`, `font_badge` |
 | actions: `button`, `Button` | Secondary action: `Normal`, `Small`, or `Enabled(bool)` | native sizing, form font/control tokens |

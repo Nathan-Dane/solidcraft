@@ -3082,7 +3082,7 @@ fn render_workspace_hosts_float_and_shield_input_in_both_ribbon_layouts() {
                 && (shots.bottom() - history.bottom()).abs() < 1.0,
             "Shots must reuse History's floating placement: {shots:?} {history:?}"
         );
-        for key in ["render:inspector", "render:browser", "render:shots_strip", "render:hud"] {
+        for key in ["render:inspector", "render:browser", "render:appearances", "render:shots_strip", "render:hud"] {
             let (card, _) = h.app.shell.workspace_panels.get(key).unwrap();
             assert!(viewport.contains_rect(*card), "{layout:?} {key}: {card:?} outside {viewport:?}");
             assert!(crate::shell::covered(&h.app, card.center()), "{key} must shield the viewport");
@@ -3098,15 +3098,26 @@ fn render_workspace_hosts_float_and_shield_input_in_both_ribbon_layouts() {
                 card.top() - ribbon_bottom
             );
         }
-        for key in ["render:browser", "render:inspector"] {
+        for key in ["render:browser", "render:appearances", "render:inspector"] {
             let card = h.app.shell.workspace_panels[key].0;
             let header = crate::scenario::rect_of(&format!("{key}:header")).unwrap();
             assert!((header.height() - crate::ui_kit::header_height()).abs() < 0.1, "{key}: {header:?}");
             assert!((header.top() - card.top()).abs() <= 1.0, "header must have no outer content padding");
-            let control = crate::scenario::rect_of(if key == "render:browser" { "render:browser-library" } else { "render:page:output" }).unwrap();
+            let control = crate::scenario::rect_of(if key == "render:appearances" {
+                "render:library-search"
+            } else if key == "render:browser" {
+                "render:tree:environment"
+            } else {
+                "render:page:output"
+            })
+            .unwrap();
             assert!(control.top() >= header.bottom(), "navigation must be below the standard header: {control:?} {header:?}");
         }
 
+        let appearances = h.app.shell.workspace_panels["render:appearances"].0;
+        assert!((browser.width() - appearances.width()).abs() < 1.0);
+        assert!((appearances.top() - browser.bottom() - crate::ui_kit::Container::floating_card(crate::ui_kit::Surface::Panel).gap()).abs() < 1.0);
+        assert!(appearances.bottom() < shots.top());
         assert!(browser.left() > viewport.left() && inspector.right() < viewport.right());
         assert!(inspector.bottom() < shots.top() && browser.bottom() < shots.top());
         let camera = h.app.cam;
@@ -3147,7 +3158,6 @@ fn render_workspace_card_grips_swap_sides_and_resize_without_design_edits() {
         h.step(&json!({"drag":[[rail.x,rail.y],[rail.x+50.0,rail.y]],"steps":8})).unwrap();
         h.frames(3);
         assert!(h.app.preferences.render_inspector_width > width);
-        h.step(&json!({"click":{"handle":"render:browser-library"}})).unwrap();
         h.frames(3);
         h.step(&json!({"drag":[{"handle":"render:browser:grip"},[100.0,350.0]],"steps":8})).unwrap();
         h.frames(3);

@@ -895,7 +895,14 @@ fn render_card(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     let title = app.tr("ui.browser_title").to_string();
     let content = crate::ui_kit::Panel::workspace(
         ui,
-        crate::ui_kit::WorkspaceOptions { id: "render:browser", title: &title, icon: "list", bounds, fill_height: false },
+        crate::ui_kit::WorkspaceOptions {
+            id: "render:browser",
+            title: &title,
+            icon: "list",
+            bounds: crate::ui_kit::Panel::stack_first_bounds(bounds),
+            fill_height: false,
+            header_actions: None,
+        },
         &mut side,
         &mut width,
         |ui| {
@@ -917,6 +924,9 @@ fn render_card(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     );
     if let Some(rect) = rect {
         crate::scenario::publish_rect("browser:card", rect);
+        crate::render_workspace::appearances_card(app, ui, crate::ui_kit::Panel::stack_next_bounds(bounds, rect));
+    } else {
+        crate::shell::register_panel(app, "render:appearances", None, None);
     }
 }
 
@@ -971,9 +981,6 @@ fn browser_contents(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions, c
             app.tree.panel_collapsed && !(app.ui.show_timeline && app.preferences.timeline_left)
         })
     {
-        return;
-    }
-    if crate::render_workspace::browser_mode(app, ui) {
         return;
     }
     t.secondary_hline(ui.painter(), ui.max_rect().x_range(), ui.cursor().top() + 1.0, t.toolbar.lerp_to_gamma(t.border, 0.5));

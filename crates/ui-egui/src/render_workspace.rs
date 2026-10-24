@@ -541,29 +541,9 @@ pub fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     inspector::panel(app, ui);
 }
 
-/// Local Browser-card content, never a new workspace or an alternative model tree.
-pub(crate) fn browser_mode(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
-    if !active(app) {
-        return false;
-    }
-    let labels = [app.tr("render.browser_model").to_string(), app.tr("render.browser_library").to_string()];
-    let mut selected = usize::from(app.render_workspace.view.inspector.library_open);
-    let top = ui.cursor().min;
-    let width = ui.available_width();
-    crate::ui_kit::segmented(ui, &mut selected, &labels.iter().map(String::as_str).collect::<Vec<_>>(), Default::default());
-    for (i, name) in ["render:browser-model", "render:browser-library"].iter().enumerate() {
-        crate::scenario::publish_target(
-            name,
-            egui::Rect::from_min_size(top + egui::vec2(width * i as f32 / 2.0, 0.0), egui::vec2(width / 2.0, crate::ui_kit::row_height())),
-        );
-    }
-    app.render_workspace.view.inspector.library_open = selected == 1;
-    if selected == 1 {
-        crate::ui_kit::scope(ui, |ui| library::browse(app, ui));
-        true
-    } else {
-        false
-    }
+/// Companion to the Browser, sharing its dock width and placement preferences.
+pub(crate) fn appearances_card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
+    library::card(app, ui, bounds);
 }
 
 fn image_host(app: &SolveApp, method: ImageMethod) -> Result<&ImageHost, String> {

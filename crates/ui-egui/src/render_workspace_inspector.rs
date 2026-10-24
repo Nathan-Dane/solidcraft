@@ -86,7 +86,6 @@ pub(super) struct View {
     pub effects: super::effects::View,
     pub page: Page,
     reveal: Option<&'static str>,
-    pub library_open: bool,
     pending: Option<Pending>,
     shot_name: String,
     scene_review: Option<Review>,
@@ -192,7 +191,6 @@ impl Default for View {
             effects: Default::default(),
             page: Page::Scene,
             reveal: None,
-            library_open: false,
             pending: None,
             shot_name: String::new(),
             scene_review: None,
@@ -227,7 +225,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let icon = app.render_workspace.view.inspector.page.icon();
     let content = ui_kit::Panel::workspace(
         ui,
-        ui_kit::WorkspaceOptions { id: "render:inspector", title: &title, icon, bounds, fill_height: true },
+        ui_kit::WorkspaceOptions { id: "render:inspector", title: &title, icon, bounds, fill_height: true, header_actions: None },
         &mut side,
         &mut width,
         |ui| {

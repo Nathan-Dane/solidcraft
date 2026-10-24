@@ -139,6 +139,82 @@ pub fn sphere_thumbnail(ui: &mut Ui, id: &str, sphere: Sphere, size: f32) -> Res
     response
 }
 
+/// A catalog sample: 52 pt sphere in a 56 pt cell, two-line caption and optional
+/// usage badge. The surrounding chrome follows the active workspace accent.
+pub(crate) struct SphereTile<'a> {
+    pub id: &'a str,
+    pub name: &'a str,
+    pub sphere: Sphere,
+    pub selected: bool,
+    pub users: usize,
+    pub tip: &'a str,
+}
+
+impl SphereTile<'_> {
+    pub(crate) fn show(&self, ui: &mut Ui) -> Response {
+        let t = Tokens::get();
+        let accent = crate::theme::TabAccent::current(ui.ctx());
+        let side = t.control_height * 2.0;
+        let height = side + t.space_3 + t.font_small * 2.5 + t.space_4;
+        let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), height), Sense::hover());
+        let response = ui.interact(rect, ui.make_persistent_id(self.id), Sense::click());
+        let cell = Rect::from_min_size(pos2(rect.center().x - side / 2.0, rect.top() + t.space_4), vec2(side, side));
+        ui.painter().rect_filled(cell, t.radius_xl, t.control_fill);
+        ui.painter().rect_stroke(cell, t.radius_xl, t.control_border_stroke(t.dialog_rule), egui::StrokeKind::Inside);
+        if self.selected || response.hovered() || response.has_focus() {
+            ui.painter().rect_stroke(cell.expand(t.space_2), t.radius_xl, egui::Stroke::new(t.space_2, accent.ink), egui::StrokeKind::Outside);
+        }
+        paint_sphere(ui, cell.shrink(t.space_2), self.sphere);
+        if self.users > 0 {
+            let text = if self.users > 99 { "99+".into() } else { self.users.to_string() };
+            let galley = ui.painter().layout_no_wrap(text, crate::fonts::semibold(t.font_badge), t.on_accent);
+            let width = (galley.size().x + t.space_8).max(t.space_16);
+            let badge = Rect::from_min_size(pos2(cell.right() + t.space_2 - width, cell.top() - t.space_2), vec2(width, t.space_16));
+            ui.painter().rect_filled(badge, t.radius_lg, accent.ink);
+            ui.painter().galley(badge.center() - galley.size() / 2.0, galley, t.on_accent);
+        }
+        let label = Rect::from_min_max(pos2(rect.left(), cell.bottom() + t.space_3), rect.max);
+        let font = if self.selected { crate::fonts::semibold(t.font_small) } else { egui::FontId::proportional(t.font_small) };
+        let mut job = egui::text::LayoutJob::simple(self.name.to_owned(), font, t.form_ink, label.width());
+        job.halign = egui::Align::Center;
+        job.wrap.max_rows = 2;
+        job.wrap.break_anywhere = false;
+        let galley = ui.painter().layout_job(job);
+        ui.painter().with_clip_rect(ui.clip_rect().intersect(label)).galley(
+            pos2(label.center().x - galley.rect.center().x, label.top() - galley.rect.top()),
+            galley,
+            t.form_ink,
+        );
+        response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, ui.is_enabled(), self.selected, self.name));
+        scenario::publish_target(self.id, rect);
+        let mut tip = egui::Tooltip::for_enabled(&response);
+        tip.popup = tip.popup.frame(super::Container::new(ui.ctx(), super::Surface::Toast).tooltip_frame(ui.ctx()));
+        tip.show(|ui| {
+            ui.label(self.tip);
+        });
+        response
+    }
+}
+
+/// Fixed-column catalog composition. Tile geometry and gaps stay with the kit.
+pub(crate) fn sphere_grid(ui: &mut Ui, tiles: &[SphereTile<'_>]) -> Option<usize> {
+    let t = Tokens::get();
+    let mut clicked = None;
+    ui.spacing_mut().item_spacing = vec2(t.space_2, t.space_8);
+    for (row, chunk) in tiles.chunks(3).enumerate() {
+        ui.columns(3, |columns| {
+            for (column, tile) in chunk.iter().enumerate() {
+                if let Some(ui) = columns.get_mut(column)
+                    && tile.show(ui).clicked()
+                {
+                    clicked = Some(row * 3 + column);
+                }
+            }
+        });
+    }
+    clicked
+}
+
 #[cfg(test)]
 #[path = "sphere_tests.rs"]
 mod tests;

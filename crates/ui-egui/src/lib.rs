@@ -1801,6 +1801,7 @@ impl SolveApp {
         if !self.ui.show_browser {
             self.shell.browser = None;
             shell::register_panel(self, "render:browser", None, None);
+            shell::register_panel(self, "render:appearances", None, None);
         }
         if floating || left_timeline || !show_timeline {
             self.shell.history = None;
