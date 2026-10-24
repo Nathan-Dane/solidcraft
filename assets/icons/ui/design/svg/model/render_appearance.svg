@@ -1,16 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Assign a look — sphere onto a body</title>
-  <path d="M26.01 35.5L39 43L39 58L26.01 50.5Z" fill="#b8c3cf"/>
-  <path d="M51.99 35.5L39 43L39 58L51.99 50.5Z" fill="#8e9faf"/>
-  <path d="M39 28L51.99 35.5L39 43L26.01 35.5Z" fill="#e2e8ef"/>
-  <path d="M39 28L51.99 35.5L51.99 50.5L39 58L26.01 50.5L26.01 35.5Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M26.01 35.5L39 43L51.99 35.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M39 43L39 58" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M12 36L19.93 44.59" fill="none" stroke="currentColor" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M24 49L16.68 46.23L21.82 41.48Z" fill="currentColor"/>
-  <circle cx="20" cy="19" r="13" fill="#ffffff" stroke="#ffffff" stroke-width="4.75" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="20" cy="19" r="13" fill="#328bd3"/>
-  <path d="M32.22 14.55A13 13 0 0 1 15.55 31.22A17 17 0 0 0 32.22 14.55Z" fill="#236ead"/>
-  <circle cx="15.58" cy="14.58" r="3.51" fill="#b9ddf8"/>
-  <circle cx="20" cy="19" r="13" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Appearance — a body wearing the look sphere</title>
+  <path d="M20.23 26.8L39.28 37.8L39.28 59.8L20.23 48.8Z" fill="#328bd3"/>
+  <path d="M58.33 26.8L39.28 37.8L39.28 59.8L58.33 48.8Z" fill="#236ead"/>
+  <path d="M39.28 15.8L58.33 26.8L39.28 37.8L20.23 26.8Z" fill="#b9ddf8"/>
+  <path d="M39.28 15.8L58.33 26.8L58.33 48.8L39.28 59.8L20.23 48.8L20.23 26.8Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20.23 26.8L39.28 37.8L58.33 26.8" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M39.28 37.8L39.28 59.8" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="18.28" cy="16.8" r="13.88" fill="#ffffff"/>
+  <circle cx="18.28" cy="16.8" r="11" fill="#328bd3"/>
+  <path d="M28.62 13.04A11 11 0 0 1 14.52 27.14A14.38 14.38 0 0 0 28.62 13.04Z" fill="#236ead"/>
+  <circle cx="14.54" cy="13.06" r="2.97" fill="#b9ddf8"/>
+  <circle cx="18.28" cy="16.8" r="11" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

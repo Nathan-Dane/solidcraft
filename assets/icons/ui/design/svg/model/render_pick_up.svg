@@ -1,10 +1,12 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Pick up a look — sphere inside an eyedropper</title>
-  <path d="M27 31L47 51L56 55L52 46L32 26Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M25 36L36 25L40 29L29 40Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="20" cy="19" r="15" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="20" cy="19" r="13" fill="#328bd3"/>
-  <path d="M32.22 14.55A13 13 0 0 1 15.55 31.22A17 17 0 0 0 32.22 14.55Z" fill="#236ead"/>
-  <circle cx="15.58" cy="14.58" r="3.51" fill="#b9ddf8"/>
-  <circle cx="20" cy="19" r="13" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Pick Up — eyedropper drawing up the look</title>
+  <circle cx="15.16" cy="48.84" r="8" fill="#328bd3"/>
+  <path d="M22.68 46.1A8 8 0 0 1 12.42 56.36A10.46 10.46 0 0 0 22.68 46.1Z" fill="#236ead"/>
+  <circle cx="12.44" cy="46.12" r="2.16" fill="#b9ddf8"/>
+  <circle cx="15.16" cy="48.84" r="8" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M20.89 40.57L24.28 32.65L37.72 19.21L44.79 26.28L31.35 39.72L23.43 43.11Z" fill="#e2e8ef"/>
+  <path d="M20.89 40.57L24.28 32.65L30.65 26.28L37.72 33.35L31.35 39.72L23.43 43.11Z" fill="#328bd3"/>
+  <path d="M20.89 40.57L24.28 32.65L37.72 19.21L44.79 26.28L31.35 39.72L23.43 43.11Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M35.24 16.74L38.42 13.56L50.44 25.58L47.26 28.76Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M39.34 14.47L44.65 9.17A7.2 7.2 0 0 1 54.83 19.35L49.53 24.66Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
