@@ -1,7 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <title>Render all shots — every saved camera view at once</title>
-  <path d="M30.26 14.72L32.42 14.72L34.58 9.68Q35.01 8.24 36.38 8.24L39.98 8.24Q41.35 8.24 41.78 9.68L43.94 14.72L54.74 14.72Q58.34 14.72 58.34 18.32L58.34 34.16Q58.34 37.76 54.74 37.76L30.26 37.76Q26.66 37.76 26.66 34.16L26.66 18.32Q26.66 14.72 30.26 14.72Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M19.76 23.72L21.92 23.72L24.08 18.68Q24.51 17.24 25.88 17.24L29.48 17.24Q30.85 17.24 31.28 18.68L33.44 23.72L44.24 23.72Q47.84 23.72 47.84 27.32L47.84 43.16Q47.84 46.76 44.24 46.76L19.76 46.76Q16.16 46.76 16.16 43.16L16.16 27.32Q16.16 23.72 19.76 23.72Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M9.26 32.72L11.42 32.72L13.58 27.68Q14.01 26.24 15.38 26.24L18.98 26.24Q20.35 26.24 20.78 27.68L22.94 32.72L33.74 32.72Q37.34 32.72 37.34 36.32L37.34 52.16Q37.34 55.76 33.74 55.76L9.26 55.76Q5.66 55.76 5.66 52.16L5.66 36.32Q5.66 32.72 9.26 32.72Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="21.5" cy="44.24" r="7.56" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M27.1 12L29.26 12L31.42 6.96Q31.85 5.52 33.22 5.52L36.82 5.52Q38.19 5.52 38.62 6.96L40.78 12L51.58 12Q55.18 12 55.18 15.6L55.18 31.44Q55.18 35.04 51.58 35.04L27.1 35.04Q23.5 35.04 23.5 31.44L23.5 15.6Q23.5 12 27.1 12Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M16.6 21L18.76 21L20.92 15.96Q21.35 14.52 22.72 14.52L26.32 14.52Q27.69 14.52 28.12 15.96L30.28 21L41.08 21Q44.68 21 44.68 24.6L44.68 40.44Q44.68 44.04 41.08 44.04L16.6 44.04Q13 44.04 13 40.44L13 24.6Q13 21 16.6 21Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6.1 30L8.26 30L10.42 24.96Q10.85 23.52 12.22 23.52L15.82 23.52Q17.19 23.52 17.62 24.96L19.78 30L30.58 30Q34.18 30 34.18 33.6L34.18 49.44Q34.18 53.04 30.58 53.04L6.1 53.04Q2.5 53.04 2.5 49.44L2.5 33.6Q2.5 30 6.1 30Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="18.34" cy="41.52" r="7.56" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="47.5" cy="47.5" r="14" fill="#ffffff"/>
+  <circle cx="47.5" cy="47.5" r="12" fill="#236ead"/>
+  <path d="M43.9 41.7L53.3 47.5L43.9 53.3Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
