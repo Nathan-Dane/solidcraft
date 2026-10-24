@@ -644,6 +644,7 @@
   "cam.roller_pick": "Roller (optional)",
   "cam.tip_pick": "Tip (optional)",
   "cmd.appearance_assign": "Appearance",
+  "cmd.appearance_chain": "Appearance Chain",
   "cmd.appearance_library": "Appearance Library",
   "cmd.appearance_list": "List Appearances",
   "cmd.appearance_paint": "Paint Appearance",

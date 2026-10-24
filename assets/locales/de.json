@@ -550,6 +550,7 @@
   "cam.roller_pick": "Rolle (optional)",
   "cam.tip_pick": "Spitze (optional)",
   "cmd.appearance_assign": "Erscheinungsbild",
+  "cmd.appearance_chain": "Aussehen-Herkunft",
   "cmd.appearance_library": "Erscheinungsbild-Bibliothek",
   "cmd.appearance_list": "Erscheinungsbilder auflisten",
   "cmd.appearance_paint": "Aussehen aufmalen",
