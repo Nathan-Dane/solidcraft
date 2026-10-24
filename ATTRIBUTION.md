@@ -307,6 +307,7 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | assets/icons/ui/design/svg/model/render_check.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_compare.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_copy_look.svg | SolidCraft contributors | original Looks draft (64 grid): overlapping shaded accent and grey look spheres | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_execute.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_export_image.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_exposure.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_fit_product.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
