@@ -162,7 +162,10 @@ fn theme_rail_chevrons_have_no_idle_box_and_show_hover_and_focus() {
     draw(pointer(rect.center(), true));
     draw(pointer(rect.center(), false));
     let focus = draw(vec![egui::Event::PointerMoved(egui::pos2(200.0, 200.0))]);
-    assert!(focus.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.stroke.color == t.form_primary)));
+    assert!(
+        !focus.shapes.iter().any(|s| matches!(&s.shape, egui::Shape::Rect(r) if r.stroke.color == t.form_primary)),
+        "a mouse click leaves no outline"
+    );
 }
 
 #[test]
