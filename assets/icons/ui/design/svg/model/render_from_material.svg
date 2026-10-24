@@ -1,23 +1,15 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>From Material — a body linked to its material</title>
-  <path d="M38 27.5A9 2.3 0 1 0 56 27.5A9 2.3 0 1 0 38 27.5Z" fill="#b8c3cf"/>
-  <circle cx="47" cy="15" r="10" fill="#328bd3"/>
-  <path d="M56.4 11.58A10 10 0 0 1 43.58 24.4A13.08 13.08 0 0 0 56.4 11.58Z" fill="#236ead"/>
-  <circle cx="43.6" cy="11.6" r="2.7" fill="#b9ddf8"/>
-  <circle cx="47" cy="15" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M4.88 39L17 46L17 60L4.88 53Z" fill="#328bd3"/>
-  <path d="M29.12 39L17 46L17 60L29.12 53Z" fill="#236ead"/>
-  <path d="M17 32L29.12 39L17 46L4.88 39Z" fill="#b9ddf8"/>
-  <path d="M17 32L29.12 39L29.12 53L17 60L4.88 53L4.88 39Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M4.88 39L17 46L29.12 39" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M17 46L17 60" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M27.11 43.11L33.61 36.61A4.4 4.4 0 0 0 27.39 30.39L20.89 36.89A4.4 4.4 0 0 0 27.11 43.11Z" fill="none" stroke="#34465b" stroke-width="5.6" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M27.11 43.11L33.61 36.61A4.4 4.4 0 0 0 27.39 30.39L20.89 36.89A4.4 4.4 0 0 0 27.11 43.11Z" fill="none" stroke="#b8c3cf" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M36.61 33.61L43.11 27.11A4.4 4.4 0 0 0 36.89 20.89L30.39 27.39A4.4 4.4 0 0 0 36.61 33.61Z" fill="none" stroke="#34465b" stroke-width="5.6" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M36.61 33.61L43.11 27.11A4.4 4.4 0 0 0 36.89 20.89L30.39 27.39A4.4 4.4 0 0 0 36.61 33.61Z" fill="none" stroke="#328bd3" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-  <defs><clipPath id="from-material-link"><path d="M0 0L64 0L0 64Z" fill="none"/></clipPath></defs>
-  <g clip-path="url(#from-material-link)">
-  <path d="M27.11 43.11L33.61 36.61A4.4 4.4 0 0 0 27.39 30.39L20.89 36.89A4.4 4.4 0 0 0 27.11 43.11Z" fill="none" stroke="#34465b" stroke-width="5.6" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M27.11 43.11L33.61 36.61A4.4 4.4 0 0 0 27.39 30.39L20.89 36.89A4.4 4.4 0 0 0 27.11 43.11Z" fill="none" stroke="#b8c3cf" stroke-width="2.4" stroke-linejoin="round" stroke-linecap="round"/>
-  </g>
+  <title>From Material — back to the material look</title>
+  <path d="M6.57 41.76L31.57 56.19L31.57 60.04L6.57 45.6Z" fill="#b8c3cf"/>
+  <path d="M56.58 41.76L31.57 56.19L31.57 60.04L56.58 45.6Z" fill="#8e9faf"/>
+  <path d="M31.57 27.32L56.58 41.76L31.57 56.19L6.57 41.76Z" fill="#e2e8ef"/>
+  <path d="M31.57 27.32L56.58 41.76L56.58 45.6L31.57 60.04L6.57 45.6L6.57 41.76Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M6.57 41.76L31.57 56.19L56.58 41.76" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M31.57 56.19L31.57 60.04" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="31.57" cy="26.68" r="13.5" fill="#328bd3"/>
+  <path d="M44.27 22.06A13.5 13.5 0 0 1 26.95 39.37A17.65 17.65 0 0 0 44.27 22.06Z" fill="#236ead"/>
+  <circle cx="26.98" cy="22.09" r="3.65" fill="#b9ddf8"/>
+  <circle cx="31.57" cy="26.68" r="13.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M56.58 32.68C56.58 18.68 49.58 9.68 38.58 7.68L22.57 7.68" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M13.57 7.68L22.57 2.68L22.57 12.68Z" fill="#236ead"/>
 </svg>

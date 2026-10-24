@@ -1,31 +1,18 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Replace All — one look switched on every body</title>
-  <path d="M3.34 42.5L12 47.5L12 57.5L3.34 52.5Z" fill="#328bd3"/>
-  <path d="M20.66 42.5L12 47.5L12 57.5L20.66 52.5Z" fill="#236ead"/>
-  <path d="M12 37.5L20.66 42.5L12 47.5L3.34 42.5Z" fill="#b9ddf8"/>
-  <path d="M12 37.5L20.66 42.5L20.66 52.5L12 57.5L3.34 52.5L3.34 42.5Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M3.34 42.5L12 47.5L20.66 42.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M12 47.5L12 57.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M23.34 42.5L32 47.5L32 57.5L23.34 52.5Z" fill="#328bd3"/>
-  <path d="M40.66 42.5L32 47.5L32 57.5L40.66 52.5Z" fill="#236ead"/>
-  <path d="M32 37.5L40.66 42.5L32 47.5L23.34 42.5Z" fill="#b9ddf8"/>
-  <path d="M32 37.5L40.66 42.5L40.66 52.5L32 57.5L23.34 52.5L23.34 42.5Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M23.34 42.5L32 47.5L40.66 42.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 47.5L32 57.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M43.34 42.5L52 47.5L52 57.5L43.34 52.5Z" fill="#328bd3"/>
-  <path d="M60.66 42.5L52 47.5L52 57.5L60.66 52.5Z" fill="#236ead"/>
-  <path d="M52 37.5L60.66 42.5L52 47.5L43.34 42.5Z" fill="#b9ddf8"/>
-  <path d="M52 37.5L60.66 42.5L60.66 52.5L52 57.5L43.34 52.5L43.34 42.5Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M43.34 42.5L52 47.5L60.66 42.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M52 47.5L52 57.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="13" cy="15.5" r="9" fill="#b8c3cf"/>
-  <path d="M21.46 12.42A9 9 0 0 1 9.92 23.96A11.77 11.77 0 0 0 21.46 12.42Z" fill="#8e9faf"/>
-  <circle cx="9.94" cy="12.44" r="2.43" fill="#e2e8ef"/>
-  <circle cx="13" cy="15.5" r="9" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M39 15.5L32 19.5L32 11.5Z" fill="#236ead"/>
-  <path d="M25 15.5L33 15.5" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="51" cy="15.5" r="9" fill="#328bd3"/>
-  <path d="M59.46 12.42A9 9 0 0 1 47.92 23.96A11.77 11.77 0 0 0 59.46 12.42Z" fill="#236ead"/>
-  <circle cx="47.94" cy="12.44" r="2.43" fill="#b9ddf8"/>
-  <circle cx="51" cy="15.5" r="9" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Replace All — every use of a look switched to another</title>
+  <circle cx="12.5" cy="13.3" r="10" fill="#b8c3cf"/>
+  <path d="M21.9 9.88A10 10 0 0 1 9.08 22.7A13.08 13.08 0 0 0 21.9 9.88Z" fill="#8e9faf"/>
+  <circle cx="9.1" cy="9.9" r="2.7" fill="#e2e8ef"/>
+  <circle cx="12.5" cy="13.3" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M36 36.8L25.39 34.68L33.88 26.19Z" fill="#236ead"/>
+  <path d="M21 21.8L30.34 31.14" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="52.5" cy="35.3" r="9" fill="#328bd3"/>
+  <path d="M60.96 32.22A9 9 0 0 1 49.42 43.76A11.77 11.77 0 0 0 60.96 32.22Z" fill="#236ead"/>
+  <circle cx="49.44" cy="32.24" r="2.43" fill="#b9ddf8"/>
+  <circle cx="52.5" cy="35.3" r="9" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="46.5" cy="47.3" r="14.68" fill="#ffffff"/>
+  <circle cx="46.5" cy="47.3" r="12" fill="#328bd3"/>
+  <path d="M57.78 43.2A12 12 0 0 1 42.4 58.58A15.69 15.69 0 0 0 57.78 43.2Z" fill="#236ead"/>
+  <circle cx="42.42" cy="43.22" r="3.24" fill="#b9ddf8"/>
+  <circle cx="46.5" cy="47.3" r="12" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

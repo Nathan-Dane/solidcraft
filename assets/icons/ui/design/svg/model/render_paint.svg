@@ -1,11 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Paint — flat brush loaded with the look</title>
-  <path d="M15.32 46.44C21.32 56.44 30.32 57.44 38.32 53.44C45.32 49.94 50.32 51.44 55.32 55.44" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M30.18 20.94L45.88 6.94A4.2 4.2 0 0 1 51.82 12.88L37.82 28.58Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M16.32 25.47L22.68 19.11L29.76 19.81L38.95 29L39.65 36.08L33.29 42.44Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M7.83 33.95L16.32 25.47L33.29 42.44L24.81 50.93Z" fill="#e2e8ef"/>
-  <path d="M7.83 33.95L12.43 29.36L29.4 46.33L24.81 50.93Z" fill="#328bd3"/>
-  <path d="M14.06 39.05L21.98 31.13" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M19.71 44.7L27.63 36.78" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M7.83 33.95L16.32 25.47L33.29 42.44L24.81 50.93Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Paint — flat brush with look-coloured bristles</title>
+  <path d="M26.13 59.09L22.24 55.2L22.94 48.83L16.58 49.54L14.46 47.42L15.17 41.06L8.8 41.76L4.91 37.87L19.06 23.73L40.27 44.94Z" fill="#328bd3" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M22.24 20.55L28.25 14.54L37.09 16.31L46.28 7.11A7.5 7.5 0 0 1 56.89 17.72L47.69 26.91L49.46 35.75L43.45 41.76Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

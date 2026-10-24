@@ -323,7 +323,6 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | assets/icons/ui/design/svg/model/render_paint.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere as brush tip, broad ferrule and rounded handle | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_pick_up.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere inside eyedropper bulb, crossbar and sampling tube | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_quality.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_remove_override.svg | SolidCraft contributors | original Looks draft (64 grid): struck look sphere above a canonical grey body | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_replace_all.svg | SolidCraft contributors | original Looks draft (64 grid): shared look sphere, swap arrows and three canonical grey bodies | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_results.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_same_look.svg | SolidCraft contributors | original Looks draft (64 grid): shared look sphere and three canonical grey bodies, matching pair ringed | MIT OR Apache-2.0 |

@@ -50,3 +50,5 @@ bom = "list"
 render_environment = "environment_map"
 render_fit_product = "fit"
 render_execute = "render_image"
+# Removing a look override returns the body to its material look.
+render_remove_override = "render_from_material"
