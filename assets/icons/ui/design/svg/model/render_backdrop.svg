@@ -1,6 +1,10 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Studio backdrop</title>
-  <path d="M7.5 9.07L51.5 9.07L51.5 36.08Q51.5 45.08 56.5 54.08L12.5 54.08Q7.5 45.08 7.5 36.08Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M9 35.08Q9.5 45.08 13.5 52.58L54 52.58Q49.5 44.08 50 35.08Z" fill="#b8c3cf"/>
-  <path d="M8.5 36.08Q8.5 46.08 13.5 54.08L55.5 54.08" fill="none" stroke="#236ead" stroke-width="4.25" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Backdrop — the coloured background behind the product</title>
+  <path d="M12.5 4.5L51.5 4.5A3.5 3.5 0 0 1 55 8L55 40A3.5 3.5 0 0 1 51.5 43.5L12.5 43.5A3.5 3.5 0 0 1 9 40L9 8A3.5 3.5 0 0 1 12.5 4.5Z" fill="#328bd3" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M17.45 34.3L32 42.7L32 59.5L17.45 51.1Z" fill="#b8c3cf"/>
+  <path d="M46.55 34.3L32 42.7L32 59.5L46.55 51.1Z" fill="#8e9faf"/>
+  <path d="M32 25.9L46.55 34.3L32 42.7L17.45 34.3Z" fill="#e2e8ef"/>
+  <path d="M32 25.9L46.55 34.3L46.55 51.1L32 59.5L17.45 51.1L17.45 34.3Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M17.45 34.3L32 42.7L46.55 34.3" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 42.7L32 59.5" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <title>Environment — a sky dome lighting the product</title>
+  <path d="M4.57 37.8A27.43 27.43 0 0 1 59.43 37.8A27.43 15.84 0 0 1 4.57 37.8Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18.84 22.6L32 30.2L32 45.4L18.84 37.8Z" fill="#b8c3cf"/>
+  <path d="M45.16 22.6L32 30.2L32 45.4L45.16 37.8Z" fill="#8e9faf"/>
+  <path d="M32 15L45.16 22.6L32 30.2L18.84 22.6Z" fill="#e2e8ef"/>
+  <path d="M32 15L45.16 22.6L45.16 37.8L32 45.4L18.84 37.8L18.84 22.6Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18.84 22.6L32 30.2L45.16 22.6" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 30.2L32 45.4" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+</svg>

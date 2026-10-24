@@ -1,7 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Appearance library — grid of swatches</title>
-  <path d="M13 9L24 9A4 4 0 0 1 28 13L28 24A4 4 0 0 1 24 28L13 28A4 4 0 0 1 9 24L9 13A4 4 0 0 1 13 9Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M40 9L51 9A4 4 0 0 1 55 13L55 24A4 4 0 0 1 51 28L40 28A4 4 0 0 1 36 24L36 13A4 4 0 0 1 40 9Z" fill="#328bd3" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M13 36L24 36A4 4 0 0 1 28 40L28 51A4 4 0 0 1 24 55L13 55A4 4 0 0 1 9 51L9 40A4 4 0 0 1 13 36Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M40 36L51 36A4 4 0 0 1 55 40L55 51A4 4 0 0 1 51 55L40 55A4 4 0 0 1 36 51L36 40A4 4 0 0 1 40 36Z" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Appearance library — looks kept on shelves</title>
+  <circle cx="17" cy="15.75" r="10" fill="#b8c3cf"/>
+  <path d="M26.4 12.33A10 10 0 0 1 13.58 25.15A13.08 13.08 0 0 0 26.4 12.33Z" fill="#8e9faf"/>
+  <circle cx="13.6" cy="12.35" r="2.7" fill="#e2e8ef"/>
+  <circle cx="17" cy="15.75" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="47" cy="15.75" r="10" fill="#b8c3cf"/>
+  <path d="M56.4 12.33A10 10 0 0 1 43.58 25.15A13.08 13.08 0 0 0 56.4 12.33Z" fill="#8e9faf"/>
+  <circle cx="43.6" cy="12.35" r="2.7" fill="#e2e8ef"/>
+  <circle cx="47" cy="15.75" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7 26.75L57 26.75A2 2 0 0 1 59 28.75L59 30.25A2 2 0 0 1 57 32.25L7 32.25A2 2 0 0 1 5 30.25L5 28.75A2 2 0 0 1 7 26.75Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="17" cy="41.75" r="10" fill="#b8c3cf"/>
+  <path d="M26.4 38.33A10 10 0 0 1 13.58 51.15A13.08 13.08 0 0 0 26.4 38.33Z" fill="#8e9faf"/>
+  <circle cx="13.6" cy="38.35" r="2.7" fill="#e2e8ef"/>
+  <circle cx="17" cy="41.75" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="47" cy="41.75" r="10" fill="#328bd3"/>
+  <path d="M56.4 38.33A10 10 0 0 1 43.58 51.15A13.08 13.08 0 0 0 56.4 38.33Z" fill="#236ead"/>
+  <circle cx="43.6" cy="38.35" r="2.7" fill="#b9ddf8"/>
+  <circle cx="47" cy="41.75" r="10" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M7 52.75L57 52.75A2 2 0 0 1 59 54.75L59 56.25A2 2 0 0 1 57 58.25L7 58.25A2 2 0 0 1 5 56.25L5 54.75A2 2 0 0 1 7 52.75Z" fill="#8e9faf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

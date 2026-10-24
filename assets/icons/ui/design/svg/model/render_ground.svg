@@ -1,10 +1,16 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Render ground plane</title>
-  <path d="M6 30L32 45.01L32 49.01L6 34Z" fill="#b8c3cf"/>
-  <path d="M58 30L32 45.01L32 49.01L58 34Z" fill="#8e9faf"/>
-  <path d="M32 14.99L58 30L32 45.01L6 30Z" fill="#e2e8ef"/>
-  <path d="M32 14.99L58 30L58 34L32 49.01L6 34L6 30Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M6 30L32 45.01L58 30" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M32 45.01L32 49.01" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M22.19 30A9.81 5.66 0 1 0 41.81 30A9.81 5.66 0 1 0 22.19 30Z" fill="#328bd3"/>
+  <title>Ground — the floor the product stands on, with its contact shadow</title>
+  <path d="M5.15 34.75L32 50.25L32 53.25L5.15 37.75Z" fill="#328bd3"/>
+  <path d="M58.85 34.75L32 50.25L32 53.25L58.85 37.75Z" fill="#236ead"/>
+  <path d="M32 19.25L58.85 34.75L32 50.25L5.15 34.75Z" fill="#b9ddf8"/>
+  <path d="M32 19.25L58.85 34.75L58.85 37.75L32 53.25L5.15 37.75L5.15 34.75Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M5.15 34.75L32 50.25L58.85 34.75" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 50.25L32 53.25" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 26.75L51.92 38.25L38.06 46.25L18.14 34.75Z" fill="#328bd3"/>
+  <path d="M18.14 18.75L32 26.75L32 42.75L18.14 34.75Z" fill="#b8c3cf"/>
+  <path d="M45.86 18.75L32 26.75L32 42.75L45.86 34.75Z" fill="#8e9faf"/>
+  <path d="M32 10.75L45.86 18.75L32 26.75L18.14 18.75Z" fill="#e2e8ef"/>
+  <path d="M32 10.75L45.86 18.75L45.86 34.75L32 42.75L18.14 34.75L18.14 18.75Z" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M18.14 18.75L32 26.75L45.86 18.75" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M32 26.75L32 42.75" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -47,7 +47,6 @@ offset_one_side = { master = "offset", accent = "sketch" }
 bom = "list"
 
 # Render workspace drafts: shared meanings; owner review remains Open.
-render_environment = "environment_map"
 render_fit_product = "fit"
 render_execute = "render_image"
 # Removing a look override returns the body to its material look.
