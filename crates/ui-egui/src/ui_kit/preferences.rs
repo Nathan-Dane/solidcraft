@@ -108,7 +108,7 @@ pub(crate) fn theme_rail(ui: &mut Ui, tiles: impl FnOnce(&mut Ui), import: impl 
         ui.spacing_mut().item_spacing.x = t.space_8;
         ui.allocate_ui_with_layout(vec2(rail_width, 0.0), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.style_mut().always_scroll_the_only_direction = true;
-            egui::ScrollArea::horizontal()
+            let mut rail = egui::ScrollArea::horizontal()
                 .id_salt("settings_theme_rail")
                 .max_width(rail_width)
                 .auto_shrink([false, true])
@@ -120,9 +120,60 @@ pub(crate) fn theme_rail(ui: &mut Ui, tiles: impl FnOnce(&mut Ui), import: impl 
                         tiles(ui);
                     });
                 });
+            let max_offset = (rail.content_size.x - rail.inner_rect.width()).max(0.0);
+            let (left, right) = theme_rail_cues(rail.state.offset.x, max_offset);
+            let arrow_size = t.control_height.min(rail.inner_rect.width() / 2.0);
+            for (visible, direction, label) in [(left, -1.0, "Scroll left"), (right, 1.0, "Scroll right")] {
+                if !visible || arrow_size <= 0.0 {
+                    continue;
+                }
+                let center = pos2(
+                    if direction < 0.0 { rail.inner_rect.left() + arrow_size / 2.0 } else { rail.inner_rect.right() - arrow_size / 2.0 },
+                    rail.inner_rect.top() + rail.content_size.y / 2.0,
+                );
+                let rect = Rect::from_center_size(center, vec2(arrow_size, t.control_height));
+                if theme_rail_arrow(ui, rect, direction, label).clicked() {
+                    rail.state.offset.x = (rail.state.offset.x + direction * (action_width + t.space_8)).clamp(0.0, max_offset);
+                    rail.state.store(ui.ctx(), rail.id);
+                    ui.ctx().request_repaint();
+                }
+            }
         });
         ui.allocate_ui_with_layout(vec2(action_width, 0.0), egui::Layout::top_down(egui::Align::Min), import);
     });
+}
+
+/// Ignore subpixel rounding at either end so cues do not flicker on a fully visible rail.
+pub(super) fn theme_rail_cues(offset: f32, max_offset: f32) -> (bool, bool) {
+    (offset > 0.5, max_offset - offset > 0.5)
+}
+
+fn theme_rail_arrow(ui: &mut Ui, rect: Rect, direction: f32, label: &str) -> Response {
+    let t = Tokens::get();
+    let response = ui.interact(rect, ui.make_persistent_id(("theme_rail_arrow", label)), Sense::click());
+    ui.painter().rect(
+        rect,
+        t.control_radius,
+        if response.hovered() { t.hover } else { t.control_fill },
+        t.control_border_stroke(t.control_border),
+        egui::StrokeKind::Inside,
+    );
+    let center = rect.center();
+    let half = t.space_4;
+    let stroke = Stroke::new(t.space_2, t.form_ink);
+    let tip = center + vec2(direction * half / 2.0, 0.0);
+    for y in [-half, half] {
+        ui.painter().line_segment([center + vec2(-direction * half / 2.0, y), tip], stroke);
+    }
+    if response.clicked() {
+        response.request_focus();
+    }
+    if response.has_focus() {
+        ui.painter().rect_stroke(rect, t.control_radius, Stroke::new(t.space_2, t.form_primary), egui::StrokeKind::Inside);
+    }
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, ui.is_enabled(), crate::i18n::tr_label(label)));
+    scenario::publish_target(&format!("prefs:theme_rail:{label}"), rect);
+    response.on_hover_cursor(egui::CursorIcon::PointingHand).on_hover_text(crate::i18n::tr_label(label))
 }
 
 /// Dashed import tile matches the swatch tiles, while remaining permanently visible.
