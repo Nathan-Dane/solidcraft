@@ -26,17 +26,23 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
     let hud = Container::navigation_card(&ctx, egui::Id::new("sc_render_hud"), pos2(free.center().x, free.top()), egui::Align2::CENTER_TOP, |ui| {
         ui.set_max_width((free.width() - Tokens::get().space_24).max(0.0));
         ui.horizontal_wrapped(|ui| {
-            ui.add_enabled_ui(false, |ui| {
-                ui_kit::text(ui, crate::i18n::tr_label("Pick"), ui_kit::Text::Inline);
-                ui_kit::dropdown_menu(ui, "render_pick", crate::i18n::tr_label("Body"), |ui| {
-                    for label in ["Body", "Face", "Component"] {
-                        ui_kit::text(ui, crate::i18n::tr_label(label), ui_kit::Text::Inline);
+            let mode = current_pick_mode(app);
+            ui_kit::text(ui, app.tr("render.pick_label"), ui_kit::Text::Inline);
+            ui.add_enabled_ui(!crate::render_workspace::result_active(app), |ui| {
+                let label = pick_label(mode);
+                let response = ui_kit::dropdown_menu(ui, "render_pick", app.tr(label), |ui| {
+                    for mode in ["body", "face", "component"] {
+                        let response = ui_kit::choice_chip(ui, mode, app.tr(pick_label(mode)), mode == current_pick_mode(app));
+                        crate::scenario::publish_target(&format!("render:pick:{mode}"), response.rect);
+                        if response.clicked() {
+                            let _ = app.run("select.filter", serde_json::json!({"mode":mode}));
+                            ui.close();
+                        }
                     }
-                });
-            })
-            .response
-            .on_disabled_hover_text(crate::i18n::tr_label("Product picking is not supported yet."))
-            .on_hover_text(crate::i18n::tr_label("Product picking is not supported yet."));
+                })
+                .on_hover_text(app.tr("render.pick_help"));
+                crate::scenario::publish_target("render:pick", response.rect);
+            });
             ui_kit::text(ui, crate::i18n::tr_label("Integrated preview"), ui_kit::Text::Inline)
                 .on_hover_text(crate::i18n::tr_label("The live preview shows direct light only and no shadows."));
         });
@@ -45,6 +51,24 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
     crate::scenario::publish_rect("render:hud", hud.response.rect);
     crate::viewport::nav_bar(app, ui, viewport);
     shots_pill(app, ui, free);
+}
+
+fn current_pick_mode(app: &SolveApp) -> &'static str {
+    if app.ui.pick_components {
+        "component"
+    } else if app.ui.pick_bodies {
+        "body"
+    } else {
+        "face"
+    }
+}
+
+fn pick_label(mode: &str) -> &'static str {
+    match mode {
+        "body" => "render.pick_body",
+        "component" => "render.pick_component",
+        _ => "render.pick_face",
+    }
 }
 
 fn shots_pill(app: &mut SolveApp, ui: &mut egui::Ui, free: Rect) {

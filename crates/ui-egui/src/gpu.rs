@@ -226,6 +226,7 @@ pub(crate) fn render_offscreen(
 #[cfg(all(test, not(target_arch = "wasm32")))]
 pub(crate) fn render_product_offscreen(
     scene: GpuScene,
+    highlight: Option<GpuScene>,
     view_proj: [[f32; 4]; 4],
     back: [f32; 3],
     eye: [f32; 4],
@@ -234,7 +235,7 @@ pub(crate) fn render_product_offscreen(
 ) -> Option<Vec<u8>> {
     offscreen(
         scene,
-        None,
+        highlight,
         view_proj,
         back,
         eye,
