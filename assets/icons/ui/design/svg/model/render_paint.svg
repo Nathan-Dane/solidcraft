@@ -1,6 +1,9 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Paint — apply a look</title>
-  <path d="M32.5 27L47.5 9Q50.5 6 53.5 9Q56.5 12 53.5 15L36.5 31Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M18.5 28L27.5 21L41.5 35L34.5 44Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M18.5 28L34.5 44Q25.5 58 7.5 54Q15.5 48 12.5 40Z" fill="#328bd3" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Paint a look — sphere brush tip</title>
+  <path d="M30 32L49 53Q52 56 55 53Q58 50 55 47L34 28Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M23 32L33 22L41 32L33 40Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="20" cy="19" r="13" fill="#328bd3"/>
+  <path d="M32.22 14.55A13 13 0 0 1 15.55 31.22A17 17 0 0 0 32.22 14.55Z" fill="#236ead"/>
+  <circle cx="15.58" cy="14.58" r="3.51" fill="#b9ddf8"/>
+  <circle cx="20" cy="19" r="13" fill="none" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>

@@ -1,8 +1,8 @@
 # Render workspace icon drafts
 
 All ids below are **Open** for owner review. No commands, toolbar entries, browser
-selectors or runtime request manifests are changed by this draft set. The four
-new aliases reuse identical finished meanings; accepted source masters stay unchanged.
+selectors or runtime request manifests are changed by this draft set. The three
+remaining aliases reuse identical finished meanings; accepted source masters stay unchanged.
 Other operations have distinct original SVG masters in `design/svg/model/`.
 
 Review with `python3 -B assets/icons/ui/design/tools/icon_status.py --serve`,
@@ -35,16 +35,34 @@ and `/tmp/icon-groups/lights-dark.png`; the original set and finished references
 are `/tmp/icon-groups/before-all{,-dark}.png` and
 `/tmp/icon-groups/references{,-dark}.png`. These PNGs are review evidence only.
 
+The eight **Looks** drafts have all been remade as one family. Each has the same
+13-unit-radius accent sphere at `(20,19)`, with a top-left highlight and a
+bottom-right circular shade, following `material` and `sphere` and the top-left
+lighting of the app's sphere-thumbnail widget (PR #6284). Slate operation glyphs
+use 2.55-unit outlines and light passive fills. Grey bodies and the material slab
+come directly from `tools/author/bases.py`, uniformly sized and translated.
+Only the sphere uses accent colours; receiving bodies stay grey so the operation
+and the shared look sample remain easy to separate. The Appearance droplet alias
+has been replaced by a dedicated assign-to-body master; the accepted `appearance`
+master is unchanged. No Looks draft is final.
+
+Each Looks icon was inspected at 96, 24 and 16 px in light and dark, followed by
+side-by-side family review. The current sheets are `/tmp/icon-groups/looks.png`
+and `/tmp/icon-groups/looks-dark.png`; individual six-view previews use
+`/tmp/icon-groups/render_<id>{,-dark}.png`. Paint and Pick up are the closest pair
+at 16 px: a broad ferrule and rounded handle distinguish Paint from the enclosed
+bulb, crossbar and pointed sampling tube. They are the main owner-review concern.
+
 | Meaning | New id | Finished references | Drawing / reuse |
 |---|---|---|---|
-| Appearance | `render_appearance` | `appearance`, `material` | Alias of appearance: assign a visual look. |
-| Paint | `render_paint` | `appearance`, `paste` | Broad brush with blue bristles. |
-| Pick up | `render_pick_up` | `appearance`, `material` | Eyedropper with a narrow sampling tip. |
-| Replace all | `render_replace_all` | `copy`, `paste` | One swatch flows to a stack of replacement swatches. |
-| Copy look | `render_copy_look` | `copy`, `material` | Overlapping look cards, foreground sphere swatch. |
-| Remove override | `render_remove_override` | `appearance`, `delete` | Look swatch with a minus cue. |
-| Same look | `render_same_look` | `select`, `material` | Matching swatches and a selection pointer. |
-| From material | `render_from_material` | `material`, `paste` | Physical sphere feeds a look swatch through an inheritance arrow. |
+| Appearance | `render_appearance` | `material`, `box` | Remade: shared sphere and a short slate arrow onto a canonical grey body; dedicated master replaces the droplet alias. |
+| Paint | `render_paint` | `material`, `paste` | Remade: shared sphere forms the brush tip, above a broad light ferrule and rounded slate handle. |
+| Pick up | `render_pick_up` | `material`, `copy` | Remade: shared sphere inside an eyedropper bulb, with a slate crossbar and pointed sampling tube. |
+| Replace all | `render_replace_all` | `copy`, `box` | Remade: shared sphere, slate swap arrows and three canonical receiving bodies. |
+| Copy look | `render_copy_look` | `material`, `copy` | Remade: two overlapping shaded spheres; front accent sample and back grey copy. |
+| Remove override | `render_remove_override` | `appearance`, `box` | Remade: shared sphere struck through above the same canonical body used by Assign. |
+| Same look | `render_same_look` | `select`, `box` | Remade: shared sample and three canonical bodies; two matching bodies ringed, unmatched body separate. |
+| From material | `render_from_material` | `material`, `extrude` | Remade: shared sphere connected by two broad chain links to a plain canonical grey slab. |
 | Library | `render_library` | `library`, `copy` | Four substantial swatches in a grid; distinct from book libraries. |
 | Lighting presets | `render_lighting_presets` | `new`, `render_scene` | Preset card with a light and a choice row. |
 | Environment | `render_environment` | `environment_map`, `render_scene` | Alias of environment_map: environment globe with a light opening. |

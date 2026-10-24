@@ -300,16 +300,17 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | File | Author | Source | Licence |
 |---|---|---|---|
 | assets/icons/ui/design/svg/model/render_all_shots.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_appearance.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere, assign arrow and canonical grey body | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_aspect_frame.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_backdrop.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_cancel.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_check.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_compare.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_copy_look.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_copy_look.svg | SolidCraft contributors | original Looks draft (64 grid): overlapping shaded accent and grey look spheres | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_export_image.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_exposure.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_frame_guides.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_from_material.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_from_material.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere, two chain links and canonical grey slab | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_ground.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_lens.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_library.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
@@ -319,13 +320,13 @@ Original SolidCraft drawings, Open for owner review; no runtime assignments.
 | assets/icons/ui/design/svg/model/render_light_spot.svg | SolidCraft contributors | original Lights draft (64 grid): cone source and dotted direction stem | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_lighting_presets.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_output_size.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_paint.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_pick_up.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_paint.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere as brush tip, broad ferrule and rounded handle | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_pick_up.svg | SolidCraft contributors | original Looks draft (64 grid): shaded look sphere inside eyedropper bulb, crossbar and sampling tube | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_quality.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_remove_override.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_replace_all.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_remove_override.svg | SolidCraft contributors | original Looks draft (64 grid): struck look sphere above a canonical grey body | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_replace_all.svg | SolidCraft contributors | original Looks draft (64 grid): shared look sphere, swap arrows and three canonical grey bodies | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_results.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
-| assets/icons/ui/design/svg/model/render_same_look.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
+| assets/icons/ui/design/svg/model/render_same_look.svg | SolidCraft contributors | original Looks draft (64 grid): shared look sphere and three canonical grey bodies, matching pair ringed | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_shot.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_shots_strip.svg | SolidCraft contributors | original icon master (64 grid) | MIT OR Apache-2.0 |
 | assets/icons/ui/design/svg/model/render_solo_light.svg | SolidCraft contributors | original Lights draft (64 grid): point source and dotted stem inside focus brackets | MIT OR Apache-2.0 |
