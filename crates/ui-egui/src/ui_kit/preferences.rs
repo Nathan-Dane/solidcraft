@@ -108,6 +108,8 @@ pub(crate) fn theme_rail(ui: &mut Ui, tiles: impl FnOnce(&mut Ui), import: impl 
         ui.spacing_mut().item_spacing.x = t.space_8;
         ui.allocate_ui_with_layout(vec2(rail_width, 0.0), egui::Layout::top_down(egui::Align::Min), |ui| {
             ui.style_mut().always_scroll_the_only_direction = true;
+            // This rail paints its own fully opaque, page-coloured edge cues.
+            ui.spacing_mut().scroll.fade.strength = 0.0;
             let mut rail = egui::ScrollArea::horizontal()
                 .id_salt("settings_theme_rail")
                 .max_width(rail_width)
@@ -127,6 +129,10 @@ pub(crate) fn theme_rail(ui: &mut Ui, tiles: impl FnOnce(&mut Ui), import: impl 
                 if !visible || arrow_size <= 0.0 {
                     continue;
                 }
+                // The horizontal host starts with zero requested height; use the measured
+                // cards' height rather than the scroll area's initial viewport height.
+                let rail_rect = Rect::from_min_size(rail.inner_rect.min, vec2(rail.inner_rect.width(), rail.content_size.y));
+                theme_rail_fade(ui, rail_rect, direction);
                 let center = pos2(
                     if direction < 0.0 { rail.inner_rect.left() + arrow_size / 2.0 } else { rail.inner_rect.right() - arrow_size / 2.0 },
                     rail.inner_rect.top() + rail.content_size.y / 2.0,
@@ -148,22 +154,35 @@ pub(super) fn theme_rail_cues(offset: f32, max_offset: f32) -> (bool, bool) {
     (offset > 0.5, max_offset - offset > 0.5)
 }
 
-fn theme_rail_arrow(ui: &mut Ui, rect: Rect, direction: f32, label: &str) -> Response {
+/// Preferences pages inherit the Window card's opaque dialog_body surface.
+/// Paint after the cards and before the arrows so the outer edge fully conceals content.
+fn theme_rail_fade(ui: &Ui, rail: Rect, direction: f32) {
+    let t = Tokens::get();
+    let width = (t.space_24 * 2.0 + t.space_8).min(rail.width() / 2.0);
+    let outer = if direction < 0.0 { rail.left() } else { rail.right() };
+    let inner = outer - direction * width;
+    let mut mesh = egui::Mesh::default();
+    for (x, color) in [(outer, t.dialog_body), (inner, Color32::TRANSPARENT)] {
+        mesh.colored_vertex(pos2(x, rail.top()), color);
+        mesh.colored_vertex(pos2(x, rail.bottom()), color);
+    }
+    mesh.add_triangle(0, 1, 2);
+    mesh.add_triangle(2, 1, 3);
+    ui.painter().with_clip_rect(ui.clip_rect().intersect(rail)).add(mesh);
+}
+
+pub(super) fn theme_rail_arrow(ui: &mut Ui, rect: Rect, direction: f32, label: &str) -> Response {
     let t = Tokens::get();
     let response = ui.interact(rect, ui.make_persistent_id(("theme_rail_arrow", label)), Sense::click());
-    ui.painter().rect(
-        rect,
-        t.control_radius,
-        if response.hovered() { t.hover } else { t.control_fill },
-        t.control_border_stroke(t.control_border),
-        egui::StrokeKind::Inside,
-    );
-    let center = rect.center();
-    let half = t.space_4;
-    let stroke = Stroke::new(t.space_2, t.form_ink);
-    let tip = center + vec2(direction * half / 2.0, 0.0);
-    for y in [-half, half] {
-        ui.painter().line_segment([center + vec2(-direction * half / 2.0, y), tip], stroke);
+    if response.hovered() {
+        ui.painter().circle_filled(rect.center(), rect.width().min(rect.height()) / 2.0, t.hover);
+    }
+    let ink = if response.hovered() { t.form_ink } else { t.form_ink.gamma_multiply(0.65) };
+    let icon = Rect::from_center_size(rect.center(), vec2(t.space_16, t.space_16));
+    if direction < 0.0 {
+        crate::icons::paint_ink_mirrored(ui.painter(), icon, "chevron_right", ink);
+    } else {
+        crate::icons::paint_ink(ui.painter(), icon, "chevron_right", ink);
     }
     if response.clicked() {
         response.request_focus();
