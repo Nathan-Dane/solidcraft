@@ -1,9 +1,7 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
-  <title>Render all shots — a batch of saved camera views</title>
-  <path d="M18 11L52 11A5 5 0 0 1 57 16L57 38A5 5 0 0 1 52 43L18 43A5 5 0 0 1 13 38L13 16A5 5 0 0 1 18 11Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <path d="M9 19L12 19L15 12Q15.6 10 17.5 10L22.5 10Q24.4 10 25 12L28 19L43 19Q48 19 48 24L48 46Q48 51 43 51L9 51Q4 51 4 46L4 24Q4 19 9 19Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="26" cy="35" r="10.5" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
-  <circle cx="47.5" cy="47.5" r="14" fill="#ffffff"/>
-  <circle cx="47.5" cy="47.5" r="12" fill="#236ead"/>
-  <path d="M43.9 41.7L53.3 47.5L43.9 53.3Z" fill="#ffffff" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round"/>
+  <title>Render all shots — every saved camera view at once</title>
+  <path d="M30.26 14.72L32.42 14.72L34.58 9.68Q35.01 8.24 36.38 8.24L39.98 8.24Q41.35 8.24 41.78 9.68L43.94 14.72L54.74 14.72Q58.34 14.72 58.34 18.32L58.34 34.16Q58.34 37.76 54.74 37.76L30.26 37.76Q26.66 37.76 26.66 34.16L26.66 18.32Q26.66 14.72 30.26 14.72Z" fill="#e2e8ef" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M19.76 23.72L21.92 23.72L24.08 18.68Q24.51 17.24 25.88 17.24L29.48 17.24Q30.85 17.24 31.28 18.68L33.44 23.72L44.24 23.72Q47.84 23.72 47.84 27.32L47.84 43.16Q47.84 46.76 44.24 46.76L19.76 46.76Q16.16 46.76 16.16 43.16L16.16 27.32Q16.16 23.72 19.76 23.72Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <path d="M9.26 32.72L11.42 32.72L13.58 27.68Q14.01 26.24 15.38 26.24L18.98 26.24Q20.35 26.24 20.78 27.68L22.94 32.72L33.74 32.72Q37.34 32.72 37.34 36.32L37.34 52.16Q37.34 55.76 33.74 55.76L9.26 55.76Q5.66 55.76 5.66 52.16L5.66 36.32Q5.66 32.72 9.26 32.72Z" fill="#b8c3cf" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
+  <circle cx="21.5" cy="44.24" r="7.56" fill="#b9ddf8" stroke="#34465b" stroke-width="2.55" stroke-linejoin="round" stroke-linecap="round"/>
 </svg>
