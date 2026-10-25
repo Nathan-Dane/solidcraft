@@ -17,6 +17,7 @@ mod layout;
 mod look_chain;
 mod menu;
 mod metrics;
+mod navigation;
 pub(crate) mod panel;
 mod preferences;
 mod preferences_assistant;
@@ -52,6 +53,7 @@ pub(crate) use layout::*;
 pub use look_chain::{LookStep, look_chain};
 pub(crate) use menu::{Menu, MenuItem, rename_menu, workspace_menu};
 pub(crate) use metrics::{ContentWidth, header_height, row_height, table_row_height};
+pub(crate) use navigation::*;
 pub(crate) use panel::{ComputeStatus, FeatureOptions, Panel, Part, WindowPage, WorkspaceOptions, panel_header_hover};
 pub use panel::{DialogButtons, Window};
 #[cfg(test)]
