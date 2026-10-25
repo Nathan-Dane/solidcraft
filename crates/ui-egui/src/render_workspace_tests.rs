@@ -3424,6 +3424,7 @@ fn navigation_bar_render_canvases_filter_slots_and_keep_product_fit() {
     h.app.preferences.look_at_anim = false;
     h.settle();
     assert_eq!(crate::navigation_bar::canvas_caps(&h.app), crate::navigation::NavCaps::RENDER);
+    // The product preview picks (#6426), so the slots that need a pick are on the bar there too.
     for slot in ["orbit", "pan", "zoom", "fit", "look_at", "home", "visual_style", "display"] {
         assert!(crate::scenario::handle_at(&format!("nav:slot:{slot}")).is_some(), "{slot}");
     }
