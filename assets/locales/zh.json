@@ -644,7 +644,6 @@
   "cam.roller_pick": "滚子（可选）",
   "cam.tip_pick": "尖端（可选）",
   "cmd.appearance_assign": "外观",
-  "cmd.appearance_chain": "外观来源",
   "cmd.appearance_chain": "外观继承链",
   "cmd.appearance_library": "外观库",
   "cmd.appearance_list": "列出外观",

@@ -596,7 +596,6 @@
   "cam.roller_pick": "롤러 (선택 사항)",
   "cam.tip_pick": "끝점 (선택 사항)",
   "cmd.appearance_assign": "외관",
-  "cmd.appearance_chain": "외관 출처",
   "cmd.appearance_chain": "외관 상속 체인",
   "cmd.appearance_library": "외관 라이브러리",
   "cmd.appearance_list": "외관 목록",

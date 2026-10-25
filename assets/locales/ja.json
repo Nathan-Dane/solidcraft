@@ -644,7 +644,6 @@
   "cam.roller_pick": "ローラー (オプション)",
   "cam.tip_pick": "先端 (オプション)",
   "cmd.appearance_assign": "外観",
-  "cmd.appearance_chain": "外観の由来",
   "cmd.appearance_chain": "外観の継承",
   "cmd.appearance_library": "外観ライブラリ",
   "cmd.appearance_list": "外観を一覧表示",
