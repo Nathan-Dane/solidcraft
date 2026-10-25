@@ -487,11 +487,33 @@ pub(crate) fn slider<T: egui::emath::Numeric>(ui: &mut Ui, value: &mut T, range:
 
 /// Locale-aware bounded scalar field, used for dimensionless material properties.
 pub(crate) fn scalar_field(ui: &mut Ui, value: &mut f64, range: std::ops::RangeInclusive<f64>) -> Response {
+    mixed_scalar_field(ui, value, range, None)
+}
+
+/// A bounded scalar with a translated mixed-value placeholder. Typing or dragging
+/// replaces the placeholder; commit ownership remains with the caller.
+pub(crate) fn mixed_scalar_field(ui: &mut Ui, value: &mut f64, range: std::ops::RangeInclusive<f64>, mixed: Option<&str>) -> Response {
     ui.style_mut().drag_value_text_style = egui::TextStyle::Monospace;
-    let response = ui.add_sized(
-        vec2(dimension(ui.available_width()), row_height()),
-        egui::DragValue::new(value).range(range).speed(0.01).custom_parser(crate::prefs::parse_number),
-    );
+    let before = *value;
+    let parsed = std::cell::Cell::new(false);
+    let field = egui::DragValue::new(value).range(range).speed(0.01).custom_parser(|text| {
+        let value = crate::prefs::parse_number(text);
+        parsed.set(value.is_some());
+        value
+    });
+    let mut response = ui.add_sized(vec2(dimension(ui.available_width()), row_height()), |ui: &mut Ui| {
+        let field = if let Some(mixed) = mixed.filter(|_| !ui.ctx().is_being_dragged(ui.next_auto_id())) {
+            field.custom_formatter(move |_, _| mixed.to_owned())
+        } else {
+            field
+        };
+        ui.add(field)
+    });
+    // Entering the first target's existing number still sets every mixed target.
+    // Merely focusing and leaving the translated placeholder is inert.
+    if mixed.is_some() {
+        response.flags.set(egui::response::Flags::CHANGED, *value != before || parsed.get());
+    }
     Tokens::get().input_bevel(ui, &response);
     scenario::publish_target(&format!("dialog:scalar:{}", label(ui)), response.rect);
     response

@@ -50,6 +50,20 @@ const ELEMENTS: &[Element] = &[
             }
         });
     }),
+    element!("sphere_preview", |ui, _| {
+        sphere_preview(
+            ui,
+            "gallery:preview",
+            Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None },
+            "Satin",
+            ["Library", "Used by 2"],
+            |ui| button(ui, "Replace…", Button::Normal),
+        );
+    }),
+    element!("mixed_scalar_field", |ui, _| {
+        let mut value = 0.5;
+        mixed_scalar_field(ui, &mut value, 0.0..=1.0, Some("Mixed"));
+    }),
     element!("sphere_grid", |ui, _| {
         let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };
         let tiles = ["gallery:grid:a", "gallery:grid:b", "gallery:grid:c"].map(|id| SphereTile {

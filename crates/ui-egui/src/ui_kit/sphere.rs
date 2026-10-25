@@ -139,6 +139,34 @@ pub fn sphere_thumbnail(ui: &mut Ui, id: &str, sphere: Sphere, size: f32) -> Res
     response
 }
 
+/// Inspector sample card. Content, chips and action reuse the kit's existing
+/// controls; dimensions and the bordered card belong here rather than callers.
+pub(crate) fn sphere_preview<R>(ui: &mut Ui, id: &str, sphere: Sphere, name: &str, chips: [&str; 2], action: impl FnOnce(&mut Ui) -> R) -> R {
+    let t = Tokens::get();
+    super::list_frame(ui, id, |ui| {
+        ui.add_space(t.space_8);
+        let row = ui.horizontal(|ui| {
+            let side = t.control_height * 2.0 - t.space_4;
+            sphere_thumbnail(ui, id, sphere, side);
+            let text_width = (ui.available_width() - t.form_label_width - t.space_24 - t.space_8).max(0.0);
+            ui.allocate_ui_with_layout(vec2(text_width, side), egui::Layout::top_down(egui::Align::Min), |ui| {
+                super::text(ui, name, super::Text::NameCell(true)).on_hover_text(name);
+                ui.horizontal_wrapped(|ui| {
+                    for (index, label) in chips.into_iter().enumerate() {
+                        let response = super::assistant_badge(ui, label, super::AssistantTone::Neutral);
+                        scenario::publish_rect(&format!("{id}:chip:{index}"), response.rect);
+                    }
+                });
+            });
+            let response = ui.vertical(action);
+            scenario::publish_target(&format!("{id}:replace"), response.response.rect);
+            response.inner
+        });
+        ui.add_space(t.space_8);
+        row.inner
+    })
+}
+
 /// A catalog sample: 52 pt sphere in a 56 pt cell, two-line caption and optional
 /// usage badge. The surrounding chrome follows the active workspace accent.
 pub(crate) struct SphereTile<'a> {

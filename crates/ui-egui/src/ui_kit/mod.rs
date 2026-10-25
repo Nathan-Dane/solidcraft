@@ -65,7 +65,7 @@ pub(crate) use reports::*;
 pub(crate) use search::{CommandSearch, SearchBadge, SearchFieldGeometry};
 pub(crate) use shortcuts::*;
 pub use sphere::{FinishKind, Sphere, sphere_thumbnail};
-pub(crate) use sphere::{SphereTile, sphere_grid};
+pub(crate) use sphere::{SphereTile, sphere_grid, sphere_preview};
 pub(crate) use status::*;
 pub(crate) use table::*;
 

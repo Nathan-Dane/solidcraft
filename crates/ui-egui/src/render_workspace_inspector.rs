@@ -6,6 +6,9 @@ use serde_json::{Value, json};
 use solidcraft_engine::doc::Document;
 use std::sync::{Arc, Weak};
 
+#[path = "render_ui/appearance.rs"]
+mod selection_appearance;
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub(super) enum Page {
     #[default]
@@ -99,6 +102,7 @@ pub(super) struct View {
     ground_color: [f64; 3],
     replace_ground: bool,
     appearance: Appearance,
+    selection_appearance: selection_appearance::View,
     resolution: Resolution,
 }
 /// Editor-only coupling. The fixed rational anchor prevents repeated rounded
@@ -204,6 +208,7 @@ impl Default for View {
             ground_color: [0.18; 3],
             replace_ground: false,
             appearance: Appearance::default(),
+            selection_appearance: Default::default(),
             resolution: Resolution::default(),
         }
     }
@@ -221,7 +226,20 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let bounds = crate::shell::panel_bounds(app, ui.available_rect_before_wrap());
     let mut side = app.preferences.render_inspector_side.clone();
     let mut width = app.preferences.render_inspector_width;
-    let title = app.tr("render.studio_title").to_string();
+    let selection_appearance = app.render_workspace.view.inspector.page == Page::Appearance && !app.session.selection.is_empty();
+    let title = if selection_appearance {
+        app.session
+            .selection
+            .last()
+            .and_then(|item| match item {
+                solidcraft_engine::Sel::Body { name } | solidcraft_engine::Sel::Face { body: name, .. } => Some(name.clone()),
+                solidcraft_engine::Sel::Occurrence { path } => app.session.occurrence_placement(path).ok().map(|placement| placement.name),
+                _ => None,
+            })
+            .unwrap_or_else(|| app.tr("render.inspector").to_owned())
+    } else {
+        app.tr("render.studio_title").to_string()
+    };
     let icon = app.render_workspace.view.inspector.page.icon();
     let content = ui_kit::Panel::workspace(
         ui,
@@ -230,23 +248,27 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         &mut width,
         |ui| {
             ui_kit::scope(ui, |ui| {
-                header(app, ui);
-                pages(app, ui);
-                ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
-                    ui.separator();
-                    super::job_controls(app, ui, true);
-                    if ui_kit::button(ui, app.tr("render.return_design"), ui_kit::Button::Normal).clicked()
-                        && let Err(error) = super::enter(app, false)
-                    {
-                        app.set_status(error, true);
-                    }
-                    crate::scenario::publish_rect("render:job-footer", ui.min_rect());
-                });
+                if !selection_appearance {
+                    header(app, ui);
+                    pages(app, ui);
+                    ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
+                        ui.separator();
+                        super::job_controls(app, ui, true);
+                        if ui_kit::button(ui, app.tr("render.return_design"), ui_kit::Button::Normal).clicked()
+                            && let Err(error) = super::enter(app, false)
+                        {
+                            app.set_status(error, true);
+                        }
+                        crate::scenario::publish_rect("render:job-footer", ui.min_rect());
+                    });
+                }
                 let page = app.render_workspace.view.inspector.page;
                 egui::ScrollArea::vertical().id_salt(("render_inspector", page.handle(), app.docs.active)).auto_shrink([false, false]).show(
                     ui,
                     |ui| {
-                        ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
+                        if !selection_appearance {
+                            ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
+                        }
                         match page {
                             Page::Scene => scene_controls(app, ui),
                             Page::Appearance => appearance_controls(app, ui),
@@ -589,6 +611,9 @@ fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    if selection_appearance::controls(app, ui) {
+        return;
+    }
     ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     base_appearance(app, ui);
     browse_button(app, ui, "surfaces", "render.browse_surfaces");
