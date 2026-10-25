@@ -3,75 +3,101 @@
 Tracking issue: #6281. Related: #5493 (render integration), #6201 (Render usability audit).
 
 The Render workspace on `main` (basic delivery #6050 and the full ribbon, inspector and
-libraries from #5494) works but is laid out as one tab with an 11-page inspector. This plan
-restructures that UI, in small PRs, around the order a render is prepared. It reuses the existing
+libraries from #5494) works but is one ribbon tab over an 11-page inspector. This plan
+restructures it, in small PRs, around the order a render is prepared. It reuses the existing
 commands and controls; it does not add a second renderer or change the document format.
+
+## Design rationale
+
+Render does not use tools; it configures the variables of a scene. A ribbon suits tool-driven
+workspaces, so this one has none. The four stages at the top (Look, Light, Frame, Output) carry
+the most common tools and the major settings. Configuration happens in the Inspector on the right
+(the user can move it). Presets and assets load from the panel at the bottom left. Anything in
+the scene, such as a body, a light or the environment, is edited by selecting it in the Browser
+or in the view.
 
 ## Interaction design
 
-- **Tabs:** Appearance, Scene, Camera, Render. Scene groups: Studio, Lights, Stage. Camera
-  groups: Shots, View, Lens, Frame. Render groups: Image, Render, Result, Batch. Render and
-  Cancel stay at the right of the tab row on every tab. Opening a tab or an editor never
-  applies, saves, regrades or starts anything.
-- **Panels:** floating cards built only from the shared `ui_kit` components: a left dock with the
-  Browser scene tree (Environment, Lights, Shots, Objects, with a By object / By look lens) and the
-  Appearances library; a right Inspector that follows the active tab and selection; a hideable
-  Shots strip at the bottom (`view.shots_strip`, a UI preference); a HUD with the Pick control.
-- **Picking:** body, face or component picking in the product view, with outlines that exist
-  only in the live view and never in images.
-- **Assigning an appearance:** click a library look, drag it onto the model, or paint; the
-  Inspector shows where a look comes from (face, body, component, physical material).
-- **Lights and shots:** named lights with solo and mute and an orbit manipulator; shots with
-  thumbnails, Update and Revert, a frame overlay and aspect presets.
-- **Results:** the existing result viewer, then several retained images and a Live | Render compare.
+- **One selection.** The Browser lists what exists: Environment, Lights, Shots, Objects and Output.
+  Selecting a row, or picking in the view, selects the same thing. The Inspector shows the one
+  editor for the selection; with nothing selected it shows the scene overview. There is no panel
+  switcher and no All page.
+- **Stage bar.** At the top, as tall as the workspace card, in two rows: stage chips (Look, Light,
+  Frame, Output), Render, Cancel and command search above; the tools of the current stage below
+  (Pick and Paint; light placement; lens and Save shot; size, format and Check). Stages choose what
+  the Browser expands and what the bottom-left panel offers. They never lock a control or force an
+  order. Opening a stage or an editor never applies, saves or starts anything.
+- **Bottom-left panel.** Presets and assets for the current stage: Appearances (applicable
+  resources first), Studios and Environments, Frame presets and guides, Size presets.
+- **Editors** (one per kind of selection):
 
-## Panels
+| Selection | Editor | Holds | In the view |
+| --- | --- | --- | --- |
+| Body, face, component | Appearance | look chain, Applies to scope, colour, finish, transparency; Advanced: glass, clear coat, maps, optical bindings, aging | outline in the live view only |
+| Environment | Environment | source, rotation, intensity, backdrop, blur, ground shadow and reflection | rotation ring |
+| A light | Light | type, intensity, colour, softness, position, aim, Place by highlight, duplicate, delete | handle, intensity dial, distance, orbit |
+| A shot | Shot | projection, field of view, distance, exposure, frame and aspect, size, update, revert, duplicate, remove | frame overlay |
+| Output | Output | size, format, quality and sampling, method, transparency, destination; Effects (bloom, tone, grading); Check, backends, status | result viewer |
+| Nothing | Scene overview | one line per stage, Check, Render shot | none |
 
-Persistent surfaces: the Browser (scene tree), the Appearances library and the Shots strip. The
-Inspector shows one panel at a time. Each tab owns at most four panels, chosen with a segmented
-control in the Inspector header, and a ribbon button opens its panel directly. No panel holds
-settings that belong to another, and no page lists everything.
+- **Docks.** The Browser and the Inspector float and share the same top and bottom edges, starting
+  below the stage bar and ending above the Shots strip. The compass floats in the canvas beside
+  the Inspector. The Shots strip (`view.shots_strip`, a UI preference) hides from its chevron.
+- **Picking and assigning.** Body, face or component picking with outlines that exist only in the
+  live view and never in images. Click a library look, drag it onto the model, or paint; the
+  Inspector shows where a look comes from.
+- **Results.** The existing result viewer, then several retained images and a Live | Render compare.
 
-| Tab | Panel | Purpose |
-| --- | --- | --- |
-| Appearance | Appearance | What the selected target looks like: look, look chain, finish, scope |
-| Appearance | Surface | Physical optics of the target: glass, clear coat, texture maps, optical bindings, aging |
-| Scene | Studio | Ready-made studio set-ups: review, replacement preview, apply |
-| Scene | Lights | The lights of this shot: add, edit, solo, mute |
-| Scene | Environment | The HDR environment: source, rotation, intensity |
-| Scene | Stage | What is behind and under the product: ground and background |
-| Camera | Shot | The camera and framing of this shot: pose, projection, lens, exposure, frame and aspect; save, update, revert, rename, duplicate, remove |
-| Render | Image | Output size, format, quality and sampling, method, transparency, destination |
-| Render | Effects | Finishing: bloom, tone, grading, and regrading a retained result |
-| Render | Check | Preflight results, backend capabilities, job status and diagnostics |
+## Where the old ribbon items go
 
-Removed from the old master panel: the "All" page, the page icon strip, the setup header (setup
-save and reload move to the Shot panel) and the pinned job footer (Render and Cancel are in the
-tab row, the Shots strip and the progress pill).
+| Ribbon item | Now |
+| --- | --- |
+| Assign, Paint, Pick Up | Look tools, quick bar on the selection, drag from the library |
+| Edit, Replace All, Remove, From Material | Appearance editor and the right-click menu |
+| Library, Same Look | Appearances panel; Select same look in the row menu |
+| Presets, Environment | Studios and Environments panel; Environment row |
+| Add Light, By Highlight, Solo | plus on Lights; Light editor; solo and mute on the row |
+| Ground, Background | Environment editor |
+| Save Shot, Update, Strip | Frame tools, the Shots strip, the strip chevron |
+| Fit, Views | view bar at the bottom of the view |
+| Lens, Exposure, Aspect, Guides | Shot editor and Frame presets |
+| Size, Transparent, Quality, Check | Output tools, Output editor, Size presets |
+| Render, Cancel | stage bar; R and Esc |
+| Open, Compare, Export, All Shots | result viewer; Output editor and the strip |
+
+Every command stays registered, so search (S), keys, the radial menu, scripts and the control
+channel still reach all of them.
 
 ## Order of work
 
-Each step is its own PR; steps that edit the shared Render files are taken one after another.
+Each step is its own PR. Steps that edit the shared Render files are taken one after another.
+"Keep" means the open PR stays as it is, "Modify" that it changes to fit the design above.
 
-1. Roadmap and claim (this document).
-2. Original icon drafts for owner review (assets only).
-3. ui_kit widgets: lit sphere thumbnail and look chain.
-4. Shell: task tabs, floating panels, Shots strip, HUD, free-canvas navigation.
-5. Picking and outlines in the Render view.
-6. Browser scene tree.
-7. Appearance engine: `appearance.chain` (read), `appearance.replace`, tests for From Material.
-8. Appearances library grid (shared card stacked under the Browser; applicable resources first).
-9. Shots strip with bounded, off-thread thumbnails; Update and Revert.
-10. Appearance Inspector with the look chain, Applies to scope and mixed values.
-11. Assign gestures: click, drag, paint, Pick Up, copy and paste.
-12. Output inspector and result viewer additions: size presets, Check, Copy, progress pill.
-13. Split the master Render panel into the panels above (three PRs: panel framework with Appearance and Surface and removal of the All page; Scene panels; Camera and Render panels).
-13b. Frame overlay and aspect presets.
-14. Scene visuals: environment strip, rotation ring, studio presets.
-15. Lights: named lights, solo and mute, orbit manipulator, Place by Highlight.
-16. Several retained results, compare, render all shots.
-17. Focus view, compact and dark layouts, localisation pass.
-18. A lighting rig shared across shots (needs an owner decision and one `format/pending` file).
+1. Roadmap and claim (this document). Modify: rewritten for this design.
+2. Original icon drafts for owner review. Keep.
+3. ui_kit widgets: lit sphere thumbnail and look chain. Keep.
+4. Shell: stage bar replaces the four tabs and the ribbon; aligned floating docks; Shots strip host;
+   free-canvas navigation. Modify.
+5. Picking and outlines in the Render view. Keep; the Pick control sits in the Look tools.
+6. Browser scene tree with Output row, plus on groups, solo and mute on rows, stage expansion. Modify.
+7. Appearance engine: `appearance.chain`, `appearance.replace`, From Material tests. Keep.
+8. Bottom-left stage panel with the Appearances grid; applicable resources first. Modify.
+9. Assign gestures: click, drag, paint, Pick Up, copy and paste; Paint and Pick Up in the Look tools. Modify.
+10. Appearance editor with the look chain, scope and mixed values; Advanced section. Modify.
+11. Shots strip with thumbnails, Update and Revert. Modify: drop the ribbon item.
+12. Output editor and result viewer: size presets, Check, Copy, progress pill. Modify.
+13. Selection model and Inspector dispatch: one selection, one editor per kind, scene overview. New.
+14. Movable Inspector (dock side). New.
+15. Environment editor, ground, Studios and Environments panel, rotation ring. New.
+16. Lights: named lights, Light editor, solo and mute, handles in the view, Place by highlight. New.
+17. Shot editor, frame overlay, aspect presets, guides, Frame presets. New.
+18. Output sections: Effects and Check, Size presets. New.
+19. Several retained results, Live | Render compare, render all shots. New.
+20. Focus view, compact and dark layouts, localisation pass. New.
+21. A lighting rig shared across shots (needs an owner decision and one `format/pending` file). New.
+
+The draft that split the master panel into ten panels with a switcher (#6530) is superseded; its
+control routing is the starting point for steps 15, 17 and 18.
 
 ## Rules for every PR
 
