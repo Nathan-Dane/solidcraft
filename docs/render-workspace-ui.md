@@ -25,6 +25,30 @@ commands and controls; it does not add a second renderer or change the document 
   thumbnails, Update and Revert, a frame overlay and aspect presets.
 - **Results:** the existing result viewer, then several retained images and a Live | Render compare.
 
+## Panels
+
+Persistent surfaces: the Browser (scene tree), the Appearances library and the Shots strip. The
+Inspector shows one panel at a time. Each tab owns at most four panels, chosen with a segmented
+control in the Inspector header, and a ribbon button opens its panel directly. No panel holds
+settings that belong to another, and no page lists everything.
+
+| Tab | Panel | Purpose |
+| --- | --- | --- |
+| Appearance | Appearance | What the selected target looks like: look, look chain, finish, scope |
+| Appearance | Surface | Physical optics of the target: glass, clear coat, texture maps, optical bindings, aging |
+| Scene | Studio | Ready-made studio set-ups: review, replacement preview, apply |
+| Scene | Lights | The lights of this shot: add, edit, solo, mute |
+| Scene | Environment | The HDR environment: source, rotation, intensity |
+| Scene | Stage | What is behind and under the product: ground and background |
+| Camera | Shot | The camera and framing of this shot: pose, projection, lens, exposure, frame and aspect; save, update, revert, rename, duplicate, remove |
+| Render | Image | Output size, format, quality and sampling, method, transparency, destination |
+| Render | Effects | Finishing: bloom, tone, grading, and regrading a retained result |
+| Render | Check | Preflight results, backend capabilities, job status and diagnostics |
+
+Removed from the old master panel: the "All" page, the page icon strip, the setup header (setup
+save and reload move to the Shot panel) and the pinned job footer (Render and Cancel are in the
+tab row, the Shots strip and the progress pill).
+
 ## Order of work
 
 Each step is its own PR; steps that edit the shared Render files are taken one after another.
@@ -41,7 +65,8 @@ Each step is its own PR; steps that edit the shared Render files are taken one a
 10. Appearance Inspector with the look chain, Applies to scope and mixed values.
 11. Assign gestures: click, drag, paint, Pick Up, copy and paste.
 12. Output inspector and result viewer additions: size presets, Check, Copy, progress pill.
-13. Frame overlay and aspect presets.
+13. Split the master Render panel into the panels above (three PRs: panel framework with Appearance and Surface and removal of the All page; Scene panels; Camera and Render panels).
+13b. Frame overlay and aspect presets.
 14. Scene visuals: environment strip, rotation ring, studio presets.
 15. Lights: named lights, solo and mute, orbit manipulator, Place by Highlight.
 16. Several retained results, compare, render all shots.
