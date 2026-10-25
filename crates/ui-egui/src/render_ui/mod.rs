@@ -25,6 +25,10 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
     let ctx = ui.ctx().clone();
     let hud = Container::navigation_card(&ctx, egui::Id::new("sc_render_hud"), pos2(free.center().x, free.top()), egui::Align2::CENTER_TOP, |ui| {
         ui.set_max_width((free.width() - Tokens::get().space_24).max(0.0));
+        if crate::render_workspace::progress_pill(app, ui) {
+            crate::scenario::publish_rect("render:progress-pill", ui.min_rect());
+            return;
+        }
         ui.horizontal_wrapped(|ui| {
             let mode = current_pick_mode(app);
             ui_kit::text(ui, app.tr("render.pick_label"), ui_kit::Text::Inline);
@@ -43,8 +47,10 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
                 .on_hover_text(app.tr("render.pick_help"));
                 crate::scenario::publish_target("render:pick", response.rect);
             });
-            ui_kit::text(ui, crate::i18n::tr_label("Integrated preview"), ui_kit::Text::Inline)
-                .on_hover_text(crate::i18n::tr_label("The live preview shows direct light only and no shadows."));
+            if !crate::render_workspace::result_active(app) {
+                ui_kit::text(ui, app.tr("render.state_model"), ui_kit::Text::Inline)
+                    .on_hover_text(crate::i18n::tr_label("The live preview shows direct light only and no shadows."));
+            }
         });
     });
     crate::shell::register_panel(app, "render:hud", Some(hud.response.rect), None);

@@ -60,3 +60,17 @@ pub(crate) fn progress(ui: &mut egui::Ui, key: &str, fraction: f32) -> egui::Res
     crate::scenario::publish_rect(&format!("dialog:progress:{key}"), bar);
     response
 }
+
+/// Read-only check row with shared success/warning artwork and token-sized icon.
+pub(crate) fn check_line(ui: &mut egui::Ui, key: &str, label: &str, warning: bool) -> egui::Response {
+    let t = Tokens::get();
+    let response = ui
+        .horizontal(|ui| {
+            let (rect, _) = ui.allocate_exact_size(vec2(t.form_icon_size, t.form_icon_size), egui::Sense::hover());
+            crate::icons::paint_icon(ui.painter(), rect, if warning { "status_warning" } else { "finish" }, 1.0);
+            super::text(ui, label, super::Text::Report(key, false));
+        })
+        .response;
+    crate::scenario::publish_rect(key, response.rect);
+    response
+}

@@ -13,6 +13,8 @@ use egui::{Ui, vec2};
 #[derive(Default)]
 pub(crate) struct Segments<'a> {
     pub states: &'a [bool],
+    /// Per-segment disabled explanation; unavailable choices remain visible.
+    pub disabled_reasons: &'a [Option<&'a str>],
     pub compact: bool,
     pub primary: bool,
     pub intrinsic: bool,
@@ -20,7 +22,7 @@ pub(crate) struct Segments<'a> {
 }
 
 pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], config: Segments<'_>) -> bool {
-    let Segments { states, compact, primary, intrinsic, proportional } = config;
+    let Segments { states, disabled_reasons, compact, primary, intrinsic, proportional } = config;
     let t = Tokens::get();
     let segment_width = dimension(ui.available_width()) / options.len().max(1) as f32;
     let widest = options
@@ -30,7 +32,8 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
         })
         .fold(0.0, f32::max);
     // Judged on the whole row, which is what a scrollbar narrows, not on one segment.
-    if !intrinsic
+    if disabled_reasons.is_empty()
+        && !intrinsic
         && !proportional
         && !compact
         && !super::fits_steadily(ui, label(ui), (widest + 2.0 * t.space_8) * options.len() as f32, segment_width * options.len() as f32)
@@ -58,7 +61,14 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
             if (intrinsic || proportional) && total > 0.0 { natural.get(index).copied().unwrap_or(0.0) * rect.width() / total } else { equal_width };
         let segment = egui::Rect::from_min_size(egui::pos2(x, rect.top()), vec2(width, rect.height()));
         x += width;
-        let response = ui.interact(segment, ui.make_persistent_id(("segment", index)), egui::Sense::click());
+        let reason = disabled_reasons.get(index).copied().flatten();
+        let enabled = ui.is_enabled() && reason.is_none();
+        let id = ui.make_persistent_id(("segment", index));
+        let response = if reason.is_some() {
+            ui.add_enabled_ui(false, |ui| ui.interact(segment, id, egui::Sense::click())).inner
+        } else {
+            ui.interact(segment, id, egui::Sense::click())
+        };
         let on = states.get(index).copied().unwrap_or(*selected == index);
         let rounding = egui::CornerRadius {
             nw: if index == 0 { t.control_radius } else { 0 },
@@ -92,7 +102,9 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
             text_rect,
             option,
             font,
-            if on && primary {
+            if reason.is_some() {
+                t.form_dim
+            } else if on && primary {
                 t.on_accent
             } else if on {
                 t.selected_ink
@@ -102,9 +114,10 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
             false,
         );
         t.button_bevel_with_radius(ui, &response, on, rounding);
-        response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, ui.is_enabled(), on, *option));
+        response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, enabled, on, *option));
         scenario::publish_handle(&format!("dialog:{}:{option}", label(ui)), segment.center());
-        if response.on_hover_text(*option).clicked() {
+        let response = if let Some(reason) = reason { response.on_disabled_hover_text(reason) } else { response.on_hover_text(*option) };
+        if response.clicked() && enabled {
             *selected = index;
             clicked = true;
         }

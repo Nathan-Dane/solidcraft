@@ -99,6 +99,13 @@ impl Container {
         })
     }
 
+    /// Inline navigation band using the same chrome and padding as anchored HUDs.
+    pub(crate) fn navigation_contents<R>(ui: &mut egui::Ui, add: impl FnOnce(&mut egui::Ui) -> R) -> egui::InnerResponse<R> {
+        let container = Self::new(ui.ctx(), Surface::Navigation);
+        let frame = container.frame(ui.ctx(), Tokens::get().overlay, Side::Left).inner_margin(Tokens::get().space_4);
+        container.show_frame(ui, frame, ui.max_rect(), |ui| super::scope(ui, add))
+    }
+
     /// Declare contacts from shell geometry; styling remains entirely in the container.
     pub fn joined(mut self, edges: DockEdges) -> Self {
         self.joined = Some(edges);

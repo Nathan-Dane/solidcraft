@@ -198,3 +198,25 @@ fn save_shot_dashes_leave_rounded_corners_at_the_chip_radius() {
     }
     output.textures_delta.clear();
 }
+
+#[test]
+fn segmented_unavailable_choices_remain_visible_and_cannot_change_selection() {
+    let ctx = crate::fonts::test_context();
+    let mut selected = 1;
+    let mut draw = |ui: &mut Ui| {
+        row(ui, "Quality", |ui| {
+            segmented(
+                ui,
+                &mut selected,
+                &["Draft", "Custom"],
+                Segments { disabled_reasons: &[Some("waiting for the quality contract"), None], ..Default::default() },
+            )
+        });
+    };
+    frame(&ctx, vec![], &mut draw);
+    let draft = scenario::handle_at("dialog:Quality:Draft").unwrap();
+    frame(&ctx, pointer(draft, true), &mut draw);
+    frame(&ctx, pointer(draft, false), &mut draw);
+    assert_eq!(selected, 1);
+    assert!(scenario::handle_at("dialog:Quality:Custom").is_some());
+}

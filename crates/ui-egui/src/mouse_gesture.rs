@@ -69,7 +69,16 @@ const SURFACE: [&str; 8] = ["repeat", "delete", "surface.extrude", "surface.loft
 const SHEET_METAL: [&str; 8] = ["repeat", "delete", "sheet.flange", "sheet.hem", "sketch.create", "sheet.fold", "undo", "sheet.flat_pattern"];
 const PLASTIC: [&str; 8] = ["repeat", "delete", "plastic.boss", "plastic.lip", "sketch.create", "plastic.snap_fit", "undo", "plastic.rest"];
 const MESH: [&str; 8] = ["repeat", "delete", "file.save_mesh", "inspect.measure", "inspect.section", "solid.move", "undo", "inspect.interference"];
-const RENDER: [&str; 8] = ["render.start", "render.scene", "ui.fit", "ui.home", "ui.workspace.design", "repeat", "undo", "ui.clear"];
+const RENDER: [&str; 8] = [
+    "render.start",
+    "appearance.assign",
+    "render.lights.add",
+    "render.settings.set",
+    "render.camera.fit",
+    "render.compare",
+    "ui.workspace.design",
+    "undo",
+];
 
 impl Studio {
     pub(crate) const ALL: [Studio; 7] =
@@ -167,6 +176,17 @@ pub(crate) fn item(app: &SolveApp, id: &str) -> Option<Item> {
         }),
         "delete" => Some(act("ui.delete", "Delete", "delete").key("Del").on(!app.session.selection.is_empty())),
         "undo" => Some(cmd(app, "edit.undo", "Undo").on(!app.session.undo.is_empty())),
+        _ if crate::render_workspace::active(app)
+            && matches!(id, "appearance.assign" | "render.settings.set" | "render.camera.fit" | "render.compare") =>
+        {
+            let key = match id {
+                "appearance.assign" => "render.radial_assign",
+                "render.settings.set" => "render.radial_save",
+                "render.camera.fit" => "render.radial_fit",
+                _ => "render.radial_compare",
+            };
+            Some(cmd(app, id, app.tr(key)))
+        }
         _ => match ACTIONS.iter().find(|(i, _, _)| *i == id) {
             Some((i, label, icon)) => Some(act(i, label, icon)),
             None => solidcraft_engine::find_command(id).map(|spec| cmd(app, spec.id, short(spec.label))),

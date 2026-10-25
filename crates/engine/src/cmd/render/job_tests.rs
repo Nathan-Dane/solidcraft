@@ -1171,3 +1171,22 @@ fn explicit_render_camera_preserves_orientation_and_refuses_invalid_state_atomic
     assert!(Arc::ptr_eq(&document, &s.doc));
     assert_eq!(before, (s.revision, s.evaluations, s.is_dirty(), s.undo.len(), s.redo.len(), s.model.is_stale()));
 }
+
+#[test]
+fn output_viewer_copy_validates_completed_job_without_mutation_or_pixel_payloads() {
+    let (mut s, host) = session();
+    let job = start(&mut s);
+    assert!(s.execute("render.result.copy", &json!({"job":job})).is_err());
+    finish(&host);
+    let document = s.doc.clone();
+    let before = (s.revision, s.undo.len(), s.redo.len(), host.admitted_bytes());
+    let copied = s.execute("render.result.copy", &json!({"job":job})).unwrap();
+    assert_eq!(copied["frame"]["job"], json!(job));
+    assert_eq!(copied["frame"]["width"], 16);
+    assert!(copied.get("png").is_none());
+    for params in [json!({}), json!(null), json!({"job":job,"extra":true}), json!({"job":{"session":0,"serial":0,"generation":0}})] {
+        assert!(s.execute("render.result.copy", &params).is_err());
+    }
+    assert!(Arc::ptr_eq(&document, &s.doc));
+    assert_eq!(before, (s.revision, s.undo.len(), s.redo.len(), host.admitted_bytes()));
+}

@@ -787,11 +787,27 @@ fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if app.render_workspace.view.inspector.resolution.rejected {
         ui_kit::text(ui, app.tr("render.output_ratio_refused"), ui_kit::Text::Error("render.output_ratio_refused"));
     }
+    let largest = largest_output(app);
+    let (w, h) = largest.map_or_else(|| ("—".to_string(), "—".to_string()), |(w, h)| (w.to_string(), h.to_string()));
+    let largest_label = crate::i18n::format("render.output_largest", &[("width", &w), ("height", &h)]);
     ui.horizontal_wrapped(|ui| {
-        for (label, width, height) in super::shots::SIZE_PRESETS {
-            if ui_kit::button(ui, label, ui_kit::Button::Normal).clicked() {
-                app.render_workspace.view.draft.width = width;
-                app.render_workspace.view.draft.height = height;
+        for (key, label, size) in [
+            ("720", "1280 × 720".to_string(), Some((1280, 720))),
+            ("1080", "1920 × 1080".to_string(), Some((1920, 1080))),
+            ("largest", largest_label, largest),
+        ] {
+            let allowed = size.filter(|&(w, h)| cpu::image_limits(app).fit(w, h, None) == Some((w, h)));
+            let response = ui
+                .add_enabled_ui(allowed.is_some(), |ui| {
+                    ui_kit::choice_chip(ui, key, &label, size == Some((u64::from(before[0]), u64::from(before[1]))))
+                })
+                .inner;
+            crate::scenario::publish_target(&format!("render:size:{key}"), response.rect);
+            let help = allowed.map_or_else(|| app.tr("render.output_over_budget").to_string(), |(w, h)| format!("{w} × {h} px"));
+            if response.on_hover_text(help).clicked()
+                && let Some((w, h)) = allowed
+            {
+                let _ = app.run("render.output.size", json!({"width":w,"height":h}));
             }
         }
     });
@@ -799,6 +815,21 @@ fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if cpu::image_limits(app).fit(size.0, size.1, None) != Some(size) {
         ui_kit::text(ui, app.tr("render.output_over_budget"), ui_kit::Text::Error("render.output_over_budget"));
     }
+    let title = app.tr("render.output_quality").to_string();
+    let reason = app.tr("render.output_quality_waiting").to_string();
+    let labels: Vec<_> = ["render.quality_draft", "render.quality_balanced", "render.quality_high", "render.quality_custom"]
+        .iter()
+        .map(|k| app.tr(k).to_string())
+        .collect();
+    ui_kit::text(ui, &title, ui_kit::Text::Heading("render.output_quality"));
+    let mut quality = 3;
+    ui_kit::segmented(
+        ui,
+        &mut quality,
+        &labels.iter().map(String::as_str).collect::<Vec<_>>(),
+        ui_kit::Segments { compact: true, disabled_reasons: &[Some(&reason), Some(&reason), Some(&reason), None], ..Default::default() },
+    );
+    ui_kit::text(ui, &reason, ui_kit::Text::Note("render.output_quality_waiting"));
     match app.render_workspace.view.method {
         ImageMethod::GpuRaytrace => {
             let label = app.tr("render.image_samples").to_string();
@@ -825,8 +856,45 @@ fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.overwrite);
     browse_button(app, ui, "quality", "render.browse_quality");
     library::inspect_kinds(app, ui, &["quality"]);
+    output_check(app, ui);
     super::completed_image(app, ui);
     ui_kit::text(ui, app.tr("render.adaptive_pending"), ui_kit::Text::Note("render.adaptive_pending"));
+}
+
+/// Fit an oversized same-aspect candidate, since fit deliberately never upscales.
+pub(super) fn largest_output(app: &SolveApp) -> Option<(u64, u64)> {
+    let limits = cpu::image_limits(app);
+    let draft = &app.render_workspace.view.draft;
+    limits.fit(u64::from(draft.width).checked_mul(limits.max_dimension)?, u64::from(draft.height).checked_mul(limits.max_dimension)?, None)
+}
+fn output_check(app: &SolveApp, ui: &mut egui::Ui) {
+    ui_kit::text(ui, app.tr("render.output_check"), ui_kit::Text::Heading("render.output_check"));
+    let Some(check) = &app.render_workspace.view.inspector.checked else {
+        ui_kit::text(ui, app.tr("render.output_check_help"), ui_kit::Text::Note("render.output_check_help"));
+        return;
+    };
+    if !check.current(app) || super::image_params(app).as_ref().ok() != Some(&check.request) {
+        ui_kit::check_line(ui, "render:check:stale", app.tr("render.review_stale"), true);
+        return;
+    }
+    ui_kit::check_line(ui, "render:check:ready", app.tr("render.output_ready"), false);
+    if let (Some(w), Some(h)) = (check.reply["request"]["width"].as_u64(), check.reply["request"]["height"].as_u64()) {
+        let label = crate::i18n::format("render.output_size_ok", &[("width", &w.to_string()), ("height", &h.to_string())]);
+        ui_kit::check_line(ui, "render:check:size", &label, false);
+    }
+    if let Some(transparency) = check.reply["transparency"].as_str() {
+        let key = match transparency {
+            "physical_transmission" => "render.check_transmission",
+            "opaque_only" => "render.check_opaque",
+            _ => "render.check_sorted_alpha",
+        };
+        ui_kit::check_line(ui, "render:check:transparency", app.tr(key), transparency != "physical_transmission");
+    }
+    if let Some(warnings) = check.reply["warnings"].as_array() {
+        for warning in warnings.iter().take(32) {
+            ui_kit::check_line(ui, "render:check:warning", &warning.to_string(), true);
+        }
+    }
 }
 
 pub(super) fn scene_resource(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {

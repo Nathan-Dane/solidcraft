@@ -7,7 +7,7 @@ use solidcraft_engine::render::job::Phase;
 use solidcraft_engine::{CommandInfo, CommandSpec};
 
 fn is_job_action(id: &str) -> bool {
-    matches!(id, "render.preflight" | "render.start" | "render.cancel" | "render.export" | "render.result.regrade")
+    matches!(id, "render.preflight" | "render.start" | "render.cancel" | "render.export" | "render.result.regrade" | "render.result.copy")
 }
 fn handled(id: &str) -> bool {
     is_job_action(id)
@@ -44,6 +44,8 @@ fn handled(id: &str) -> bool {
                 | "render.quality.prepare"
                 | "render.status"
                 | "render.backends"
+                | "render.result.view"
+                | "render.result.close"
         )
 }
 
@@ -79,7 +81,8 @@ pub(super) fn action_ready(app: &SolveApp, id: &str) -> Result<(), String> {
             presentation(app).validate().map_err(|error| error.to_string())
         }
         "render.cancel" if !busy(app) => Err(app.tr("render.ribbon_no_active_job").into()),
-        "render.export" => {
+        "render.result.close" if !super::result_active(app) => Err(app.tr("render.ribbon_no_result").into()),
+        "render.export" | "render.result.copy" => {
             let completed = app
                 .render_workspace
                 .view
@@ -89,7 +92,7 @@ pub(super) fn action_ready(app: &SolveApp, id: &str) -> Result<(), String> {
             if completed.is_none() {
                 return Err(app.tr("render.ribbon_no_result").into());
             }
-            if app.render_workspace.view.studio.export_exr && !studio::linear_export_available(app) {
+            if id == "render.export" && app.render_workspace.view.studio.export_exr && !studio::linear_export_available(app) {
                 return Err(app.tr("render.linear_unavailable").into());
             }
             Ok(())
@@ -133,6 +136,10 @@ pub(super) fn perform_job(app: &mut SolveApp, id: &str) -> Result<(), String> {
             let job = serde_json::from_value(reply["job"].clone()).map_err(|e| format!("invalid render job identity: {e}"))?;
             app.render_workspace.view.job = Some(job);
             app.render_workspace.view.job_shot = Some(app.render_workspace.view.name.clone());
+        }
+        "render.result.copy" => {
+            let job = app.render_workspace.view.completed.ok_or_else(|| app.tr("render.ribbon_no_result").to_string())?;
+            app.run(id, json!({"job":job}))?;
         }
         "render.result.regrade" => {
             let source = app.render_workspace.view.completed.ok_or_else(|| app.tr("render.ribbon_no_result").to_string())?;
@@ -205,6 +212,12 @@ fn navigate(app: &mut SolveApp, id: &str) -> Result<(), String> {
     action_ready(app, id)?;
     use inspector::Page;
     match id {
+        "render.result.close" => {
+            app.run(id, json!({}))?;
+        }
+        "render.result.view" => {
+            app.run(id, json!({"view":"image"}))?;
+        }
         "render.aging.describe" => focus(app, Page::Aging, None),
         "render.effects.describe" => focus(app, Page::Effects, None),
         "render.preset.resolve" | "render.preset.apply" => focus(app, Page::Scene, Some("native_scenes")),

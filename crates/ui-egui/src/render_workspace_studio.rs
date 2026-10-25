@@ -439,21 +439,25 @@ pub(super) fn backdrop_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn export_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let exr = app.render_workspace.view.studio.export_exr;
-    let key = if exr { "render.export_linear" } else { "render.export_display" };
-    let label = app.tr(key).to_string();
-    let r = ui_kit::dropdown_menu(ui, "render_export_format", &label, |ui| {
-        for (value, key) in [(false, "render.export_display"), (true, "render.export_linear")] {
-            if ui_kit::list_picker(ui, key, app.tr(key), value == exr).clicked() {
-                app.render_workspace.view.studio.export_exr = value;
-                ui.close();
-            }
-        }
-    });
-    crate::scenario::publish_target("render:export-format", r.rect);
-    if app.render_workspace.view.studio.export_exr && !linear_export_available(app) {
-        ui_kit::text(ui, app.tr("render.linear_unavailable"), ui_kit::Text::Note("render.linear_unavailable"));
-    }
+    let label = app.tr("render.output_format").to_string();
+    let reason = app.tr("render.output_exr_unavailable").to_string();
+    let mut format = usize::from(app.render_workspace.view.studio.export_exr);
+    let response = ui
+        .scope(|ui| {
+            ui_kit::row(ui, &label, |ui| {
+                if ui_kit::segmented(
+                    ui,
+                    &mut format,
+                    &["PNG", "EXR"],
+                    ui_kit::Segments { disabled_reasons: &[None, Some(&reason)], compact: true, ..Default::default() },
+                ) {
+                    app.render_workspace.view.studio.export_exr = false;
+                }
+            });
+        })
+        .response;
+    crate::scenario::publish_target("render:export-format", response.rect);
+    ui_kit::text(ui, &reason, ui_kit::Text::Note("render.output_exr_unavailable"));
 }
 pub(super) fn linear_export_available(app: &SolveApp) -> bool {
     app.render_workspace
