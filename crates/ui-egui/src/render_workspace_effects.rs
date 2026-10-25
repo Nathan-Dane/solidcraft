@@ -184,11 +184,6 @@ pub(super) fn aging_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         app.render_workspace.view.dirty = true;
     }
     app.render_workspace.view.inspector.effects = editor;
-    let title = app.tr("render.aging_airborne").to_string();
-    ui_kit::section(ui, "render_aging_atmosphere", &title, false, |ui| {
-        note(app, ui, "render.aging_airborne_help");
-        super::transport::volume_controls(app, ui);
-    });
 }
 
 pub(super) fn presentation_controls(app: &mut SolveApp, ui: &mut egui::Ui) {

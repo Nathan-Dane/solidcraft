@@ -177,8 +177,8 @@ pub(super) fn presentation(app: &SolveApp) -> solidcraft_engine::render::job::pr
     }
 }
 
-fn focus(app: &mut SolveApp, page: inspector::Page, category: Option<&str>) {
-    app.render_workspace.view.inspector.page = page;
+fn focus(app: &mut SolveApp, panel: inspector::PanelId, category: Option<&str>) {
+    inspector::open_panel(app, panel);
     if let Some(category) = category {
         library::open_category(app, category);
     }
@@ -196,7 +196,7 @@ pub(super) fn start(app: &mut SolveApp, id: &str) -> bool {
             return true;
         }
         // Entering from Design never starts an expensive render with hidden defaults.
-        focus(app, inspector::Page::Output, None);
+        focus(app, inspector::PanelId::Image, None);
         if is_job_action(id) {
             return true;
         }
@@ -210,7 +210,7 @@ pub(super) fn start(app: &mut SolveApp, id: &str) -> bool {
 
 fn navigate(app: &mut SolveApp, id: &str) -> Result<(), String> {
     action_ready(app, id)?;
-    use inspector::Page;
+    use inspector::PanelId;
     match id {
         "render.result.close" => {
             app.run(id, json!({}))?;
@@ -218,33 +218,33 @@ fn navigate(app: &mut SolveApp, id: &str) -> Result<(), String> {
         "render.result.view" => {
             app.run(id, json!({"view":"image"}))?;
         }
-        "render.aging.describe" => focus(app, Page::Aging, None),
-        "render.effects.describe" => focus(app, Page::Effects, None),
-        "render.preset.resolve" | "render.preset.apply" => focus(app, Page::Scene, Some("native_scenes")),
+        "render.aging.describe" => focus(app, PanelId::Surface, None),
+        "render.effects.describe" => focus(app, PanelId::Effects, None),
+        "render.preset.resolve" | "render.preset.apply" => focus(app, PanelId::Studio, Some("native_scenes")),
         "render.settings.get" | "render.shot.duplicate" | "render.shot.rename" | "render.shot.remove" => {
-            focus(app, Page::Scene, None);
+            focus(app, PanelId::Shot, None);
             inspector::reveal(app, "render_shot_manager");
         }
         "render.settings.set" => setups::save(app)?,
-        "render.library.appearance.apply" | "render.optics.bind" | "render.optics.unbind" => focus(app, Page::Appearance, Some("surfaces")),
+        "render.library.appearance.apply" | "render.optics.bind" | "render.optics.unbind" => focus(app, PanelId::Surface, Some("surfaces")),
         "render.library.surface.bind" | "render.library.surface.prepare" | "render.library.surface.unbind" => {
-            focus(app, Page::Appearance, Some("surfaces"));
+            focus(app, PanelId::Surface, Some("surfaces"));
         }
-        "render.library.physical.prepare" => focus(app, Page::Appearance, Some("physical_profiles")),
-        "render.library.studio.prepare" => focus(app, Page::Lighting, Some("rigs")),
-        "render.library.studio.apply" => focus(app, Page::Lighting, None),
-        "render.library.environment.apply" => focus(app, Page::Environment, Some("hdr")),
-        "render.hdr.inspect" | "render.settings.capture_hdr" => focus(app, Page::Environment, None),
-        "render.stage.backdrop" => focus(app, Page::Background, None),
+        "render.library.physical.prepare" => focus(app, PanelId::Surface, Some("physical_profiles")),
+        "render.library.studio.prepare" => focus(app, PanelId::Lights, Some("rigs")),
+        "render.library.studio.apply" => focus(app, PanelId::Lights, None),
+        "render.library.environment.apply" => focus(app, PanelId::Environment, Some("hdr")),
+        "render.hdr.inspect" | "render.settings.capture_hdr" => focus(app, PanelId::Environment, None),
+        "render.stage.backdrop" => focus(app, PanelId::Stage, None),
         "render.stage.ground" | "render.stage.clear" => {
-            focus(app, Page::Background, None);
+            focus(app, PanelId::Stage, None);
             inspector::reveal(app, "render_ground_details");
         }
         "render.settings.apply" => inspector::restore_camera(app)?,
         "render.camera.fit" => inspector::fit_subject(app)?,
-        "render.camera.get" | "render.camera.set" => focus(app, Page::Camera, None),
-        "render.quality.prepare" => focus(app, Page::Output, Some("quality")),
-        "render.status" | "render.backends" => focus(app, Page::Diagnostics, None),
+        "render.camera.get" | "render.camera.set" => focus(app, PanelId::Shot, None),
+        "render.quality.prepare" => focus(app, PanelId::Image, Some("quality")),
+        "render.status" | "render.backends" => focus(app, PanelId::Check, None),
         _ => return Err("unbound interactive Render command".into()),
     }
     Ok(())

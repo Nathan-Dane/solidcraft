@@ -77,7 +77,6 @@ pub struct State {
     pub view: ViewState,
     revision: u64,
     design_camera: Option<(Camera, bool)>,
-    inspector_tab: Option<String>,
     slot: SceneSlot,
     key: Option<u64>,
     scene_signature: Option<(u64, usize, u64)>,
@@ -153,6 +152,7 @@ impl PathHost {
 }
 
 /// The samples slider's top end: 2^12 = 4096 samples per pixel.
+#[cfg(test)]
 const MAX_SAMPLES_EXPONENT: u32 = 12;
 
 /// Setup times kept per adapter, at most.
@@ -319,7 +319,6 @@ impl Default for State {
             view: Default::default(),
             revision: u64::MAX,
             design_camera: None,
-            inspector_tab: None,
             slot: Arc::new(Mutex::new(None)),
             key: None,
             scene_signature: None,
@@ -504,7 +503,6 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
         if !active(app) {
             app.render_workspace.design_camera = Some((app.cam, app.ui.perspective));
             app.ui.tab = "RENDER".into();
-            sync_inspector_tab(app);
             let scene = solidcraft_engine::product_scene::extract(&app.session).map_err(|e| e.to_string())?;
             if !scene.bounds.is_empty() {
                 app.fit_bounds(scene.bounds);
@@ -523,7 +521,6 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
             app.ui.perspective = perspective;
         }
         app.ui.tab = "MODEL".into();
-        app.render_workspace.inspector_tab = None;
         crate::render_ui::reset_shell(app);
     }
     app.viewport.hover = None;
@@ -534,19 +531,6 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
     Ok(())
 }
 
-pub(crate) fn sync_inspector_tab(app: &mut SolveApp) {
-    if !active(app) || app.render_workspace.inspector_tab.as_deref() == Some(&app.ui.tab) {
-        return;
-    }
-    app.render_workspace.view.inspector.page = match app.ui.tab.as_str() {
-        "RENDER APPEARANCE" => inspector::Page::Appearance,
-        "RENDER SCENE" => inspector::Page::Lighting,
-        "RENDER CAMERA" => inspector::Page::Camera,
-        _ => inspector::Page::Output,
-    };
-    app.render_workspace.inspector_tab = Some(app.ui.tab.clone());
-}
-
 pub(crate) fn switch_shot(app: &mut SolveApp, name: String) {
     inspector::switch_shot(app, name);
 }
@@ -555,7 +539,6 @@ pub(crate) fn job_ready(app: &SolveApp, id: &str) -> Result<(), String> {
 }
 
 pub fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
-    sync_inspector_tab(app);
     inspector::panel(app, ui);
 }
 
@@ -662,18 +645,10 @@ fn method_selector(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
     crate::scenario::publish_handle("render:method", response.rect.center());
     if image_host(app, app.render_workspace.view.method).is_err() {
-        if app.render_workspace.view.inspector.page == inspector::Page::All {
-            ui.small(app.tr("render.setup_offline_help"));
-        } else {
-            crate::ui_kit::text(ui, app.tr("render.setup_offline_help"), crate::ui_kit::Text::Note("render.setup_offline_help"));
-        }
+        crate::ui_kit::text(ui, app.tr("render.setup_offline_help"), crate::ui_kit::Text::Note("render.setup_offline_help"));
     }
     if app.render_workspace.view.method != ImageMethod::Raster {
-        if app.render_workspace.view.inspector.page == inspector::Page::All {
-            ui.small(app.tr("render.preview_image_settings_help"));
-        } else {
-            crate::ui_kit::text(ui, app.tr("render.preview_image_settings_help"), crate::ui_kit::Text::Note("render.preview_image_settings_help"));
-        }
+        crate::ui_kit::text(ui, app.tr("render.preview_image_settings_help"), crate::ui_kit::Text::Note("render.preview_image_settings_help"));
     }
 }
 
@@ -726,6 +701,7 @@ fn cpu_lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     crate::ui_kit::checkbox(ui, &shadows, &mut app.render_workspace.view.raytrace.shadows);
 }
 
+#[cfg(test)]
 fn image_method_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     method_selector(app, ui);
     if app.render_workspace.view.method != ImageMethod::CpuRaytrace {
@@ -739,6 +715,7 @@ fn image_method_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     cpu::controls(app, ui);
 }
 
+#[cfg(test)]
 fn image_edit_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.heading(app.tr("render.image_title"));
     let preview = app.tr("render.result_preview").to_string();
@@ -842,6 +819,7 @@ fn image_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     completed_image(app, ui);
 }
 
+#[cfg(test)]
 fn job_controls(app: &mut SolveApp, ui: &mut egui::Ui, compact: bool) {
     let params = image_params(app);
     if !compact {

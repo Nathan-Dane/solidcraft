@@ -12,6 +12,9 @@ use egui::{Ui, vec2};
 /// Text segments retain mixed states and optional compact clipping instead of dropdown fallback.
 #[derive(Default)]
 pub(crate) struct Segments<'a> {
+    /// Optional stable scenario handles for each segment and the whole control.
+    pub handles: &'a [&'a str],
+    pub handle: Option<&'a str>,
     pub states: &'a [bool],
     /// Per-segment disabled explanation; unavailable choices remain visible.
     pub disabled_reasons: &'a [Option<&'a str>],
@@ -22,7 +25,7 @@ pub(crate) struct Segments<'a> {
 }
 
 pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], config: Segments<'_>) -> bool {
-    let Segments { states, disabled_reasons, compact, primary, intrinsic, proportional } = config;
+    let Segments { handles, handle, states, disabled_reasons, compact, primary, intrinsic, proportional } = config;
     let t = Tokens::get();
     let segment_width = dimension(ui.available_width()) / options.len().max(1) as f32;
     let widest = options
@@ -116,6 +119,9 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
         t.button_bevel_with_radius(ui, &response, on, rounding);
         response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, enabled, on, *option));
         scenario::publish_handle(&format!("dialog:{}:{option}", label(ui)), segment.center());
+        if let Some(handle) = handles.get(index) {
+            scenario::publish_target(handle, segment);
+        }
         let response = if let Some(reason) = reason { response.on_disabled_hover_text(reason) } else { response.on_hover_text(*option) };
         if response.clicked() && enabled {
             *selected = index;
@@ -124,6 +130,9 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
     }
     if t.borders.bevel.is_none() {
         ui.painter().rect_stroke(rect, t.control_radius, t.control_border_stroke(t.control_border), egui::StrokeKind::Inside);
+    }
+    if let Some(handle) = handle {
+        scenario::publish_target(handle, rect);
     }
     scenario::publish_target_as(&format!("dialog:{}", label(ui)), &format!("dialog:segments:{}", label(ui)), rect);
     clicked

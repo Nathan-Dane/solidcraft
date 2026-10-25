@@ -306,14 +306,15 @@ fn choose(app: &mut SolveApp, view: &mut View, kind: &str, id: &str) -> Result<(
     view.labels.insert(key, display);
     view.labels.retain(|key, _| app.preferences.render_library_favorites.contains(key) || app.preferences.render_library_recent.contains(key));
     view.statuses.retain(|key, _| app.preferences.render_library_favorites.contains(key) || app.preferences.render_library_recent.contains(key));
-    app.render_workspace.view.inspector.page = match kind {
-        "native_scenes" | "scenes" | "selene_shots" => super::inspector::Page::Scene,
-        "hdr" | "environments" => super::inspector::Page::Environment,
-        "rigs" | "lighting" => super::inspector::Page::Lighting,
-        "quality" => super::inspector::Page::Output,
-        "capabilities" => super::inspector::Page::Diagnostics,
-        _ => super::inspector::Page::Appearance,
+    let panel = match kind {
+        "native_scenes" | "scenes" | "selene_shots" => super::inspector::PanelId::Studio,
+        "hdr" | "environments" => super::inspector::PanelId::Environment,
+        "rigs" | "lighting" => super::inspector::PanelId::Lights,
+        "quality" => super::inspector::PanelId::Image,
+        "capabilities" => super::inspector::PanelId::Check,
+        _ => super::inspector::PanelId::Surface,
     };
+    super::inspector::open_panel(app, panel);
     Ok(())
 }
 
@@ -822,6 +823,7 @@ fn source_preview(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, id: &s
         ui.small(error);
     }
 }
+#[cfg(test)]
 pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     stage_controls(app, ui);
     saved_surface_controls(app, ui);
@@ -1065,6 +1067,7 @@ pub(super) fn saved_surface_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 
+#[cfg(test)]
 pub(super) fn stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.passive_stage").to_string();
     ui_kit::section(ui, "render_passive_stage", &title, false, |ui| stage_content(app, ui));
@@ -1192,7 +1195,7 @@ mod studio_browser_tests {
         h.step(&json!({"click":{"handle":format!("render:library:{id}")}})).unwrap();
         h.frames(3);
         assert_eq!(h.app.render_workspace.view.library.selected.as_deref(), Some(id.as_str()));
-        assert_eq!(h.app.render_workspace.view.inspector.page, super::super::inspector::Page::Appearance);
+        assert_eq!(super::super::inspector::active_panel(&h.app), super::super::inspector::PanelId::Surface);
         assert_eq!(h.app.session.doc.to_json(), before, "browsing and selection must not apply appearances");
         h.step(&json!({"widget":h.app.tr("render.library_favorite")})).unwrap();
         assert!(h.app.preferences.render_library_favorites.contains(&("appearances".into(), id.clone())));
@@ -1401,9 +1404,9 @@ mod studio_browser_tests {
         assert!(h.app.session.undo.is_empty());
         choose(&mut h.app, &mut view, "surfaces", "SURF-048").unwrap();
         assert_eq!(h.app.preferences.render_library_recent.len(), 32);
-        assert_eq!(h.app.render_workspace.view.inspector.page, super::super::inspector::Page::Appearance);
+        assert_eq!(super::super::inspector::active_panel(&h.app), super::super::inspector::PanelId::Surface);
         choose(&mut h.app, &mut view, "native_scenes", "NATIVE-STUDIO-002").unwrap();
-        assert_eq!(h.app.render_workspace.view.inspector.page, super::super::inspector::Page::Scene);
+        assert_eq!(super::super::inspector::active_panel(&h.app), super::super::inspector::PanelId::Studio);
         assert_eq!(h.app.session.doc.to_json(), before);
     }
 }

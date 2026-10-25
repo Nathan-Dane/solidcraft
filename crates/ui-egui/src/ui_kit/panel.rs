@@ -140,20 +140,6 @@ impl<'a> Panel<'a> {
         bounds.min.y = (previous.bottom() + super::Container::floating_card(super::Surface::Panel).gap()).min(bounds.bottom());
         bounds
     }
-    /// Pinned inline actions inside an existing feature/card surface. This is not
-    /// a second window or painted card: the parent owns the chrome. Tokens:
-    /// control_height, space_24/8; bounded row count preserves finite geometry.
-    pub(crate) fn pinned_footer<R>(ui: &mut Ui, key: &'static str, rows: usize, add: impl FnOnce(&mut Ui) -> R) -> egui::InnerResponse<R> {
-        let t = Tokens::get();
-        // This band is content inside the enclosing card, not a second adaptive card.
-        let host = super::Container::new(ui.ctx(), super::Surface::Viewport);
-        host.edge(key, super::Edge::Bottom)
-            .exact_size(t.control_height * rows.clamp(1, 8) as f32 + t.space_24 + t.space_8)
-            .resizable(false)
-            .frame(host.edge_frame(egui::Color32::TRANSPARENT))
-            .show(ui, add)
-    }
-
     /// Shared strip composition reserves actions at the right and scrolls choices at the left.
     pub(crate) fn strip_contents(ui: &mut egui::Ui, right: impl FnOnce(&mut egui::Ui), choices: impl FnOnce(&mut egui::Ui)) {
         ui.spacing_mut().item_spacing.x = Tokens::get().space_8;

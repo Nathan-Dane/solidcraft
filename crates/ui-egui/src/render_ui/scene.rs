@@ -147,7 +147,7 @@ pub(crate) fn sections(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::scenario::publish_target("render:tree:environment:current", rect);
         }
         if row.clicked {
-            app.render_workspace.view.inspector.page = inspector::Page::Environment;
+            inspector::open_panel(app, inspector::PanelId::Environment);
         }
         if let Some(response) = row.resp {
             response.on_hover_text(format!("{name}\n{detail}"));
@@ -159,7 +159,7 @@ pub(crate) fn sections(app: &mut SolveApp, ui: &mut egui::Ui) {
             let row =
                 browser::draw_row(ui, ui.id().with(("render_light", index)), &Row { depth: 1, label: &label, name: true, ..Default::default() });
             if row.clicked {
-                app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+                inspector::open_panel(app, inspector::PanelId::Lights);
             }
         }
     }

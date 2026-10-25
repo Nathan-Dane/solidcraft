@@ -1,5 +1,5 @@
 use super::*;
-use crate::scenario::Harness;
+use crate::{scenario::Harness, theme::Tokens};
 fn fixture() -> Harness {
     let mut h = Harness::new();
     h.call("ui.resize", json!({"width":1440,"height":1000}));
@@ -9,49 +9,107 @@ fn fixture() -> Harness {
     h
 }
 #[test]
-fn native_inspector_defaults_to_output_and_keeps_job_actions_on_screen_in_both_shells() {
-    for dark in [false, true] {
-        for layout in [crate::shell::LayoutMode::Docked, crate::shell::LayoutMode::Floating] {
-            let mut h = fixture();
-            h.app.preferences.theme = if dark { "dark" } else { "light" }.into();
-            h.app.ui.layout = layout;
-            h.call("ui.resize", json!({"width":1280,"height":900}));
-            assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
-            let before = h.app.session.doc.to_json();
-            let revision = h.app.session.revision;
-            let history = (h.app.session.undo.len(), h.app.session.redo.len());
-            for page in Page::ALL {
-                h.app.render_workspace.view.inspector.page = page;
-                h.frames(3);
-                let inspector = crate::scenario::rect_of("render:inspector").unwrap();
-                let footer = crate::scenario::rect_of("render:job-footer").unwrap();
-                assert!(inspector.contains_rect(footer), "footer outside inspector at {page:?}: {inspector:?} {footer:?}");
-                for name in ["render:check", "render:start", "render:cancel", "render:export"] {
-                    let target = crate::scenario::rect_of(name).unwrap();
-                    assert!(footer.contains_rect(target), "{name} clipped at {page:?}");
-                }
-                assert_eq!(h.app.session.doc.to_json(), before);
-                assert_eq!(h.app.session.revision, revision);
-                assert_eq!((h.app.session.undo.len(), h.app.session.redo.len()), history);
-                assert!(h.app.render_workspace.view.job.is_none());
-                assert!(h.app.render_workspace.view.completed.is_none());
-            }
-        }
-    }
-}
-#[test]
-fn icon_page_navigation_is_local_and_never_switches_executor_or_overwrites_drafts() {
+fn tabs_show_only_their_panels_and_remember_each_documents_switcher() {
     let mut h = fixture();
+    let tabs = [
+        ("RENDER APPEARANCE", vec![PanelId::Appearance, PanelId::Surface]),
+        ("RENDER SCENE", vec![PanelId::Studio, PanelId::Lights, PanelId::Environment, PanelId::Stage]),
+        ("RENDER CAMERA", vec![PanelId::Shot]),
+        ("RENDER", vec![PanelId::Image, PanelId::Effects, PanelId::Check]),
+    ];
     let before = h.app.session.doc.to_json();
+    let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
     h.app.render_workspace.view.samples = 37;
     h.app.render_workspace.view.draft.width = 777;
-    for page in Page::ALL {
-        h.step(&json!({"click":{"handle":format!("render:page:{}",page.handle())}})).unwrap();
-        assert_eq!(h.app.render_workspace.view.inspector.page, page);
-        assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);
-        assert_eq!(h.app.render_workspace.view.samples, 37);
-        assert_eq!(h.app.render_workspace.view.draft.width, 777);
-        assert_eq!(h.app.session.doc.to_json(), before);
+    for (tab, panels) in &tabs {
+        assert_eq!(PanelId::panels(tab), panels);
+        h.step(&json!({"click":{"handle":format!("tab:{tab}")}})).unwrap();
+        assert_eq!(crate::scenario::rect_of("render:panels").is_some(), panels.len() > 1);
+        for (_, other) in &tabs {
+            for panel in other {
+                assert_eq!(crate::scenario::rect_of(panel.handle()).is_some(), panels.len() > 1 && panels.contains(panel));
+            }
+        }
+        for panel in panels {
+            if panels.len() > 1 {
+                h.step(&json!({"click":{"handle":panel.handle()}})).unwrap();
+            }
+            assert_eq!(active_panel(&h.app), *panel);
+            assert!(h.widget(h.app.tr(panel.key())).is_some());
+            assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);
+            assert_eq!(h.app.render_workspace.view.samples, 37);
+            assert_eq!(h.app.render_workspace.view.draft.width, 777);
+            assert_eq!(h.app.session.doc.to_json(), before);
+            assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
+            assert!(h.app.render_workspace.view.job.is_none());
+            assert!(h.app.render_workspace.view.completed.is_none());
+            assert!(crate::scenario::rect_of("render:page:all").is_none());
+            assert!(crate::scenario::rect_of("render:job-footer").is_none());
+        }
+    }
+    for (tab, panels) in &tabs {
+        h.step(&json!({"click":{"handle":format!("tab:{tab}")}})).unwrap();
+        assert_eq!(active_panel(&h.app), *panels.last().unwrap());
+    }
+    crate::documents::open_tab(&mut h.app, solidcraft_engine::Session::default()).unwrap();
+    super::super::enter(&mut h.app, true).unwrap();
+    assert_eq!(active_panel(&h.app), PanelId::Image);
+    crate::documents::switch(&mut h.app, 0);
+    h.frames(3);
+    assert_eq!(active_panel(&h.app), PanelId::Check);
+}
+
+#[test]
+fn purpose_built_panel_bodies_do_not_publish_another_panels_controls() {
+    let mut h = fixture();
+    super::super::select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
+    let witnesses = [
+        (PanelId::Appearance, format!("dialog:section:{}", h.app.tr("render.base_appearance"))),
+        (PanelId::Surface, "render:aging-add".to_string()),
+        (PanelId::Studio, "dialog:note:render.scene_preserves_design".to_string()),
+        (PanelId::Lights, "render:lighting-enabled".to_string()),
+        (PanelId::Environment, "render:environment-kind".to_string()),
+        (PanelId::Stage, "render:background-color".to_string()),
+        (PanelId::Shot, "render:setup-name".to_string()),
+        (PanelId::Image, "render:output-width".to_string()),
+        (PanelId::Effects, "render:look-add".to_string()),
+        (PanelId::Check, "dialog:report:render.output_check".to_string()),
+    ];
+    let document = h.app.session.doc.to_json();
+    let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
+    for (panel, witness) in &witnesses {
+        open_panel(&mut h.app, *panel);
+        h.frames(3);
+        assert!(crate::scenario::rect_of(witness).is_some(), "missing {panel:?}: {witness}");
+        assert_eq!(crate::scenario::rect_of("render:regrade").is_some(), *panel == PanelId::Effects);
+        assert_eq!(crate::scenario::rect_of("render:background-color").is_some(), *panel == PanelId::Stage);
+        let volume = format!("dialog:section:{}", h.app.tr("render.aging_airborne"));
+        assert_eq!(crate::scenario::rect_of(&volume).is_some(), *panel == PanelId::Environment);
+        for (owner, handle) in &witnesses {
+            if owner != panel {
+                assert!(crate::scenario::rect_of(handle).is_none(), "{panel:?} leaked {owner:?}: {handle}");
+            }
+        }
+        for removed in [
+            "render:page:scene",
+            "render:page:appearance",
+            "render:page:aging",
+            "render:page:lighting",
+            "render:page:environment",
+            "render:page:background",
+            "render:page:camera",
+            "render:page:effects",
+            "render:page:output",
+            "render:page:diagnostics",
+            "render:page:all",
+            "render:job-footer",
+        ] {
+            assert!(crate::scenario::rect_of(removed).is_none(), "removed {removed}");
+        }
+        assert_eq!(h.app.session.doc.to_json(), document);
+        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
+        assert!(h.app.render_workspace.view.job.is_none());
+        appearance_inspector_capture(&mut h, &format!("panel-{panel:?}"));
     }
 }
 #[test]
@@ -136,7 +194,7 @@ fn complete_native_studio_can_be_reviewed_and_applied_from_real_ui_controls() {
 fn unsupported_output_is_visible_and_never_fakes_export_or_clamps_intent() {
     let mut h = fixture();
     super::super::select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
-    h.app.render_workspace.view.inspector.page = Page::Output;
+    open_panel(&mut h.app, PanelId::Image);
     h.app.render_workspace.view.draft.width = 7000;
     h.app.render_workspace.view.draft.height = 6000;
     h.app.render_workspace.view.samples = 37;
@@ -195,7 +253,7 @@ fn actual_output_ratio_and_orientation_controls_are_local_and_preserve_saved_cap
     h.app.render_workspace.view.draft.width = 1920;
     h.app.render_workspace.view.draft.height = 1080;
     h.app.render_workspace.view.samples = 37;
-    h.app.render_workspace.view.inspector.page = Page::Output;
+    open_panel(&mut h.app, PanelId::Image);
     setups::save(&mut h.app).unwrap();
     let saved = h.app.session.doc.to_json();
     let camera = h.app.cam;
@@ -217,14 +275,14 @@ fn actual_output_ratio_and_orientation_controls_are_local_and_preserve_saved_cap
 #[test]
 fn contextual_scope_notes_wrap_with_native_tokens_instead_of_clipping() {
     let mut h = fixture();
-    h.app.render_workspace.view.inspector.page = Page::Scene;
+    open_panel(&mut h.app, PanelId::Studio);
     h.frames(3);
     let rect = crate::scenario::rect_of("dialog:note:render.scene_preserves_design").unwrap();
     let inspector = crate::scenario::rect_of("render:inspector").unwrap();
-    let footer = crate::scenario::rect_of("render:job-footer").unwrap();
+    let footer = crate::scenario::rect_of("render:inspector").unwrap();
     assert!(rect.height() > Tokens::get().font_small + Tokens::get().space_8, "long scope notice must have more than one line");
     assert!(inspector.contains_rect(rect));
-    assert!(rect.bottom() < footer.top());
+    assert!(rect.bottom() < footer.bottom());
 }
 
 #[test]
@@ -259,14 +317,14 @@ fn native_composition_review_actions_are_visible_before_auxiliary_resource_detai
         library::open_category(&mut h.app, "native_scenes");
         h.frames(3);
         h.step(&json!({"click":{"handle":"render:library:NATIVE-STUDIO-002"}})).unwrap();
-        let footer = crate::scenario::rect_of("render:job-footer").unwrap();
+        let footer = crate::scenario::rect_of("render:inspector").unwrap();
         let resolve = crate::scenario::rect_of("render:scene-resolve").unwrap();
-        assert!(resolve.bottom() < footer.top(), "the review action must precede supplementary prose");
+        assert!(resolve.bottom() < footer.bottom(), "the review action must precede supplementary prose");
         h.step(&json!({"click":{"handle":"render:scene-resolve"}})).unwrap();
         h.frames(3);
         for name in ["render:scene-consent", "render:scene-apply"] {
             let rect = crate::scenario::rect_of(name).unwrap();
-            assert!(rect.bottom() < footer.top(), "{name} must remain above the pinned job actions: rect={rect:?}, footer={footer:?}, dark={dark}");
+            assert!(rect.bottom() < footer.bottom(), "{name} must remain inside the Inspector: rect={rect:?}, footer={footer:?}, dark={dark}");
         }
     }
 }
@@ -279,38 +337,39 @@ fn ribbon_navigation_reuses_inspector_and_preserves_exact_unsaved_intent() {
     let doc = h.app.session.doc.to_json();
     let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
     for (id, page) in [
-        ("render.preset.resolve", Page::Scene),
-        ("render.settings.get", Page::Scene),
-        ("render.library.appearance.apply", Page::Appearance),
-        ("render.library.surface.bind", Page::Appearance),
-        ("render.library.studio.prepare", Page::Lighting),
-        ("render.library.studio.apply", Page::Lighting),
-        ("render.library.environment.apply", Page::Environment),
-        ("render.stage.backdrop", Page::Background),
-        ("render.quality.prepare", Page::Output),
-        ("render.status", Page::Diagnostics),
-        ("render.camera.get", Page::Camera),
-        ("render.camera.set", Page::Camera),
-        ("render.preset.apply", Page::Scene),
-        ("render.shot.duplicate", Page::Scene),
-        ("render.shot.rename", Page::Scene),
-        ("render.shot.remove", Page::Scene),
-        ("render.optics.bind", Page::Appearance),
-        ("render.optics.unbind", Page::Appearance),
-        ("render.library.surface.prepare", Page::Appearance),
-        ("render.library.surface.unbind", Page::Appearance),
-        ("render.library.physical.prepare", Page::Appearance),
-        ("render.stage.ground", Page::Background),
-        ("render.stage.clear", Page::Background),
-        ("render.hdr.inspect", Page::Environment),
-        ("render.settings.capture_hdr", Page::Environment),
-        ("render.aging.describe", Page::Aging),
-        ("render.effects.describe", Page::Effects),
-        ("render.backends", Page::Diagnostics),
+        ("render.preset.resolve", PanelId::Studio),
+        ("render.settings.get", PanelId::Shot),
+        ("render.library.appearance.apply", PanelId::Surface),
+        ("render.library.surface.bind", PanelId::Surface),
+        ("render.library.studio.prepare", PanelId::Lights),
+        ("render.library.studio.apply", PanelId::Lights),
+        ("render.library.environment.apply", PanelId::Environment),
+        ("render.stage.backdrop", PanelId::Stage),
+        ("render.quality.prepare", PanelId::Image),
+        ("render.status", PanelId::Check),
+        ("render.camera.get", PanelId::Shot),
+        ("render.camera.set", PanelId::Shot),
+        ("render.preset.apply", PanelId::Studio),
+        ("render.shot.duplicate", PanelId::Shot),
+        ("render.shot.rename", PanelId::Shot),
+        ("render.shot.remove", PanelId::Shot),
+        ("render.optics.bind", PanelId::Surface),
+        ("render.optics.unbind", PanelId::Surface),
+        ("render.library.surface.prepare", PanelId::Surface),
+        ("render.library.surface.unbind", PanelId::Surface),
+        ("render.library.physical.prepare", PanelId::Surface),
+        ("render.stage.ground", PanelId::Stage),
+        ("render.stage.clear", PanelId::Stage),
+        ("render.hdr.inspect", PanelId::Environment),
+        ("render.settings.capture_hdr", PanelId::Environment),
+        ("render.aging.describe", PanelId::Surface),
+        ("render.effects.describe", PanelId::Effects),
+        ("render.backends", PanelId::Check),
     ] {
         h.app.start(id);
         h.frames(3);
-        assert_eq!(h.app.render_workspace.view.inspector.page, page, "{id}");
+        assert_eq!(active_panel(&h.app), page, "{id}");
+        assert_eq!(h.app.ui.tab, page.tab(), "{id}");
         assert_eq!(h.app.render_workspace.view.samples, 37);
         assert_eq!(h.app.render_workspace.view.draft.width, 777);
         assert_eq!(h.app.session.doc.to_json(), doc, "navigation may not execute a parameterless apply");
@@ -337,8 +396,8 @@ fn render_ribbon_has_task_groups_and_preserves_personal_pins_at_narrow_widths() 
                 let cancel = crate::scenario::rect_of("ribbon:render.cancel").unwrap();
                 assert!(start.right() <= cancel.left());
                 assert!(cancel.right() <= width as f32, "{layout:?} {width} {tab}: {cancel:?}");
-                for id in ["render:check", "render:start"] {
-                    let r = crate::scenario::rect_of(id).expect("pinned inspector job action");
+                for id in ["ribbon:render.start", "ribbon:render.cancel"] {
+                    let r = crate::scenario::rect_of(id).expect("shared tab-row job action");
                     assert!(r.left() >= 0. && r.right() <= width as f32, "{layout:?} {width} {id}: {r:?}");
                 }
                 assert!(super::super::job_ready(&h.app, "render.cancel").is_err());
@@ -361,7 +420,7 @@ fn render_ribbon_has_task_groups_and_preserves_personal_pins_at_narrow_widths() 
 }
 
 #[test]
-fn ribbon_and_sticky_footer_submit_the_current_draft_not_defaults_or_saved_shot() {
+fn ribbon_submits_the_current_draft_not_defaults_or_saved_shot() {
     let mut h = fixture();
     h.app.render_workspace.view.draft.width = 32;
     h.app.render_workspace.view.draft.height = 24;
@@ -526,7 +585,7 @@ fn aging_tab_adds_reorders_disables_and_persists_layers_without_engineering_edit
     let before = h.app.session.doc.to_json();
     h.app.start("render.aging.describe");
     h.frames(3);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Aging);
+    assert_eq!(active_panel(&h.app), PanelId::Surface);
     assert!(!crate::icon_svg::resolve(solidcraft_engine::find_command("render.aging.describe").unwrap().icon).placeholder);
     for code in [1, 3] {
         h.step(&json!({"click":{"handle":"render:aging-add"}})).unwrap();
@@ -570,7 +629,7 @@ fn effects_tab_retains_ordered_looks_and_photographic_intent_across_save_and_rel
     let before = h.app.session.doc.to_json();
     h.app.start("render.effects.describe");
     h.frames(3);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Effects);
+    assert_eq!(active_panel(&h.app), PanelId::Effects);
     for code in [3, 6] {
         h.step(&json!({"click":{"handle":"render:look-add"}})).unwrap();
         h.frames(2);
@@ -608,7 +667,7 @@ fn backgrounds_ribbon_exposes_camera_and_physical_options_without_mutating_draft
     let revision = h.app.session.revision;
     h.app.start("render.stage.backdrop");
     h.frames(3);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Background);
+    assert_eq!(active_panel(&h.app), PanelId::Stage);
     assert_eq!(setups::snapshot(&h.app).unwrap(), draft);
     assert_eq!(h.app.session.doc.to_json(), doc);
     assert_eq!(h.app.session.revision, revision);
@@ -646,7 +705,7 @@ fn clearing_physical_stage_preserves_unsaved_camera_background_and_output_intent
     let materials = h.app.session.doc.materials.clone();
     h.app.start("render.stage.clear");
     h.frames(4);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Background);
+    assert_eq!(active_panel(&h.app), PanelId::Stage);
     h.step(&json!({"click":{"handle":"render:stage-clear"}})).unwrap();
     h.frames(3);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected, "clearing stage must keep the unsaved numerical draft, not reload an older one");
@@ -746,12 +805,12 @@ fn browser_shot_menus_keep_target_and_draft_through_confirmation() {
     assert_eq!(h.app.render_workspace.view.name, "A");
     h.step(&json!({"widget":h.app.tr("render.keep_editing")})).unwrap();
     assert_eq!(h.app.render_workspace.view.draft.width, 123);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
+    assert_eq!(active_panel(&h.app), PanelId::Image);
     shot_row_action(&mut h.app, "B".into(), "render.shot.rename");
     h.frames(3);
     h.step(&json!({"widget":h.app.tr("render.discard_continue")})).unwrap();
     assert_eq!(h.app.render_workspace.view.name, "B");
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Scene);
+    assert_eq!(active_panel(&h.app), PanelId::Shot);
     assert_eq!(h.app.render_workspace.view.draft.width, 321);
     h.app.render_workspace.view.draft.width = 456;
     shot_row_action(&mut h.app, "A".into(), "render.shot.remove");
@@ -834,7 +893,7 @@ fn appearance_inspector_all_users_replaces_exact_look_once_without_changing_mass
     h.app.session.selection = vec![Sel::Body { name: "Subject".into() }];
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     let undo = h.app.session.undo.len();
     h.step(&json!({"click":{"handle":format!("dialog:{}:{}", h.app.tr("render.inspector_applies_to"), crate::i18n::format("render.inspector_all_users", &[("count","2")]))}})).unwrap();
     h.step(&json!({"click":{"handle":"render:appearance:preview:replace"}})).unwrap();
@@ -871,7 +930,7 @@ fn appearance_inspector_finish_presets_mixed_set_all_and_clear_use_existing_assi
     assert!(!mixed(&looks, |l| l.opacity));
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     assert!(h.widget(h.app.tr("render.tree_mixed")).is_some());
     appearance_inspector_capture(&mut h, "mixed");
     let mass = h.app.run("component.properties", json!({})).unwrap();
@@ -907,7 +966,7 @@ fn appearance_inspector_real_controls_switch_targets_inspect_chain_and_edit_fini
     h.app.session.selection = vec![Sel::Face { body: "Subject".into(), index: face, point: Vec3::new(10.0, 7.0, 10.0) }];
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     let before = h.app.session.doc.to_json();
     h.step(&json!({"click":{"handle":"render:appearance:chain:body"}})).unwrap();
     assert_eq!(h.app.session.doc.to_json(), before);
@@ -951,7 +1010,7 @@ fn appearance_inspector_mixed_fields_are_inert_until_edited_and_accept_the_first
     h.app.session.selection = vec![Sel::Body { name: "Subject".into() }, Sel::Body { name: "Other".into() }];
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     let before = h.app.session.doc.to_json();
     let undo = h.app.session.undo.len();
     let field = format!("dialog:scalar:{}", h.app.tr("render.inspector_opacity"));
@@ -990,7 +1049,7 @@ fn appearance_inspector_optical_colour_and_opacity_edits_commit_once_with_shared
     h.app.session.selection = vec![Sel::Body { name: "Subject".into() }];
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     let mass = h.app.run("component.properties", json!({})).unwrap();
     for (key, text) in [("appearance.metallic", "2"), ("appearance.roughness", "0"), ("render.inspector_opacity", "0.25")] {
         let undo = h.app.session.undo.len();
@@ -1049,7 +1108,7 @@ fn appearance_inspector_component_and_face_overrides_remove_to_material_from_rea
     super::super::enter(&mut h.app, true).unwrap();
     h.frames(2);
     h.step(&json!({"click":{"handle":"tab:RENDER APPEARANCE"}})).unwrap();
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert_eq!(active_panel(&h.app), PanelId::Appearance);
     let mass = h.app.run("component.properties", json!({})).unwrap();
     for (step, name) in [("face", "Copper"), ("body", "ABS - Red"), ("component", "ABS - Blue"), ("material", "Steel")] {
         let before = h.app.session.doc.to_json();

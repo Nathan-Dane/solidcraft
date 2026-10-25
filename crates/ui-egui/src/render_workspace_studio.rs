@@ -134,7 +134,6 @@ pub(super) fn vector(ui: &mut egui::Ui, label: &str, value: &mut [f64; 3], range
 
 pub(super) fn finishing_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     super::transport::sampling_controls(app, ui);
-    post_controls(app, ui);
     ui.label(app.tr("render.studio_tone_map"));
     let selected = app.render_workspace.view.studio.tone_map;
     let label = match selected {
@@ -167,6 +166,7 @@ pub(super) fn lens_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 
+#[cfg(test)]
 pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     finishing_controls(app, ui);
     lens_controls(app, ui);
@@ -178,7 +178,11 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    super::transport::volume_controls(app, ui);
+    let title = app.tr("render.aging_airborne").to_string();
+    ui_kit::section(ui, "render_aging_atmosphere", &title, false, |ui| {
+        ui_kit::text(ui, app.tr("render.aging_airborne_help"), ui_kit::Text::Note("render.aging_airborne_help"));
+        super::transport::volume_controls(app, ui);
+    });
     let variants =
         [(Environment::None, "render.studio_environment_none"), (Environment::Sky, "render.studio_sky"), (Environment::Hdr, "render.studio_hdr")];
     let selected = app.render_workspace.view.studio.environment;
@@ -188,7 +192,7 @@ pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         Environment::Hdr => "render.studio_hdr",
     };
     let label = app.tr(key).to_string();
-    ui_kit::dropdown_menu(ui, "render_environment_kind", &label, |ui| {
+    let response = ui_kit::dropdown_menu(ui, "render_environment_kind", &label, |ui| {
         for (value, key) in variants {
             if ui_kit::list_picker(ui, key, app.tr(key), value == selected).clicked() {
                 app.render_workspace.view.studio.environment = value;
@@ -196,6 +200,7 @@ pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
         }
     });
+    crate::scenario::publish_target("render:environment-kind", response.rect);
     if app.render_workspace.view.studio.environment == Environment::None {
         return;
     }
@@ -233,7 +238,8 @@ pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 
 pub(super) fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let label = app.tr("render.studio_lighting_enable").to_string();
-    ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.studio.lighting_enabled);
+    let response = ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.studio.lighting_enabled);
+    crate::scenario::publish_target("render:lighting-enabled", response.rect);
     if !app.render_workspace.view.studio.lighting_enabled {
         return;
     }

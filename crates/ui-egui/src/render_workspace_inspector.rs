@@ -1,7 +1,7 @@
 //! Contextual native Render UI. One workspace, existing command authority and shared controls.
-//! Page navigation is per document; unsupported backend capabilities never emit dummy parameters.
+//! Panel navigation is per document; unsupported backend capabilities never emit dummy parameters.
 use super::{ImageMethod, cpu, library, materials, setups, studio};
-use crate::{SolveApp, theme::Tokens, ui_kit};
+use crate::{SolveApp, ui_kit};
 use serde_json::{Value, json};
 use solidcraft_engine::doc::Document;
 use std::sync::{Arc, Weak};
@@ -9,85 +9,98 @@ use std::sync::{Arc, Weak};
 #[path = "render_ui/appearance.rs"]
 mod selection_appearance;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub(super) enum Page {
-    #[default]
-    Scene,
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(super) enum PanelId {
     Appearance,
-    Aging,
-    Effects,
-    Lighting,
+    Surface,
+    Studio,
+    Lights,
     Environment,
-    Background,
-    Camera,
-    Output,
-    Diagnostics,
-    All,
+    Stage,
+    Shot,
+    Image,
+    Effects,
+    Check,
 }
-impl Page {
-    const ALL: [Self; 11] = [
-        Self::Scene,
-        Self::Appearance,
-        Self::Aging,
-        Self::Lighting,
-        Self::Environment,
-        Self::Background,
-        Self::Camera,
-        Self::Effects,
-        Self::Output,
-        Self::Diagnostics,
-        Self::All,
-    ];
+impl PanelId {
+    pub(super) fn panels(tab: &str) -> &'static [Self] {
+        match tab {
+            "RENDER APPEARANCE" => &[Self::Appearance, Self::Surface],
+            "RENDER SCENE" => &[Self::Studio, Self::Lights, Self::Environment, Self::Stage],
+            "RENDER CAMERA" => &[Self::Shot],
+            _ => &[Self::Image, Self::Effects, Self::Check],
+        }
+    }
+    pub(super) fn tab(self) -> &'static str {
+        match self {
+            Self::Appearance | Self::Surface => "RENDER APPEARANCE",
+            Self::Studio | Self::Lights | Self::Environment | Self::Stage => "RENDER SCENE",
+            Self::Shot => "RENDER CAMERA",
+            Self::Image | Self::Effects | Self::Check => "RENDER",
+        }
+    }
+    fn tab_index(tab: &str) -> usize {
+        match tab {
+            "RENDER APPEARANCE" => 0,
+            "RENDER SCENE" => 1,
+            "RENDER CAMERA" => 2,
+            _ => 3,
+        }
+    }
     pub(super) fn key(self) -> &'static str {
         match self {
-            Self::Scene => "render.page_scene",
-            Self::Appearance => "render.page_appearance",
-            Self::Aging => "render.page_aging",
-            Self::Effects => "render.page_effects",
-            Self::Lighting => "render.page_lighting",
-            Self::Environment => "render.page_environment",
-            Self::Background => "render.page_background",
-            Self::Camera => "render.page_camera",
-            Self::Output => "render.page_output",
-            Self::Diagnostics => "render.page_diagnostics",
-            Self::All => "render.page_all",
+            Self::Appearance => "render.panel_appearance",
+            Self::Surface => "render.panel_surface",
+            Self::Studio => "render.panel_studio",
+            Self::Lights => "render.panel_lights",
+            Self::Environment => "render.panel_environment",
+            Self::Stage => "render.panel_stage",
+            Self::Shot => "render.panel_shot",
+            Self::Image => "render.panel_image",
+            Self::Effects => "render.panel_effects",
+            Self::Check => "render.panel_check",
         }
     }
     fn handle(self) -> &'static str {
         match self {
-            Self::Scene => "scene",
-            Self::Appearance => "appearance",
-            Self::Aging => "aging",
-            Self::Effects => "effects",
-            Self::Lighting => "lighting",
-            Self::Environment => "environment",
-            Self::Background => "background",
-            Self::Camera => "camera",
-            Self::Output => "output",
-            Self::Diagnostics => "diagnostics",
-            Self::All => "all",
+            Self::Appearance => "render:panel:appearance",
+            Self::Surface => "render:panel:surface",
+            Self::Studio => "render:panel:studio",
+            Self::Lights => "render:panel:lights",
+            Self::Environment => "render:panel:environment",
+            Self::Stage => "render:panel:stage",
+            Self::Shot => "render:panel:shot",
+            Self::Image => "render:panel:image",
+            Self::Effects => "render:panel:effects",
+            Self::Check => "render:panel:check",
         }
     }
     fn icon(self) -> &'static str {
         match self {
-            Self::Scene => "render_scene",
-            Self::Appearance => "appearance",
-            Self::Aging => "appearance",
-            Self::Effects => "camera",
-            Self::Lighting => "settings",
+            Self::Appearance | Self::Surface => "appearance",
+            Self::Studio | Self::Stage => "render_scene",
+            Self::Lights => "settings",
             Self::Environment => "environment_map",
-            Self::Background => "render_scene",
-            Self::Camera => "camera",
-            Self::Output => "export",
-            Self::Diagnostics => "inspect",
-            Self::All => "list",
+            Self::Shot | Self::Effects => "camera",
+            Self::Image => "export",
+            Self::Check => "inspect",
         }
     }
+}
+
+pub(super) fn active_panel(app: &SolveApp) -> PanelId {
+    app.render_workspace.view.inspector.panels[PanelId::tab_index(&app.ui.tab)]
+}
+
+/// Editor navigation changes only the tab and that document's remembered panel.
+pub(super) fn open_panel(app: &mut SolveApp, panel: PanelId) {
+    app.ui.tab = panel.tab().into();
+    app.render_workspace.view.inspector.panels[PanelId::tab_index(panel.tab())] = panel;
 }
 #[derive(Clone, Debug)]
 pub(super) struct View {
     pub effects: super::effects::View,
-    pub page: Page,
+    panels: [PanelId; 4],
     reveal: Option<&'static str>,
     pending: Option<Pending>,
     shot_name: String,
@@ -193,7 +206,7 @@ impl Default for View {
     fn default() -> Self {
         Self {
             effects: Default::default(),
-            page: Page::Scene,
+            panels: [PanelId::Appearance, PanelId::Studio, PanelId::Shot, PanelId::Image],
             reveal: None,
             pending: None,
             shot_name: String::new(),
@@ -226,21 +239,9 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let bounds = crate::shell::panel_bounds(app, ui.available_rect_before_wrap());
     let mut side = app.preferences.render_inspector_side.clone();
     let mut width = app.preferences.render_inspector_width;
-    let selection_appearance = app.render_workspace.view.inspector.page == Page::Appearance && !app.session.selection.is_empty();
-    let title = if selection_appearance {
-        app.session
-            .selection
-            .last()
-            .and_then(|item| match item {
-                solidcraft_engine::Sel::Body { name } | solidcraft_engine::Sel::Face { body: name, .. } => Some(name.clone()),
-                solidcraft_engine::Sel::Occurrence { path } => app.session.occurrence_placement(path).ok().map(|placement| placement.name),
-                _ => None,
-            })
-            .unwrap_or_else(|| app.tr("render.inspector").to_owned())
-    } else {
-        app.tr("render.studio_title").to_string()
-    };
-    let icon = app.render_workspace.view.inspector.page.icon();
+    let panel = active_panel(app);
+    let title = app.tr(panel.key()).to_string();
+    let icon = panel.icon();
     let content = ui_kit::Panel::workspace(
         ui,
         ui_kit::WorkspaceOptions { id: "render:inspector", title: &title, icon, bounds, fill_height: true, header_actions: None },
@@ -248,48 +249,12 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         &mut width,
         |ui| {
             ui_kit::scope(ui, |ui| {
-                if !selection_appearance {
-                    header(app, ui);
-                    pages(app, ui);
-                    ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
-                        ui.separator();
-                        super::job_controls(app, ui, true);
-                        if ui_kit::button(ui, app.tr("render.return_design"), ui_kit::Button::Normal).clicked()
-                            && let Err(error) = super::enter(app, false)
-                        {
-                            app.set_status(error, true);
-                        }
-                        crate::scenario::publish_rect("render:job-footer", ui.min_rect());
-                    });
-                }
-                let page = app.render_workspace.view.inspector.page;
-                egui::ScrollArea::vertical().id_salt(("render_inspector", page.handle(), app.docs.active)).auto_shrink([false, false]).show(
+                panel_switcher(app, ui);
+                let panel = active_panel(app);
+                egui::ScrollArea::vertical().id_salt(("render_inspector", panel.handle(), app.docs.active)).auto_shrink([false, false]).show(
                     ui,
                     |ui| {
-                        if !selection_appearance {
-                            ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
-                        }
-                        match page {
-                            Page::Scene => scene_controls(app, ui),
-                            Page::Appearance => appearance_controls(app, ui),
-                            Page::Aging => super::effects::aging_controls(app, ui),
-                            Page::Effects => super::effects::presentation_controls(app, ui),
-                            Page::Lighting => lighting_controls(app, ui),
-                            Page::Environment => environment_controls(app, ui),
-                            Page::Background => background_controls(app, ui),
-                            Page::Camera => camera_controls(app, ui),
-                            Page::Output => output_controls(app, ui),
-                            Page::Diagnostics => diagnostics(app, ui),
-                            Page::All => {
-                                ui_kit::text(ui, app.tr("render.all_controls_help"), ui_kit::Text::Note("render.all_controls_help"));
-                                camera_actions(app, ui);
-                                let title = app.tr("render.page_camera").to_string();
-                                ui_kit::section(ui, "render_all_camera", &title, false, |ui| camera_controls(app, ui));
-                                let title = app.tr("render.page_aging").to_string();
-                                ui_kit::section(ui, "render_all_aging", &title, false, |ui| super::effects::aging_controls(app, ui));
-                                super::image_edit_controls(app, ui);
-                            }
-                        }
+                        panel_body(app, ui, panel);
                         setups::refresh_dirty(app);
                     },
                 );
@@ -308,31 +273,53 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
     confirmation(app, ui.ctx());
 }
-fn pages(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let page = app.render_workspace.view.inspector.page;
-    let mut index = Page::ALL.iter().position(|p| *p == page).unwrap_or(0);
-    let options: Vec<_> =
-        Page::ALL.iter().map(|page| ui_kit::IconSegment { key: page.handle(), icon: page.icon(), tip: app.tr(page.key()).to_string() }).collect();
-    let top = ui.cursor().min;
-    let width = ui.available_width();
-    let height = ui_kit::row_height();
-    if ui_kit::segmented_icons(ui, &mut index, &options, &[])
-        && let Some(page) = Page::ALL.get(index)
-    {
-        app.render_workspace.view.inspector.page = *page;
+fn panel_switcher(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let panels = PanelId::panels(&app.ui.tab);
+    if panels.len() <= 1 {
+        return;
     }
-    for (i, page) in Page::ALL.iter().enumerate() {
-        crate::scenario::publish_target(
-            &format!("render:page:{}", page.handle()),
-            egui::Rect::from_min_size(
-                top + egui::vec2(width * i as f32 / Page::ALL.len() as f32, 0.0),
-                egui::vec2(width / Page::ALL.len() as f32, height),
-            ),
-        );
-    }
-    ui.add_space(Tokens::get().space_4);
+    let mut index = panels.iter().position(|panel| *panel == active_panel(app)).unwrap_or(0);
+    let labels: Vec<_> = panels.iter().map(|panel| app.tr(panel.key()).to_string()).collect();
+    let handles: Vec<_> = panels.iter().map(|panel| panel.handle()).collect();
+    ui.push_id("render_panel_switcher", |ui| {
+        if ui_kit::segmented(
+            ui,
+            &mut index,
+            &labels.iter().map(String::as_str).collect::<Vec<_>>(),
+            ui_kit::Segments { compact: true, proportional: true, handles: &handles, handle: Some("render:panels"), ..Default::default() },
+        ) && let Some(panel) = panels.get(index)
+        {
+            open_panel(app, *panel);
+        }
+    });
 }
-fn header(app: &mut SolveApp, ui: &mut egui::Ui) {
+
+fn panel_body(app: &mut SolveApp, ui: &mut egui::Ui, panel: PanelId) {
+    match panel {
+        PanelId::Appearance => appearance_controls(app, ui),
+        PanelId::Surface => {
+            surface_controls(app, ui);
+            super::effects::aging_controls(app, ui);
+        }
+        PanelId::Studio => scene_controls(app, ui),
+        PanelId::Lights => lighting_controls(app, ui),
+        PanelId::Environment => environment_controls(app, ui),
+        PanelId::Stage => background_controls(app, ui),
+        PanelId::Shot => {
+            setup_controls(app, ui);
+            camera_controls(app, ui);
+            shot_controls(app, ui);
+        }
+        PanelId::Image => output_controls(app, ui),
+        PanelId::Effects => super::effects::presentation_controls(app, ui),
+        PanelId::Check => {
+            output_check(app, ui);
+            diagnostics(app, ui);
+        }
+    }
+}
+
+fn setup_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let current = app.render_workspace.view.name.clone();
     let names: Vec<_> = app.session.doc.render.setups.keys().cloned().collect();
     let mut chosen = None;
@@ -367,17 +354,8 @@ fn header(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
     let status = if app.render_workspace.view.dirty { app.tr("render.unsaved") } else { app.tr("render.studio_saved") };
     ui.add_sized([ui.available_width(), ui.text_style_height(&egui::TextStyle::Body)], egui::Label::new(status).truncate());
-    if app.render_workspace.view.inspector.page != Page::All {
-        let labels = [app.tr("render.result_preview").to_string(), app.tr("render.result_title").to_string()];
-        let mut value = usize::from(app.render_workspace.view.result);
-        if ui_kit::segmented(ui, &mut value, &labels.iter().map(String::as_str).collect::<Vec<_>>(), Default::default()) {
-            app.render_workspace.view.result = value == 1;
-            app.cancel_view_animation();
-            app.viewport.key_hold = None;
-            app.viewport.orbit_free = None;
-        }
-    }
 }
+
 pub(super) fn switch_shot(app: &mut SolveApp, name: String) {
     setups::refresh_dirty(app);
     request_action(app, PendingAction::Switch(name));
@@ -469,7 +447,7 @@ fn browse_button(app: &mut SolveApp, ui: &mut egui::Ui, kind: &str, key: &str) {
     }
 }
 fn scene_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    // After a library selection, primary native-resource actions lead the page.
+    // After a library selection, primary native-resource actions lead the panel.
     // Shared method/help and catalog navigation remain below, not between the
     // chosen resource and its explicit review/consent. No state is changed by layout.
     let selected_native = library::selected_kind(app, "native_scenes");
@@ -477,15 +455,11 @@ fn scene_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         library::inspect_kinds(app, ui, &["native_scenes"]);
     }
     ui_kit::text(ui, app.tr("render.scene_preserves_design"), ui_kit::Text::Note("render.scene_preserves_design"));
-    super::method_selector(app, ui);
-    gpu_status(app, ui);
     browse_button(app, ui, "native_scenes", "render.browse_native_scenes");
     browse_button(app, ui, "scenes", "render.browse_scene_specs");
     if !selected_native {
         library::inspect_kinds(app, ui, &["native_scenes", "scenes", "selene_shots"]);
     }
-    physical_stage_controls(app, ui);
-    shot_controls(app, ui);
 }
 fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.passive_stage").to_string();
@@ -571,7 +545,7 @@ fn background_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::section(ui, "render_background_hdr_section", &title, false, |ui| {
         ui_kit::text(ui, app.tr("render.background_hdr_separate"), ui_kit::Text::Note("render.background_hdr_separate"));
         if ui_kit::button(ui, app.tr("render.browse_environments"), ui_kit::Button::Normal).clicked() {
-            app.render_workspace.view.inspector.page = Page::Environment;
+            open_panel(app, PanelId::Environment);
             library::open_category(app, "hdr");
         }
     });
@@ -614,8 +588,10 @@ fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if selection_appearance::controls(app, ui) {
         return;
     }
-    ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     base_appearance(app, ui);
+}
+fn surface_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     browse_button(app, ui, "surfaces", "render.browse_surfaces");
     browse_button(app, ui, "physical_profiles", "render.browse_physical");
     library::inspect_kinds(app, ui, &["surfaces", "materials", "selene_appearances", "physical_profiles"]);
@@ -640,15 +616,6 @@ fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    ui.label(app.tr("render.background"));
-    let r = ui_kit::color_field(ui, &mut app.render_workspace.view.draft.background);
-    if r.changed() {
-        app.render_workspace.view.dirty = true;
-    }
-    ui_kit::text(ui, app.tr("render.background_not_light"), ui_kit::Text::Note("render.background_not_light"));
-    if app.render_workspace.view.method == ImageMethod::GpuRaytrace {
-        studio::backdrop_controls(app, ui);
-    }
     browse_button(app, ui, "hdr", "render.browse_environments");
     library::inspect_kinds(app, ui, &["hdr", "environments"]);
     match app.render_workspace.view.method {
@@ -745,7 +712,6 @@ fn camera_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     studio::export_controls(app, ui);
     super::method_selector(app, ui);
-    gpu_status(app, ui);
     let side = match app.render_workspace.view.method {
         ImageMethod::CpuRaytrace => 16384,
         ImageMethod::GpuRaytrace => 8192,
@@ -856,7 +822,6 @@ fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.overwrite);
     browse_button(app, ui, "quality", "render.browse_quality");
     library::inspect_kinds(app, ui, &["quality"]);
-    output_check(app, ui);
     super::completed_image(app, ui);
     ui_kit::text(ui, app.tr("render.adaptive_pending"), ui_kit::Text::Note("render.adaptive_pending"));
 }
@@ -1015,6 +980,7 @@ fn apply_quality(app: &mut SolveApp, plan: &Value) -> Result<(), String> {
     Ok(())
 }
 fn diagnostics(app: &mut SolveApp, ui: &mut egui::Ui) {
+    gpu_status(app, ui);
     if let Some(bytes) = app.render_workspace.preview_upload_bytes {
         ui.label(format!("{}: {:.2} / {} MiB", app.tr("render.preview_upload"), bytes as f64 / 1048576.0, super::MAX_GEOMETRY_BYTES / 1048576));
         ui_kit::text(ui, app.tr("render.preview_upload_help"), ui_kit::Text::Note("render.preview_upload_help"));
@@ -1023,6 +989,10 @@ fn diagnostics(app: &mut SolveApp, ui: &mut egui::Ui) {
         ui_kit::text(ui, error, ui_kit::Text::Error("render.preview_cached_error"));
     }
     let request = super::image_request(app);
+    cpu::checked_status(app, ui, super::image_params(app).as_ref().ok());
+    if let Ok(backends) = app.session.execute("render.backends", &json!({})) {
+        json_details(app, ui, "cmd.render_backends", &backends);
+    }
     ui.strong(app.tr(app.render_workspace.view.method.label()));
     if let Err(error) = super::image_params(app) {
         ui_kit::text(ui, &error.to_string(), ui_kit::Text::Error("render.native-error"));
@@ -1067,6 +1037,7 @@ fn diagnostics(app: &mut SolveApp, ui: &mut egui::Ui) {
         if let Some(error) = status["error"]["message"].as_str() {
             ui_kit::text(ui, error, ui_kit::Text::Error("render.native-error"));
         }
+        cpu::captured_status(app, ui, &status);
         json_details(app, ui, "render.diag_job_details", &status);
     }
     if let Ok(request) = &request {
@@ -1246,9 +1217,6 @@ fn reveal_section(app: &mut SolveApp, ui: &mut egui::Ui, section: &'static str) 
 }
 
 fn gpu_status(app: &SolveApp, ui: &mut egui::Ui) {
-    if app.render_workspace.view.method != ImageMethod::GpuRaytrace {
-        return;
-    }
     match &app.render_workspace.path_host {
         super::PathHost::Preparing(_, started) => super::setup_progress(ui, app, *started),
         super::PathHost::Failed(error) => {
