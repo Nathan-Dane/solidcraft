@@ -984,7 +984,10 @@ impl SolveApp {
         }
         let t0 = now_ms();
         let selected_before = self.session.selection.clone();
-        let r = self.session.execute(id, &params).map_err(|e| e.to_string());
+        let r = self.session.execute(id, &params).map_err(|e| e.to_string()).and_then(|reply| {
+            render_workspace::apply_command(self, id, &reply)?;
+            Ok(reply)
+        });
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         let done = self.command_completed(id, r);
         if done.is_ok() && (self.session.selection != selected_before || matches!(id, "select.set" | "select.clear" | "select.same_look")) {

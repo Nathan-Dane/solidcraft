@@ -412,6 +412,29 @@ pub(crate) fn value_pair(ui: &mut Ui, label: &str, values: [&mut String; 2], axe
     })
 }
 
+/// Paired bounded numeric fields in the shared value-pair row geometry.
+pub(crate) fn number_pair<T: egui::emath::Numeric>(
+    ui: &mut Ui,
+    label: &str,
+    values: [&mut T; 2],
+    range: std::ops::RangeInclusive<T>,
+    speed: f64,
+    suffix: &str,
+) -> [Response; 2] {
+    let t = Tokens::get();
+    super::row(ui, label, |ui| {
+        let width = ((dimension(ui.available_width()) - t.space_8) / 2.0).max(0.0);
+        ui.spacing_mut().item_spacing.x = t.space_8;
+        values.map(|value| {
+            ui.allocate_ui_with_layout(vec2(width, row_height()), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.set_clip_rect(ui.clip_rect().intersect(ui.max_rect()));
+                number_field(ui, value, range.clone(), speed, suffix)
+            })
+            .inner
+        })
+    })
+}
+
 /// Variable-radius location editor. Tokens: scope's control and typography tokens.
 /// Retains the established 0.01 step, fractional range and locale parser.
 /// Locale-aware variable-radius position editor. Tokens: `scope control/font tokens`.

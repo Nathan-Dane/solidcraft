@@ -150,7 +150,7 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | `slider` + `Slider` options | One token-painted track/thumb over native slider/value interaction; optional step, caller formatting, whole-step manipulation and hidden value editor | `control_height`, `space_24/8/4/2`, form control/font tokens |
 | `placement_field` | Stable focus ID; drawing tool owns Enter/Tab validation and completion | `control_fill`, `font_body`, `text`, `control_height`, spacing |
 | `color_field`, `color_popover` | Opaque document RGB swatch and kit popover; global U8/F segments, copy, gamma-byte or linear RGB fields, painter-drawn HSV square/hue and current strip; outside click dismisses | `control_*`, `form_*`, `border`, `on_accent`, `space_*` |
-| choice: `segmented`, `Segments` | Equal text choices; `states` supplies mixed selection, `compact` clips instead of falling back to a dropdown, `primary` uses accent/on-accent for the selected segment | `control_*`, `selected_bg/ink`, `font_label`, `space_4/8` |
+| choice: `segmented`, `Segments` | Equal text choices; `states` supplies mixed selection, `disabled_reasons` keeps unavailable choices visible with an explanation, `compact` clips instead of falling back to a dropdown, `primary` uses accent/on-accent for the selected segment | `control_*`, `selected_bg/ink`, `font_label`, `space_4/8` |
 | `segmented_icons`, `IconSegment` | Equal icon choices and mixed states | segment tokens, icon palette |
 | `checkbox`, `checkbox_indeterminate`, `checkbox_row`, `checkbox_grid`, `options` | One box/tick painter for inline, mixed, full-row, grid and menu choices | `space_14/3/2`, `radius_sm`, `control_fill/border`, `form_primary/ink`, `hover`, `on_accent` |
 | `text_emphasis` | Bold/italic with translated accessible names | form control/font tokens |
@@ -634,3 +634,12 @@ icon segments and category chips. `catalog_footer` draws the quiet information h
 Catalog title marks use the active workspace accent; tile captions, usage badges and
 selection outlines share the sphere widgets. Feature code supplies data and commands,
 while the kit owns every dimension, colour and inset.
+
+The compact `settings_choice_row` variant reuses the shared settings radio-card painter
+for preset lists: 40 pt rows, right-aligned summaries and the active workspace accent.
+`progress_action` keeps a status caption, bounded progress track and Cancel action on
+one row inside a Navigation card. `Container::below_navigation_row` reserves that card
+and its shared gap above an inline result toolbar.
+
+`number_pair` extends the shared value-pair row to bounded numeric fields (such as
+image width and height), preserving label alignment, clipping and number-field behavior.

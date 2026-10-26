@@ -378,9 +378,30 @@ current numerical image setup, without inventing a saved rig.
 engine selection), Environment, Light, Shot and Output. It belongs to each document
 view and is never saved in a design. `view.render_select` validates semantic focus
 requests without opening dialogs or editing/evaluating a design. Object picks and
-Browser selections keep the existing selection commands. Inspector routing stays
-as before; the focus state is available to a later Inspector change.
+Browser selections keep the existing selection commands. Selecting Output opens the Output editor. Other focus types retain their existing
+Inspector routing for subsequent selection-following editor changes.
 
 Look expands Objects, Light expands Lights and Environment, and Frame expands
 Shots. Output leaves expansion unchanged. Stages preserve selection and never
 lock rows or prevent manual expansion.
+
+## Output editor
+
+The Output stage offers size, format, quality and a Check summary in the stage bar's
+second row. Its lower-left Size presets card offers Preview (1280 × 720), Full HD,
+4K, Square and Custom. Presets outside the selected executor's limits stay visible
+with a disabled explanation. Custom retains the current size and reveals its fields.
+Numerical size edits and presets use `render.output.size`; they never save a shot
+or start a job.
+
+Selecting Output in the Browser shows one editor with Image, Effects and Check
+sections, without page navigation or pinned job actions. Image retains size/aspect,
+format, sampling, method, transparency and export destination controls. Effects owns
+tone, bloom, grading and regrade. Check retains the preflight list, freshness checks,
+installed backend/status metadata and expandable diagnostics. Named quality presets
+and EXR settings remain unavailable with their existing reasons. Destination selection
+uses the existing completed-image export picker.
+
+Render and Cancel stay in the stage bar. Active jobs also show a single-row progress
+pill with Cancel. The result viewer retains Copy, export, close, Fit/100% and shared
+pan/zoom. R starts the active setup; Escape closes the image without cancelling its job.

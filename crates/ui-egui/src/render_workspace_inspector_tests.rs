@@ -10,7 +10,7 @@ fn fixture() -> Harness {
     h
 }
 #[test]
-fn native_inspector_defaults_to_output_and_keeps_job_actions_on_screen_in_both_shells() {
+fn native_inspector_keeps_stage_actions_on_screen_and_output_has_no_pinned_footer() {
     for dark in [false, true] {
         for layout in [crate::shell::LayoutMode::Docked, crate::shell::LayoutMode::Floating] {
             let mut h = fixture();
@@ -25,6 +25,13 @@ fn native_inspector_defaults_to_output_and_keeps_job_actions_on_screen_in_both_s
                 h.app.render_workspace.view.inspector.page = page;
                 h.frames(3);
                 let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+                if page == Page::Output {
+                    assert!(crate::scenario::rect_of("render:job-footer").is_none());
+                    for name in ["render:stage:render.start", "render:stage:render.cancel"] {
+                        assert!(crate::scenario::rect_of(name).is_some());
+                    }
+                    continue;
+                }
                 let footer = crate::scenario::rect_of("render:job-footer").unwrap();
                 assert!(inspector.contains_rect(footer), "footer outside inspector at {page:?}: {inspector:?} {footer:?}");
                 for name in ["render:check", "render:start", "render:cancel", "render:export"] {
@@ -46,7 +53,9 @@ fn icon_page_navigation_is_local_and_never_switches_executor_or_overwrites_draft
     let before = h.app.session.doc.to_json();
     h.app.render_workspace.view.samples = 37;
     h.app.render_workspace.view.draft.width = 777;
-    for page in Page::ALL {
+    h.app.render_workspace.view.inspector.page = Page::Scene;
+    h.frames(3);
+    for page in Page::ALL.into_iter().filter(|page| !matches!(page, Page::Output | Page::All | Page::Effects | Page::Diagnostics)) {
         h.step(&json!({"click":{"handle":format!("render:page:{}",page.handle())}})).unwrap();
         assert_eq!(h.app.render_workspace.view.inspector.page, page);
         assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);
@@ -200,7 +209,8 @@ fn actual_output_ratio_and_orientation_controls_are_local_and_preserve_saved_cap
     setups::save(&mut h.app).unwrap();
     let saved = h.app.session.doc.to_json();
     let camera = h.app.cam;
-    h.frames(3);
+    reveal(&mut h.app, "render_output_advanced");
+    h.frames(24);
     h.step(&json!({"click":{"handle":"render:aspect-lock"}})).unwrap();
     assert!(h.app.render_workspace.view.inspector.resolution.locked);
     assert!(!h.app.render_workspace.view.dirty, "coupling editor coordinates is not a saved numerical edit");
@@ -289,7 +299,7 @@ fn ribbon_navigation_reuses_inspector_and_preserves_exact_unsaved_intent() {
         ("render.library.environment.apply", Page::Environment),
         ("render.stage.backdrop", Page::Background),
         ("render.quality.prepare", Page::Output),
-        ("render.status", Page::Diagnostics),
+        ("render.status", Page::Output),
         ("render.camera.get", Page::Camera),
         ("render.camera.set", Page::Camera),
         ("render.preset.apply", Page::Scene),
@@ -306,8 +316,8 @@ fn ribbon_navigation_reuses_inspector_and_preserves_exact_unsaved_intent() {
         ("render.hdr.inspect", Page::Environment),
         ("render.settings.capture_hdr", Page::Environment),
         ("render.aging.describe", Page::Aging),
-        ("render.effects.describe", Page::Effects),
-        ("render.backends", Page::Diagnostics),
+        ("render.effects.describe", Page::Output),
+        ("render.backends", Page::Output),
     ] {
         h.app.start(id);
         h.frames(3);
@@ -553,14 +563,14 @@ fn aging_tab_adds_reorders_disables_and_persists_layers_without_engineering_edit
 }
 
 #[test]
-fn effects_tab_retains_ordered_looks_and_photographic_intent_across_save_and_reload() {
+fn output_effects_retains_ordered_looks_and_photographic_intent_across_save_and_reload() {
     use solidcraft_engine::render::job::looks::LookKind;
     let mut h = fixture();
     super::super::select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
     let before = h.app.session.doc.to_json();
     h.app.start("render.effects.describe");
-    h.frames(3);
-    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Effects);
+    h.frames(24);
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
     for code in [3, 6] {
         h.step(&json!({"click":{"handle":"render:look-add"}})).unwrap();
         h.frames(2);

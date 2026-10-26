@@ -730,6 +730,66 @@ mod tests {
         }
     }
 
+    #[test]
+    fn output_viewer_labels_exist_in_all_required_catalogs() {
+        for language in ["en", "de", "ja", "ko", "zh"] {
+            let locale = Locale::for_language(language);
+            for key in [
+                "cmd.render_output_size",
+                "cmd.render_result_view",
+                "cmd.render_result_close",
+                "cmd.render_result_copy",
+                "cmd.render_lights_add",
+                "render.output_destination",
+                "render.output_destination_help",
+                "render.output_backend_ready",
+                "render.output_dimensions",
+                "render.output_effects",
+                "render.output_advanced",
+                "render.output_copy",
+                "render.output_fit",
+                "render.output_export",
+                "render.output_view_image",
+                "render.effects_gpu_only",
+                "render.output_image",
+                "render.output_check_summary",
+                "render.output_presets_help",
+                "render.size_preview",
+                "render.size_full_hd",
+                "render.size_4k",
+                "render.size_square",
+                "render.size_custom",
+                "render.output_format",
+                "render.output_exr_unavailable",
+                "render.output_largest",
+                "render.output_quality",
+                "render.output_quality_waiting",
+                "render.quality_draft",
+                "render.quality_balanced",
+                "render.quality_high",
+                "render.quality_custom",
+                "render.output_check",
+                "render.output_check_help",
+                "render.output_ready",
+                "render.output_size_ok",
+                "render.check_transmission",
+                "render.check_opaque",
+                "render.check_sorted_alpha",
+                "render.state_model",
+                "render.state_in_progress",
+                "render.state_completed",
+                "render.result_actual",
+                "render.radial_assign",
+                "render.radial_save",
+                "render.radial_fit",
+                "render.radial_compare",
+                "render.wait_add_light",
+            ] {
+                assert!(locale.0.messages().contains_key(key), "{language}: {key}");
+            }
+        }
+    }
+
     /// The mouse mapping picker shows its preset's help through `tr_label`, which the guard above
     /// can't see: the text sits in a struct field, not in a call. Each one must be the English text
     /// of its preset's catalog message, or it stays English in every locale.

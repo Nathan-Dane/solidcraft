@@ -1989,7 +1989,7 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
     let mut h = Harness::new();
     h.call("ui.resize", json!({"width":1600,"height":2200}));
     enter(&mut h.app, true).unwrap();
-    h.app.render_workspace.view.inspector.page = inspector::Page::All;
+    h.app.run("view.render_stage", json!({"stage":"output"})).unwrap();
     h.frames(3);
     h.app.session.set_render_job_host(None).unwrap();
     assert!(image_host(&h.app, ImageMethod::GpuRaytrace).is_err());
@@ -2064,8 +2064,10 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
     let open_section = |h: &mut Harness, handle: String| {
         for _ in 0..4 {
             let at = crate::scenario::handle_at(&handle).unwrap();
-            let top = crate::scenario::rect_of("render:page:all").unwrap().bottom() + Tokens::get().space_8;
-            let bottom = crate::scenario::rect_of("render:job-footer").unwrap().top() - Tokens::get().space_8;
+            let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+            let top = crate::scenario::rect_of("render:page:output").map_or(inspector.top() + Tokens::get().form_header_height, |r| r.bottom())
+                + Tokens::get().space_8;
+            let bottom = crate::scenario::rect_of("render:job-footer").map_or(inspector.bottom(), |r| r.top()) - Tokens::get().space_8;
             if (top..=bottom).contains(&at.y) {
                 break;
             }
@@ -2075,10 +2077,15 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
         }
         h.step(&json!({"click":{"handle":handle}})).unwrap();
     };
-    for key in ["render.image_advanced", "render.studio_environment", "render.studio_lighting"] {
+    for key in ["render.output_advanced", "render.output_effects"] {
         open_section(&mut h, format!("dialog:section:{}", crate::i18n::tr(key)));
     }
+    h.app.run("view.render_stage", json!({"stage":"light"})).unwrap();
+    h.frames(3);
     open_section(&mut h, format!("dialog:section:{} 1", crate::i18n::tr("render.studio_area")));
+    h.step(&json!({"click":{"handle":"render:page:environment"}})).unwrap();
+    h.frames(3);
+    h.app.run("view.render_stage", json!({"stage":"frame"})).unwrap();
     h.frames(3);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
     assert!(!h.app.render_workspace.view.dirty);
@@ -2764,7 +2771,7 @@ fn finishing_backdrop_and_raw_retention_save_reload_without_a_gpu_or_hidden_tran
     enter(&mut h.app, true).unwrap();
     h.app.session.set_render_job_host(None).unwrap();
     select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
-    h.app.render_workspace.view.inspector.page = inspector::Page::Output;
+    h.app.run("view.render_stage", json!({"stage":"output"})).unwrap();
     h.app.render_workspace.view.name = "Linear studio".into();
     h.app.render_workspace.view.studio.finishing =
         Finishing { rgb_gain: [1.3, 0.8, 0.9], saturation: 0.4, contrast: 1.2, vignette: 0.3, ..Default::default() };
@@ -2787,6 +2794,8 @@ fn finishing_backdrop_and_raw_retention_save_reload_without_a_gpu_or_hidden_tran
     h.app.render_workspace.view.transparent = false;
     let before = h.app.session.doc.to_json();
     h.frames(3);
+    let effects = h.app.tr("render.output_effects").to_string();
+    h.step(&json!({"click":{"handle":format!("dialog:section:{effects}")}})).unwrap();
     let title = h.app.tr("render.post_title").to_string();
     h.step(&json!({"click":{"handle":format!("dialog:section:{title}")}})).unwrap();
     h.step(&json!({"click":{"handle":"render:post-reset"}})).unwrap();
@@ -2857,10 +2866,10 @@ fn render_workspace_stage_chips_dispatch_without_mutations_and_remember_each_doc
         assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
         assert!(h.app.render_workspace.view.job.is_none());
         assert!(h.app.render_workspace.view.completed.is_none());
-        // Stage selection focuses pages; it does not remove the other editors.
-        h.step(&json!({"click":{"handle":"render:page:diagnostics"}})).unwrap();
+        // Registered editor navigation remains available independently of the stage.
+        h.app.start("render.backends");
         h.frames(2);
-        assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Diagnostics);
+        assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Output);
     }
     h.app.run("view.render_stage", json!({"stage":"frame"})).unwrap();
     crate::documents::open_tab(&mut h.app, Session::default()).unwrap();
@@ -4108,4 +4117,299 @@ fn render_workspace_shots_strip_geometry_and_theme_evidence() {
         }
     }
     crate::theme::set_dark(previous);
+}
+
+fn output_viewer_fixture() -> Harness {
+    let mut h = Harness::new();
+    h.app.home.open = false;
+    h.app.session.set_render_job_host(Some(solidcraft_engine::render::job::CpuHost::cooperative())).unwrap();
+    enter(&mut h.app, true).unwrap();
+    h.app.run("view.render_stage", json!({"stage":"output"})).unwrap();
+    h.app.run("view.render_select", json!({"kind":"output"})).unwrap();
+    h.app.render_workspace.view.draft.width = 16;
+    h.app.render_workspace.view.draft.height = 16;
+    h.frames(3);
+    h
+}
+
+#[test]
+fn output_viewer_size_chips_obey_limits_and_largest_upscales_at_the_current_aspect() {
+    let mut h = output_viewer_fixture();
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    for (key, expected) in [("720", (1280, 720)), ("1080", (1920, 1080))] {
+        h.step(&json!({"click":{"handle":format!("render:size:{key}")}})).unwrap();
+        let draft = &h.app.render_workspace.view.draft;
+        assert_eq!((draft.width, draft.height), expected);
+    }
+    let largest = inspector::largest_output(&h.app).unwrap();
+    assert!(largest.0 > 1920);
+    assert_eq!(cpu::image_limits(&h.app).fit(largest.0, largest.1, None), Some(largest));
+    assert!((largest.0 as f64 / largest.1 as f64 - 16.0 / 9.0).abs() < 0.002);
+    h.step(&json!({"click":{"handle":"render:size:largest"}})).unwrap();
+    assert_eq!((u64::from(h.app.render_workspace.view.draft.width), u64::from(h.app.render_workspace.view.draft.height)), largest);
+    let before = h.app.render_workspace.view.draft.clone();
+    assert!(h.app.run("render.output.size", json!({"width":4096,"height":4096})).is_err());
+    assert_eq!(h.app.render_workspace.view.draft, before);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
+    assert!(h.app.render_workspace.view.job.is_none());
+}
+
+#[test]
+fn output_viewer_check_lists_preflight_results_without_starting_and_marks_edits_stale() {
+    let mut h = output_viewer_fixture();
+    let host = h.app.session.render_job_host().unwrap().clone();
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"click":{"handle":"render:stage:check"}})).unwrap();
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert_eq!(host.admitted_bytes(), 0);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
+    for key in ["ready", "size", "transparency"] {
+        assert!(crate::scenario::rect_of(&format!("render:check:{key}")).is_some(), "{key}");
+    }
+    h.app.run("render.output.size", json!({"width":32,"height":16})).unwrap();
+    h.frames(2);
+    assert!(crate::scenario::rect_of("render:check:stale").is_some());
+    assert!(h.app.render_workspace.view.job.is_none());
+}
+
+#[test]
+fn output_viewer_copy_uses_retained_final_pixels_and_refuses_missing_or_oversized_images() {
+    let mut h = output_viewer_fixture();
+    assert!(ribbon::perform_job(&mut h.app, "render.result.copy").is_err());
+    assert!(h.app.render_workspace.clipboard_image.is_none());
+    assert!(decode_render_image(&[], 4097, 1, RenderLimits::default(), 4096).unwrap_err().contains("resource profile"));
+    assert!(decode_render_image(&[], 4096, 4096, RenderLimits::default(), 4096).unwrap_err().contains("resource profile"));
+    let first = completed_preview(&mut h, [12, 34, 56]);
+    h.app.render_workspace.view.completed = Some(first);
+    // A new queued render must not become the source for Copy.
+    ribbon::perform_job(&mut h.app, "render.start").unwrap();
+    ribbon::perform_job(&mut h.app, "render.result.copy").unwrap();
+    let image = h.app.render_workspace.clipboard_image.as_ref().unwrap();
+    assert_eq!(image.size, [16, 16]);
+    assert_eq!(image.pixels[0], egui::Color32::from_rgb(12, 34, 56));
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.frame();
+    assert!(h.app.render_workspace.clipboard_image.is_none());
+    assert!(h.output.commands.iter().any(|command| matches!(command, egui::OutputCommand::CopyImage(image) if image.size == [16,16])));
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
+}
+
+#[test]
+fn output_viewer_progress_keeps_stage_tools_and_cancel_cancels_without_closing_viewer() {
+    let mut h = output_viewer_fixture();
+    h.app.render_workspace.view.result = true;
+    ribbon::perform_job(&mut h.app, "render.start").unwrap();
+    let job = h.app.render_workspace.view.job.unwrap();
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:progress-pill").is_some());
+    assert!(crate::scenario::rect_of("render:stage:size").is_some());
+    assert!(crate::scenario::rect_of("render:hud").is_none());
+    h.step(&json!({"click":{"handle":"render:progress-cancel"}})).unwrap();
+    h.app.session.render_job_host().unwrap().pump(1024).unwrap();
+    assert_eq!(h.app.session.execute("render.status", &json!({"job":job})).unwrap()["progress"]["phase"], "cancelled");
+    assert!(h.app.render_workspace.view.result);
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:progress-pill").is_none());
+    h.app.run("view.render_stage", json!({"stage":"look"})).unwrap();
+    h.frames(3);
+    assert!(crate::scenario::handle_at("render:pick").is_some());
+}
+
+#[test]
+fn output_viewer_r_starts_active_setup_and_escape_returns_to_model_without_cancelling() {
+    let mut h = output_viewer_fixture();
+    h.app.render_workspace.view.name = "Active shot".into();
+    h.app.render_workspace.view.draft.width = 32;
+    h.app.render_workspace.view.draft.height = 24;
+    assert_eq!(crate::keymap::command_for(&h.app, "R"), Some("render.start"));
+    h.step(&json!({"key":"R"})).unwrap();
+    let job = h.app.render_workspace.view.job.unwrap();
+    assert_eq!(h.app.render_workspace.view.job_shot.as_deref(), Some("Active shot"));
+    let status = h.app.session.execute("render.status", &json!({"job":job})).unwrap();
+    assert_eq!(status["request"]["width"], 32);
+    assert_eq!(status["request"]["height"], 24);
+    // A repeated R while busy cannot fall through to Rectangle/Create Sketch.
+    h.step(&json!({"key":"R"})).unwrap();
+    assert_eq!(h.app.render_workspace.view.job, Some(job));
+    assert!(h.app.dialog.is_none() && h.app.tool.is_none());
+    h.app.run("render.result.view", json!({"view":"image"})).unwrap();
+    h.frames(2);
+    h.step(&json!({"key":"Escape"})).unwrap();
+    assert!(!h.app.render_workspace.view.result);
+    assert!(ribbon::busy(&h.app), "closing the image never cancels the job");
+    h.app.run("render.result.view", json!({"view":"image"})).unwrap();
+    h.app.viewport.nav = Some(crate::viewport::NavMode::Pan);
+    crate::keymap::press(&mut h.app, "Escape", false);
+    assert!(!h.app.render_workspace.view.result);
+    assert!(h.app.viewport.nav.is_none(), "closing the image releases its navigation capture");
+    enter(&mut h.app, false).unwrap();
+    assert_ne!(crate::keymap::command_for(&h.app, "R"), Some("render.start"));
+}
+
+/// Actual app controls and retained pixels, rasterized from egui without a window.
+#[test]
+fn output_viewer_evidence() {
+    let Some(dir) = std::env::var_os("SOLIDCRAFT_OUTPUT_EVIDENCE") else { return };
+    let dir = std::path::PathBuf::from(dir);
+    std::fs::create_dir_all(&dir).unwrap();
+    let previous = crate::theme::is_dark();
+    for dark in [false, true] {
+        let mut h = output_viewer_fixture();
+        h.app.run("solid.box", json!({"length":24,"width":18,"height":12})).unwrap();
+        inspector::fit_subject(&mut h.app).unwrap();
+        h.app.pending_fit = None;
+        h.app.cancel_view_animation();
+        h.app.preferences.render_inspector_width = 305.0;
+        h.app.run("render.output.size", json!({"width":1280,"height":720})).unwrap();
+        ribbon::perform_job(&mut h.app, "render.preflight").unwrap();
+        h.ctx = crate::fonts::test_context();
+        h.app.preferences.theme = if dark { "dark" } else { "light" }.into();
+        h.app.ui.dark = dark;
+        crate::theme::set_dark(dark);
+        crate::theme::apply(&h.ctx);
+        let bounds = egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(1440.0, 900.0));
+        let mut textures = std::collections::HashMap::new();
+        for (index, state) in ["settings", "check", "effects", "running", "completed"].into_iter().enumerate() {
+            if state == "check" {
+                inspector::reveal(&mut h.app, "render_output_check");
+                h.app.cancel_view_animation();
+                ribbon::perform_job(&mut h.app, "render.preflight").unwrap();
+            }
+            if state == "effects" {
+                select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
+                h.app.start("render.effects.describe");
+            }
+            if state == "running" {
+                select_image_method(&mut h.app, ImageMethod::Raster);
+                inspector::reveal(&mut h.app, "render_output_image");
+                // Retain a real first image while the next job makes bounded progress.
+                ribbon::perform_job(&mut h.app, "render.start").unwrap();
+                let host = h.app.session.render_job_host().unwrap().clone();
+                for _ in 0..1000 {
+                    if !host.pump(65536).unwrap() {
+                        break;
+                    }
+                }
+                cache_render_images(&mut h.app, &h.ctx);
+                assert!(h.app.render_workspace.view.completed.is_some());
+                h.app.run("render.result.view", json!({"view":"image"})).unwrap();
+                ribbon::perform_job(&mut h.app, "render.start").unwrap();
+                host.pump(327680).unwrap();
+                assert!(ribbon::busy(&h.app));
+            }
+            if state == "completed" {
+                let host = h.app.session.render_job_host().unwrap().clone();
+                for _ in 0..1000 {
+                    if !host.pump(65536).unwrap() {
+                        break;
+                    }
+                }
+            }
+            for frame in 0..10 {
+                let mut events = Vec::new();
+                if frame == 0 {
+                    events.push(egui::Event::PointerMoved(egui::pos2(700.0, 500.0)));
+                }
+                let mut input = egui::RawInput {
+                    screen_rect: Some(bounds),
+                    focused: true,
+                    time: Some((index * 10 + frame) as f64 / 60.0),
+                    events,
+                    ..Default::default()
+                };
+                h.app.raw_input_hook(&mut input);
+                let mut output = h.ctx.run_ui(input, |ui| {
+                    h.app.logic(ui.ctx());
+                    if state == "check" && frame == 9 {
+                        // Check the settled, scrolled view immediately before capturing it.
+                        ribbon::perform_job(&mut h.app, "render.preflight").unwrap();
+                    }
+                    h.app.ui(ui);
+                });
+                crate::ui_kit::update_test_textures(&mut textures, &output.textures_delta);
+                if frame == 9 {
+                    if state == "check" {
+                        for key in ["ready", "size", "transparency"] {
+                            assert!(crate::scenario::rect_of(&format!("render:check:{key}")).is_some(), "{key}");
+                        }
+                        assert!(h.app.render_workspace.view.job.is_none());
+                    }
+                    crate::ui_kit::raster_ui(&h.ctx, output.shapes.clone(), output.pixels_per_point, bounds, &textures)
+                        .save(dir.join(format!("output-{state}-{}.png", if dark { "dark" } else { "light" })))
+                        .unwrap();
+                }
+                output.textures_delta.clear();
+            }
+        }
+    }
+    crate::theme::set_dark(previous);
+}
+
+#[test]
+fn output_viewer_radial_defaults_keep_planned_actions_disabled() {
+    let h = output_viewer_fixture();
+    let expected = [
+        "render.start",
+        "appearance.assign",
+        "render.lights.add",
+        "render.settings.set",
+        "render.camera.fit",
+        "render.compare",
+        "ui.workspace.design",
+        "undo",
+    ];
+    assert_eq!(crate::mouse_gesture::Studio::Render.defaults(), expected);
+    for id in ["render.lights.add", "render.compare"] {
+        assert!(!crate::mouse_gesture::item(&h.app, id).unwrap().enabled);
+    }
+}
+
+#[test]
+fn output_viewer_presets_are_commands_with_limits_and_custom_keeps_the_size() {
+    let mut h = output_viewer_fixture();
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    for (key, expected) in [("720", (1280, 720)), ("1080", (1920, 1080)), ("square", (2048, 2048))] {
+        h.step(&json!({"click":{"handle":format!("render:preset:{key}")}})).unwrap();
+        assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), expected);
+    }
+    h.step(&json!({"click":{"handle":"render:preset:4k"}})).unwrap();
+    assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (2048, 2048));
+    h.step(&json!({"click":{"handle":"render:preset:custom"}})).unwrap();
+    assert!(h.app.render_workspace.view.inspector.resolution.custom);
+    assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (2048, 2048));
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
+    assert!(h.app.render_workspace.view.job.is_none());
+}
+
+#[test]
+fn output_viewer_has_sections_without_pages_or_footer_and_selected_row_routes_to_output() {
+    for dark in [false, true] {
+        let mut h = output_viewer_fixture();
+        h.app.preferences.theme = if dark { "dark" } else { "light" }.into();
+        h.app.ui.dark = dark;
+        h.call("ui.resize", json!({"width":1440,"height":900}));
+        h.frames(3);
+        for key in ["render.output_image", "render.output_effects", "render.output_check"] {
+            assert!(crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr(key))).is_some(), "{key}");
+        }
+        assert!(crate::scenario::rect_of("render:job-footer").is_none());
+        for page in ["output", "effects", "all"] {
+            assert!(crate::scenario::rect_of(&format!("render:page:{page}")).is_none());
+        }
+        let tools = crate::scenario::rect_of("render:stage_tools").unwrap();
+        for target in ["render:stage:size", "render:stage:check"] {
+            assert!(tools.contains_rect(crate::scenario::rect_of(target).unwrap()));
+        }
+        h.app.run("view.render_stage", json!({"stage":"look"})).unwrap();
+        h.frames(3);
+        assert!(crate::scenario::rect_of("render:output-width").is_some(), "selected Output keeps its editor when the stage changes");
+    }
 }
