@@ -886,7 +886,15 @@ fn render_card(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     let mut search_clicked = false;
     let content = crate::ui_kit::Panel::workspace_with_header(
         ui,
-        crate::ui_kit::WorkspaceOptions { id: "render:browser", title: &title, icon: "list", bounds, fill_height: true },
+        crate::ui_kit::WorkspaceOptions {
+            id: "render:browser",
+            title: &title,
+            icon: "list",
+            bounds: crate::ui_kit::Panel::stack_first_bounds(bounds),
+            fill_height: true,
+            enabled: true,
+            header_actions: None,
+        },
         &mut side,
         &mut width,
         true,
@@ -921,6 +929,9 @@ fn render_card(app: &mut SolveApp, ui: &mut egui::Ui, acts: &mut Actions) {
     );
     if let Some(rect) = rect {
         crate::scenario::publish_rect("browser:card", rect);
+        crate::render_workspace::appearances_card(app, ui, crate::ui_kit::Panel::stack_next_bounds(bounds, rect));
+    } else {
+        crate::shell::register_panel(app, "render:appearances", None, None);
     }
 }
 

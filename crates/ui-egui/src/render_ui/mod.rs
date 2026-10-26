@@ -7,7 +7,7 @@ use crate::{
 use egui::{Rect, vec2};
 
 pub(crate) fn reset_shell(app: &mut SolveApp) {
-    for id in ["render:inspector", "render:browser", "render:shots_strip", "render:shots:show"] {
+    for id in ["render:inspector", "render:browser", "render:appearances", "render:shots_strip", "render:shots:show"] {
         crate::shell::register_panel(app, id, None, None);
     }
 }

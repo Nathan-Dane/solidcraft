@@ -104,6 +104,78 @@ const ELEMENTS: &[Element] = &[
             [TreeAction { icon: "lookat", hover_only: true, label: "Solo", reason: Some("Not available yet"), target: "gallery:tree:solo" }];
         tree_row(ui, ui.id().with("tree_actions"), &Row { label: "Light", actions: &actions, ..Default::default() });
     }),
+    element!("catalog_scope", |ui, state| {
+        catalog_scope(ui, |ui| {
+            search_field(ui, ui.id().with("catalog_search"), &mut state.value, "Search appearances");
+            segmented(
+                ui,
+                &mut state.selected,
+                &["In Design", "Library", "Recent", "★"],
+                Segments { compact: true, proportional: true, workspace_accent: true, ..Default::default() },
+            );
+            ui.horizontal(|ui| {
+                choice_chip(ui, "catalog_all", "All", true);
+                choice_chip(ui, "catalog_metal", "Metal", false);
+            });
+            catalog_footer(ui, "Click to apply · drag onto the model");
+        });
+    }),
+    element!("catalog_footer", |ui, _| {
+        catalog_footer(ui, "Click to apply · drag onto the model");
+    }),
+    element!("sphere_thumbnail", |ui, _| {
+        ui.horizontal(|ui| {
+            for kind in [FinishKind::Matte, FinishKind::Satin, FinishKind::Gloss, FinishKind::Metal, FinishKind::Glass] {
+                sphere_thumbnail(
+                    ui,
+                    &format!("gallery:sphere:{kind:?}"),
+                    Sphere { color: Tokens::get().render_accent, kind, opacity: None },
+                    Tokens::get().space_24 * 2.0,
+                );
+            }
+        });
+    }),
+    element!("sphere_grid", |ui, _| {
+        let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };
+        let tiles = ["gallery:grid:a", "gallery:grid:b", "gallery:grid:c"].map(|id| SphereTile {
+            id,
+            name: "Satin",
+            sphere,
+            selected: id.ends_with('b'),
+            users: 1,
+            tip: "Satin",
+        });
+        sphere_grid(ui, &tiles);
+    }),
+    element!("sphere_tile", "gallery:tile", Some("gallery:tile"), |ui, _| {
+        SphereTile {
+            id: "gallery:tile",
+            name: "Satin metal",
+            sphere: Sphere { color: Tokens::get().render_accent, kind: FinishKind::Metal, opacity: None },
+            selected: true,
+            users: 3,
+            tip: "Satin metal",
+        }
+        .show(ui);
+    }),
+    element!("look_chain", "gallery:chain", Some("gallery:chain:body"), |ui, _| {
+        let t = Tokens::get();
+        look_chain(
+            ui,
+            "gallery:chain",
+            ["Face", "Body", "Component", "Material"],
+            [
+                None,
+                Some(Sphere { color: t.render_accent, kind: FinishKind::Satin, opacity: None }),
+                None,
+                Some(Sphere { color: t.control_border, kind: FinishKind::Metal, opacity: None }),
+            ],
+            LookStep::Body,
+        );
+    }),
+    element!("look_chain_empty", |ui, _| {
+        look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
+    }),
     element!("settings_form", |ui, state| {
         settings_form(ui, Tokens::get().form_label_width, |ui| {
             row(ui, "Sample", |ui| {
