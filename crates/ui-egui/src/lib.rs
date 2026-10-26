@@ -1029,6 +1029,9 @@ impl SolveApp {
             if id == "view.render_browser" {
                 render_workspace::apply_browser_controls(self, v);
             }
+            if id == "view.render_frame" {
+                render_workspace::shot::apply_frame(self, v);
+            }
             if id == "view.render_select" {
                 use render_workspace::RenderSelection;
                 let selected = match v.get("kind").and_then(Value::as_str) {

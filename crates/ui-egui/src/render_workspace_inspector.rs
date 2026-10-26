@@ -255,7 +255,13 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                             Page::Lighting => lighting_controls(app, ui),
                             Page::Environment => environment_controls(app, ui),
                             Page::Background => background_controls(app, ui),
-                            Page::Camera => camera_controls(app, ui),
+                            Page::Camera => {
+                                if let Some(shot) = super::shot::selected(app).map(str::to_owned) {
+                                    super::shot::editor(app, ui, &shot);
+                                } else {
+                                    camera_controls(app, ui);
+                                }
+                            }
                             Page::Output => output_controls(app, ui),
                             Page::Diagnostics => diagnostics(app, ui),
                             Page::All => {

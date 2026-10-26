@@ -109,6 +109,11 @@ input and introduce no repaint timer.
 
 ## Elements
 
+`aspect_grid` composes three-column `AspectTile` choices with token-sized aspect glyphs,
+selection tint and stable targets. `frame_guides` paints a bounded viewport mask, outline,
+thirds, a 90% safe area and a centre mark from `FrameGuides`. These are viewport decorations;
+callers exclude them from exported images and result canvases.
+
 Module names below describe implementation locations, not caller import paths.
 Every inline element/variant has one entry in the light/dark `gallery::ELEMENTS`
 table. Panel/Window/Confirm compositions also have dedicated geometry and interaction tests.
