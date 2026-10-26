@@ -7,7 +7,15 @@ use crate::{
 use egui::{Rect, vec2};
 
 pub(crate) fn reset_shell(app: &mut SolveApp) {
-    for id in ["render:inspector", "render:browser", "render:appearances", "render:shots_strip", "render:shots:show", "render:progress-pill"] {
+    for id in [
+        "render:inspector",
+        "render:browser",
+        "render:appearances",
+        "render:shots_strip",
+        "render:shots:show",
+        "render:progress-pill",
+        "render:compare-controls",
+    ] {
         crate::shell::register_panel(app, id, None, None);
     }
 }
@@ -171,6 +179,15 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
         crate::shell::register_panel(app, "render:progress-pill", None, None);
     }
     crate::viewport::nav_bar(app, ui, viewport);
+    crate::shell::register_panel(app, "render:compare-controls", None, None);
+    if !crate::render_workspace::result_active(app) && app.session.render_selected_result().is_some() {
+        let free = if crate::render_workspace::job_busy(app) { Container::below_navigation_row(free) } else { free };
+        let card =
+            Container::navigation_card(ui.ctx(), egui::Id::new("sc_render_compare_controls"), free.center_top(), egui::Align2::CENTER_TOP, |ui| {
+                crate::render_workspace::comparison_controls(app, ui)
+            });
+        crate::shell::register_panel(app, "render:compare-controls", Some(card.response.rect), None);
+    }
     shots_pill(app, ui, free);
 }
 

@@ -59,6 +59,15 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("comparison_divider", |ui, _| {
+        let (rect, _) = ui.allocate_exact_size(vec2(220.0, 100.0), egui::Sense::hover());
+        let mut position = 0.5;
+        comparison_divider(ui, rect, &mut position, "Comparison divider");
+    }),
+    element!("comparison_badge", |ui, _| {
+        let (rect, _) = ui.allocate_exact_size(vec2(220.0, 100.0), egui::Sense::hover());
+        comparison_badge(ui, rect, "Live preview", false);
+    }),
     element!("tree_row_rect", |ui, _| {
         for (index, row) in [
             Row { label: "Objects", ..Default::default() },
