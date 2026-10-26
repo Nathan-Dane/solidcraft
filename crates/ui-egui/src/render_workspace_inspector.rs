@@ -402,6 +402,7 @@ fn perform_action(app: &mut SolveApp, action: PendingAction) -> Result<(), Strin
     Ok(())
 }
 fn confirmation(app: &mut SolveApp, ctx: &egui::Context) {
+    super::shots::confirmation(app, ctx);
     let Some(pending) = app.render_workspace.view.inspector.pending.clone() else { return };
     if pending.revision != app.session.revision || !Weak::ptr_eq(&pending.document, &Arc::downgrade(&app.session.doc)) {
         app.render_workspace.view.inspector.pending = None;
@@ -649,6 +650,27 @@ pub(super) fn apply_camera_draft(app: &mut SolveApp, camera: solidcraft_engine::
 }
 
 fn camera_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    if super::shots::camera_modified(app, &app.render_workspace.view.name) {
+        ui_kit::banner(ui, ui_kit::AssistantTone::Warning, |ui| {
+            ui_kit::text(ui, app.tr("render.shots_camera_changed"), ui_kit::Text::Note("render.shots_camera_changed"));
+            ui.horizontal_wrapped(|ui| {
+                let update = ui_kit::primary_button(ui, app.tr("render.shots_update"));
+                crate::scenario::publish_target("render:shots:update", update.rect);
+                if update.clicked()
+                    && let Err(error) = super::shots::update_camera(app)
+                {
+                    app.set_status(error, true);
+                }
+                let revert = ui_kit::button(ui, app.tr("render.shots_revert"), ui_kit::Button::Normal);
+                crate::scenario::publish_target("render:shots:revert", revert.rect);
+                if revert.clicked()
+                    && let Err(error) = restore_camera(app)
+                {
+                    app.set_status(error, true);
+                }
+            });
+        });
+    }
     ui_kit::text(ui, app.tr("render.camera_exact_help"), ui_kit::Text::Note("render.camera_exact_help"));
     let before = app.cam;
     let mut camera = before;
@@ -741,7 +763,7 @@ fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         ui_kit::text(ui, app.tr("render.output_ratio_refused"), ui_kit::Text::Error("render.output_ratio_refused"));
     }
     ui.horizontal_wrapped(|ui| {
-        for (label, width, height) in [("HD", 1280, 720), ("Full HD", 1920, 1080), ("4K UHD", 3840, 2160)] {
+        for (label, width, height) in super::shots::SIZE_PRESETS {
             if ui_kit::button(ui, label, ui_kit::Button::Normal).clicked() {
                 app.render_workspace.view.draft.width = width;
                 app.render_workspace.view.draft.height = height;
@@ -1116,7 +1138,7 @@ fn camera_actions(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn confirmation_open(app: &SolveApp) -> bool {
-    app.render_workspace.view.inspector.pending.is_some()
+    app.render_workspace.view.inspector.pending.is_some() || app.render_workspace.view.save_shot_name.is_some()
 }
 pub(super) fn reveal(app: &mut SolveApp, section: &'static str) {
     app.render_workspace.view.inspector.reveal = Some(section);
