@@ -595,8 +595,8 @@ fn clicked_render_workspace_saves_one_setup_and_restores_design_view() {
         let perspective = h.app.tr("render.perspective").to_string();
         let save = h.app.tr("render.save_setup").to_string();
         let back = h.app.tr("render.return_design").to_string();
+        h.step(&json!({"click":{"handle":"render:stage:frame"}})).unwrap();
         assert!(h.widget(&heading).is_some(), "{language}");
-        h.step(&json!({"click":{"handle":"render:page:camera"}})).unwrap();
         h.step(&json!({"widget":perspective})).unwrap();
         assert!(!h.app.session.is_dirty(), "preview edits are staged");
         h.step(&json!({"widget":save})).unwrap();
@@ -2064,7 +2064,7 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
     let open_section = |h: &mut Harness, handle: String| {
         for _ in 0..4 {
             let at = crate::scenario::handle_at(&handle).unwrap();
-            let top = crate::scenario::rect_of("render:page:all").unwrap().bottom() + Tokens::get().space_8;
+            let top = crate::scenario::rect_of("render:inspector:header").unwrap().bottom() + Tokens::get().space_8;
             let bottom = crate::scenario::rect_of("render:job-footer").unwrap().top() - Tokens::get().space_8;
             if (top..=bottom).contains(&at.y) {
                 break;
@@ -2857,8 +2857,8 @@ fn render_workspace_stage_chips_dispatch_without_mutations_and_remember_each_doc
         assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
         assert!(h.app.render_workspace.view.job.is_none());
         assert!(h.app.render_workspace.view.completed.is_none());
-        // Stage selection focuses pages; it does not remove the other editors.
-        h.step(&json!({"click":{"handle":"render:page:diagnostics"}})).unwrap();
+        // Stage selection preserves access to the other command-driven editors.
+        h.app.start("render.status");
         h.frames(2);
         assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Diagnostics);
     }
@@ -3137,13 +3137,13 @@ fn render_workspace_hosts_float_and_shield_input_in_both_ribbon_layouts() {
             } else if key == "render:appearances" {
                 "render:library-search"
             } else {
-                "render:page:output"
+                "dialog:editor_footer"
             })
             .unwrap();
             if key == "render:browser" {
                 assert!(header.contains_rect(control), "Scene lens belongs in the title band");
             } else {
-                assert!(control.top() >= header.bottom(), "navigation must be below the standard header: {control:?} {header:?}");
+                assert!(control.top() >= header.bottom(), "editor controls must be below the standard header: {control:?} {header:?}");
             }
         }
 

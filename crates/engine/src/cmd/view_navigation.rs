@@ -26,6 +26,9 @@ CommandSpec::new("view.navigation_bar", "Navigation bar", navigation_bar)
 CommandSpec::new("view.render_browser", "Render Browser", render_browser)
     .icon("list").noundo().doc_only()
     .params("by_look?: bool; search?: bool; query?: string (up to 1024 bytes) → validated transient Browser controls; never edits the design or opens a dialog"),
+CommandSpec::new("view.render_inspector", "Render Inspector", render_inspector)
+    .icon("inspect").noundo().doc_only()
+    .params("visible: bool → {visible}; per-document Inspector visibility; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_select", "Render selection", render_select)
     .icon("select").noundo().doc_only()
     .params("kind: nothing|environment|light|shot|output; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
@@ -275,6 +278,16 @@ fn render_stage(_s: &mut Session, p: &Value) -> Result<Value> {
         return Err(bad("stage", "expected look, light, frame or output"));
     }
     Ok(json!({"stage":request.stage}))
+}
+
+fn render_inspector(_s: &mut Session, p: &Value) -> Result<Value> {
+    #[derive(serde::Deserialize)]
+    #[serde(deny_unknown_fields)]
+    struct Request {
+        visible: bool,
+    }
+    let request: Request = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_inspector", e.to_string()))?;
+    Ok(json!({"visible":request.visible}))
 }
 
 fn shots_strip(_s: &mut Session, p: &Value) -> Result<Value> {
@@ -1029,4 +1042,20 @@ fn render_browser_controls_validate_without_document_changes_or_evaluation() {
     }
     assert!(std::sync::Arc::ptr_eq(&document, &session.doc));
     assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
+}
+
+#[test]
+fn render_inspector_visibility_is_validated_without_mutation() {
+    let mut session = Session::default();
+    let before = session.doc.to_json();
+    let revision = session.revision;
+    for visible in [false, true] {
+        assert_eq!(session.execute("view.render_inspector", &json!({"visible":visible})).unwrap(), json!({"visible":visible}));
+    }
+    for value in [json!({}), json!({"visible":null}), json!({"visible":"false"}), json!({"visible":true,"extra":1})] {
+        assert!(session.execute("view.render_inspector", &value).is_err());
+    }
+    assert_eq!(session.doc.to_json(), before);
+    assert_eq!(session.revision, revision);
+    assert!(session.undo.is_empty());
 }

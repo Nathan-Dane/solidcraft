@@ -72,6 +72,35 @@ const ELEMENTS: &[Element] = &[
             assert_eq!(tree_row(ui, ui.id().with(("tree_geometry", index)), row).rect, Some(rect));
         }
     }),
+    element!("editor_section", |ui, _| {
+        editor_section(ui, "edit", "Edit", true, |ui| {
+            text(ui, "Colour", Text::Inline);
+        });
+    }),
+    element!("pending_section", |ui, _| {
+        pending_section(ui, "upcoming", "Textures", "Soon");
+    }),
+    element!("inspector_header", |ui, _| {
+        inspector_header(ui, "body", "Boss", "Body");
+    }),
+    element!("workspace_chip", |ui, _| {
+        workspace_chip(ui, "Body");
+    }),
+    element!("section_heading", |ui, _| {
+        section_heading(ui, "Edit");
+    }),
+    element!("text_button", |ui, _| {
+        text_button(ui, "Reset", true);
+    }),
+    element!("color_hex_field", |ui, _| {
+        color_hex_field(ui, &mut [52, 92, 160], None);
+    }),
+    element!("mixed_slider", |ui, _| {
+        mixed_slider(ui, &mut 0.5, 0.0..=1.0, None);
+    }),
+    element!("searchable_icon_dropdown", |ui, _| {
+        searchable_icon_dropdown(ui, "spin", "Replace…", &mut String::new(), &[]);
+    }),
     element!("icon_label_action", |ui, _| {
         icon_label_action(ui, "Render Image", Some("play"), true, true);
     }),
@@ -141,6 +170,20 @@ const ELEMENTS: &[Element] = &[
                 );
             }
         });
+    }),
+    element!("sphere_preview", |ui, _| {
+        sphere_preview(
+            ui,
+            "gallery:preview",
+            Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None },
+            "Satin",
+            ["Library", "Used by 2"],
+            |ui| searchable_icon_dropdown(ui, "spin", "Replace…", &mut String::new(), &[]),
+        );
+    }),
+    element!("mixed_scalar_field", |ui, _| {
+        let mut value = 0.5;
+        mixed_scalar_field(ui, &mut value, 0.0..=1.0, Some("Mixed"));
     }),
     element!("sphere_grid", |ui, _| {
         let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };

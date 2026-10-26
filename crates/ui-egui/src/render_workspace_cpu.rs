@@ -322,6 +322,7 @@ pub(super) fn params(app: &SolveApp, params: &mut Value) -> Result<(), String> {
     Ok(())
 }
 
+#[cfg(test)]
 pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     for (id, key, section) in [
         ("render_cpu_reflections", "render.cpu_reflections", 0),

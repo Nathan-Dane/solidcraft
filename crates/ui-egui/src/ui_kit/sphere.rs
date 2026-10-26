@@ -175,6 +175,39 @@ pub fn sphere_thumbnail(ui: &mut Ui, id: &str, sphere: Sphere, size: f32) -> Res
     response
 }
 
+/// Inspector sample card. Content, chips and action reuse the kit's existing
+/// controls; dimensions and the bordered card belong here rather than callers.
+pub(crate) fn sphere_preview<R>(ui: &mut Ui, id: &str, sphere: Sphere, name: &str, chips: [&str; 2], action: impl FnOnce(&mut Ui) -> R) -> R {
+    let t = Tokens::get();
+    super::reports::list_frame_filled(ui, id, t.dialog_footer, t.space_10, |ui| {
+        let row = ui.horizontal(|ui| {
+            let side = t.control_height * 2.0 - t.space_8;
+            sphere_thumbnail(ui, id, sphere, side);
+            let text_width = (ui.available_width() - t.control_height - t.space_16).max(0.0);
+            ui.allocate_ui_with_layout(vec2(text_width, side), egui::Layout::top_down(egui::Align::Min), |ui| {
+                ui.spacing_mut().item_spacing.y = t.space_4;
+                ui.add_sized(
+                    vec2(text_width, t.space_16),
+                    egui::Label::new(egui::RichText::new(name).font(crate::fonts::semibold(t.font_label)).color(t.form_ink))
+                        .truncate()
+                        .halign(egui::Align::Min),
+                )
+                .on_hover_text(name);
+                ui.horizontal(|ui| {
+                    let source = super::text(ui, chips[0], super::Text::Inline);
+                    scenario::publish_rect(&format!("{id}:chip:0"), source.rect);
+                    let response = super::workspace_chip(ui, chips[1]);
+                    scenario::publish_rect(&format!("{id}:chip:1"), response.rect);
+                });
+            });
+            let response = ui.vertical(action);
+            scenario::publish_target(&format!("{id}:replace"), response.response.rect);
+            response.inner
+        });
+        row.inner
+    })
+}
+
 /// A catalog sample: 48 pt sphere in a 56 pt cell, two-line caption and optional
 /// usage badge. The surrounding chrome follows the active workspace accent.
 pub(crate) struct SphereTile<'a> {
