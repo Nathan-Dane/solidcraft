@@ -144,7 +144,7 @@ pub(super) fn tone_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         ToneMap::Reinhard => "Reinhard",
         ToneMap::AcesFitted => "ACES fitted",
     };
-    ui_kit::dropdown_menu(ui, "render_tone_map", label, |ui| {
+    let response = ui_kit::dropdown_menu(ui, "render_tone_map", label, |ui| {
         for (map, label) in [(ToneMap::Reinhard, "Reinhard"), (ToneMap::AcesFitted, "ACES fitted")] {
             if ui_kit::list_picker(ui, label, label, map == selected).clicked() {
                 app.render_workspace.view.studio.tone_map = map;
@@ -152,6 +152,7 @@ pub(super) fn tone_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
         }
     });
+    crate::scenario::publish_target("render:tone-map", response.rect);
     let denoise = app.tr("render.studio_denoise").to_string();
     ui_kit::checkbox(ui, &denoise, &mut app.render_workspace.view.studio.denoise);
     if app.render_workspace.view.studio.denoise {
@@ -307,10 +308,45 @@ pub(super) fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 
 /// Presentation is opt-in; raw radiance and engineering appearance stay untouched.
 pub(super) fn post_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let title = app.tr("render.post_title").to_string();
+    let before = app.render_workspace.view.studio.finishing;
+    bloom_controls(app, ui);
+    grading_controls(app, ui);
+    regrade_controls(app, ui);
+    app.render_workspace.view.dirty |= before != app.render_workspace.view.studio.finishing;
+}
+
+pub(super) fn bloom_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let mut enabled = app.render_workspace.view.studio.finishing.bloom.is_some();
+    let label = app.tr("render.bloom_enable").to_string();
+    let toggle = ui_kit::checkbox(ui, &label, &mut enabled);
+    crate::scenario::publish_target("render:bloom-enable", toggle.rect);
+    if toggle.changed() {
+        app.render_workspace.view.studio.finishing.bloom =
+            enabled.then_some(solidcraft_engine::render::job::bloom::Bloom { strength: 0.15, ..Default::default() });
+    }
+    if enabled {
+        for key in ["render.bloom_strength", "render.bloom_threshold", "render.bloom_radius"] {
+            let label = app.tr(key).to_string();
+            if let Some(bloom) = &mut app.render_workspace.view.studio.finishing.bloom {
+                let response = ui_kit::row(ui, &label, |ui| match key {
+                    "render.bloom_strength" => ui_kit::number_field(ui, &mut bloom.strength, 0.0..=2.0, 0.01, ""),
+                    "render.bloom_threshold" => ui_kit::number_field(ui, &mut bloom.threshold, 0.0..=1e6, 0.05, ""),
+                    _ => ui_kit::number_field(ui, &mut bloom.radius, 1..=64, 1.0, " px"),
+                });
+                crate::scenario::publish_target(key, response.rect);
+            }
+        }
+        ui_kit::text(ui, app.tr("render.bloom_help"), ui_kit::Text::Note("render.bloom_help"));
+        if app.render_workspace.view.transparent {
+            ui_kit::text(ui, app.tr("render.bloom_opaque"), ui_kit::Text::Error("render.bloom_opaque"));
+        }
+    }
+}
+
+pub(super) fn grading_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let title = app.tr("render.output_grading").to_string();
     ui_kit::section(ui, "render_post_filters", &title, false, |ui| {
         ui_kit::text(ui, app.tr("render.post_help"), ui_kit::Text::Note("render.post_help"));
-        let before = app.render_workspace.view.studio.finishing;
         for (channel, key) in ["render.post_gain_r", "render.post_gain_g", "render.post_gain_b"].into_iter().enumerate() {
             let label = app.tr(key).to_string();
             let Some(value) = app.render_workspace.view.studio.finishing.rgb_gain.get_mut(channel) else {
@@ -330,40 +366,15 @@ pub(super) fn post_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             let r = ui_kit::row(ui, &label, |ui| ui_kit::number_field(ui, value, range, 0.01, ""));
             crate::scenario::publish_target(key, r.rect);
         }
-        let mut enabled = app.render_workspace.view.studio.finishing.bloom.is_some();
-        let label = app.tr("render.bloom_enable").to_string();
-        let toggle = ui_kit::checkbox(ui, &label, &mut enabled);
-        crate::scenario::publish_target("render:bloom-enable", toggle.rect);
-        if toggle.changed() {
-            app.render_workspace.view.studio.finishing.bloom =
-                enabled.then_some(solidcraft_engine::render::job::bloom::Bloom { strength: 0.15, ..Default::default() });
-        }
-        if enabled {
-            for key in ["render.bloom_strength", "render.bloom_threshold", "render.bloom_radius"] {
-                let label = app.tr(key).to_string();
-                if let Some(bloom) = &mut app.render_workspace.view.studio.finishing.bloom {
-                    let response = ui_kit::row(ui, &label, |ui| match key {
-                        "render.bloom_strength" => ui_kit::number_field(ui, &mut bloom.strength, 0.0..=2.0, 0.01, ""),
-                        "render.bloom_threshold" => ui_kit::number_field(ui, &mut bloom.threshold, 0.0..=1e6, 0.05, ""),
-                        _ => ui_kit::number_field(ui, &mut bloom.radius, 1..=64, 1.0, " px"),
-                    });
-                    crate::scenario::publish_target(key, response.rect);
-                }
-            }
-            ui_kit::text(ui, app.tr("render.bloom_help"), ui_kit::Text::Note("render.bloom_help"));
-            if app.render_workspace.view.transparent {
-                ui_kit::text(ui, app.tr("render.bloom_opaque"), ui_kit::Text::Error("render.bloom_opaque"));
-            }
-        }
         let reset = ui_kit::button(ui, app.tr("render.post_reset"), ui_kit::Button::Normal);
         crate::scenario::publish_target("render:post-reset", reset.rect);
         if reset.clicked() {
             app.render_workspace.view.studio.finishing = Default::default();
         }
-        if before != app.render_workspace.view.studio.finishing {
-            app.render_workspace.view.dirty = true;
-        }
     });
+}
+
+pub(super) fn regrade_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let regrade = ui_kit::button(
         ui,
         app.tr("render.regrade_action"),

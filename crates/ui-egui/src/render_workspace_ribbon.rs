@@ -125,7 +125,13 @@ pub(super) fn perform_job(app: &mut SolveApp, id: &str) -> Result<(), String> {
     match id {
         "render.preflight" => {
             let request = super::image_params(app)?;
-            let reply = app.run(id, request.clone())?;
+            let reply = match app.run(id, request.clone()) {
+                Ok(reply) => reply,
+                Err(error) => {
+                    inspector::record_check(app, &request, &json!({"error":error}));
+                    return Err(error);
+                }
+            };
             cpu::record_checked(app, &request, &reply);
             inspector::record_check(app, &request, &reply);
             app.set_status(app.tr("render.image_supported").to_string(), false);

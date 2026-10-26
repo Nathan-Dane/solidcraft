@@ -390,17 +390,27 @@ lock rows or prevent manual expansion.
 The Output stage offers size, format, quality and a Check summary in the stage bar's
 second row. Its lower-left Size presets card offers Preview (1280 × 720), Full HD,
 4K, Square and Custom. Presets outside the selected executor's limits stay visible
-with a disabled explanation. Custom retains the current size and reveals its fields.
-Numerical size edits and presets use `render.output.size`; they never save a shot
-or start a job.
+with a disabled explanation showing the selected method's dimension/pixel limits and
+largest fitting size. The default raster limit is 4,194,304 pixels, so 4K exceeds it;
+methods with larger resource profiles can admit 4K. Custom retains the current size
+and reveals its fields through `render.output.size`. Numerical size edits and preset
+clicks patch width and height with `render.settings.set`, as one undo step. Opening
+the panel never applies a preset or starts a job.
 
 Selecting Output in the Browser shows one editor with Image, Effects and Check
 sections, without page navigation or pinned job actions. Image retains size/aspect,
 format, sampling, method, transparency and export destination controls. Effects owns
-tone, bloom, grading and regrade. Check retains the preflight list, freshness checks,
+bloom, tone mapping, grading and regrade, in that order. Effect edits patch the saved
+job with `render.settings.set`; opening Effects does not save anything. Check retains the preflight list, freshness checks,
 installed backend/status metadata and expandable diagnostics. Named quality presets
 and EXR settings remain unavailable with their existing reasons. Destination selection
 uses the existing completed-image export picker.
+
+Run check and the stage bar's Check button run the read-only `render.preflight`,
+without admitting a job. Success, warning and failure rows use the shared status
+glyphs and theme colours. Copy report runs `render.preflight.copy` and queues text
+through the same platform clipboard path as the result viewer's image Copy; a
+headless call only validates and echoes its bounded text.
 
 Render and Cancel stay in the stage bar. Active jobs also show a single-row progress
 pill with Cancel. The result viewer retains Copy, export, close, Fit/100% and shared

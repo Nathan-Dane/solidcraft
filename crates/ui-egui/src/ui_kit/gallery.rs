@@ -146,6 +146,9 @@ const ELEMENTS: &[Element] = &[
     element!("check_line_warning", |ui, _s| {
         check_line(ui, "gallery:check_warning", "Transparency approximation", true);
     }),
+    element!("check_line_error", |ui, _s| {
+        check_status_line(ui, "gallery:check_error", "Image size exceeds the renderer limit", CheckStatus::Error);
+    }),
     element!("segmented_unavailable", |ui, s| {
         segmented(
             ui,

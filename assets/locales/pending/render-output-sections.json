@@ -1,0 +1,42 @@
+{
+  "en": {
+    "cmd.render_preflight_copy": "Copy Render Check Report",
+    "render.output_check_failed": "Check · error",
+    "render.output_copy_report": "Copy report",
+    "render.output_grading": "Grading",
+    "render.output_run_check": "Run check",
+    "render.output_size_limit": "{method}: up to {dimension} px per side and {pixels} pixels. Largest fitting size: {width} × {height}."
+  },
+  "de": {
+    "cmd.render_preflight_copy": "Render-Prüfbericht kopieren",
+    "render.output_check_failed": "Prüfung · Fehler",
+    "render.output_copy_report": "Bericht kopieren",
+    "render.output_grading": "Farbkorrektur",
+    "render.output_run_check": "Prüfung starten",
+    "render.output_size_limit": "{method}: bis zu {dimension} px pro Seite und {pixels} Pixel. Größte passende Größe: {width} × {height}."
+  },
+  "ja": {
+    "cmd.render_preflight_copy": "レンダーチェックレポートをコピー",
+    "render.output_check_failed": "チェック · エラー",
+    "render.output_copy_report": "レポートをコピー",
+    "render.output_grading": "カラーグレーディング",
+    "render.output_run_check": "チェックを実行",
+    "render.output_size_limit": "{method}：各辺 {dimension} px、合計 {pixels} ピクセルまで。対応する最大サイズ：{width} × {height}。"
+  },
+  "ko": {
+    "cmd.render_preflight_copy": "렌더 검사 보고서 복사",
+    "render.output_check_failed": "검사 · 오류",
+    "render.output_copy_report": "보고서 복사",
+    "render.output_grading": "색 보정",
+    "render.output_run_check": "검사 실행",
+    "render.output_size_limit": "{method}: 한 변 최대 {dimension} px, 총 {pixels} 픽셀. 가능한 최대 크기: {width} × {height}."
+  },
+  "zh": {
+    "cmd.render_preflight_copy": "复制渲染检查报告",
+    "render.output_check_failed": "检查 · 错误",
+    "render.output_copy_report": "复制报告",
+    "render.output_grading": "调色",
+    "render.output_run_check": "运行检查",
+    "render.output_size_limit": "{method}：每边最多 {dimension} px，总计 {pixels} 像素。可用的最大尺寸：{width} × {height}。"
+  }
+}

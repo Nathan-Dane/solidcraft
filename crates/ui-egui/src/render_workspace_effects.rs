@@ -1,6 +1,6 @@
 //! Shared-kit layered weathering and photographic presentation editors.
-//! Numerical edits remain one render draft until the ordinary Save action.
-use super::{ImageMethod, materials, studio};
+//! Output presentation edits patch the saved job; legacy master controls retain their draft.
+use super::{ImageMethod, materials, setups, studio};
 use crate::{SolveApp, ui_kit};
 use solidcraft_engine::render::job::{
     aging::{AgingKind, AgingLayer, SurfaceClass},
@@ -195,13 +195,15 @@ pub(super) fn presentation_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if !gpu(app, ui) {
         return;
     }
+    let presentation_before = super::ribbon::presentation(app);
+    studio::bloom_controls(app, ui);
     studio::tone_controls(app, ui);
-    note(app, ui, "render.effects_help");
+    studio::grading_controls(app, ui);
     let mut editor = std::mem::take(&mut app.render_workspace.view.inspector.effects);
     let before = app.render_workspace.view.studio.finishing;
     let mut finish = before;
     let title = app.tr("render.look_title").to_string();
-    ui_kit::section(ui, "render_creative_looks", &title, true, |ui| {
+    ui_kit::section(ui, "render_creative_looks", &title, false, |ui| {
         let add = ui_kit::dropdown_menu(ui, "render_look_add", app.tr("render.look_add"), |ui| {
             for (index, kind) in LookKind::ALL.into_iter().enumerate() {
                 if ui_kit::list_picker(ui, &format!("look-add-{index}"), app.tr(kind.key()), false).clicked() {
@@ -243,7 +245,7 @@ pub(super) fn presentation_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
     });
     let title = app.tr("render.lens_effects_title").to_string();
-    ui_kit::section(ui, "render_photographic_effects", &title, true, |ui| {
+    ui_kit::section(ui, "render_photographic_effects", &title, false, |ui| {
         let photo = &mut finish.photographic;
         for key in [
             "render.flare_strength",
@@ -283,5 +285,29 @@ pub(super) fn presentation_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         app.render_workspace.view.dirty = true;
     }
     app.render_workspace.view.inspector.effects = editor;
-    studio::post_controls(app, ui);
+    studio::regrade_controls(app, ui);
+    app.render_workspace.view.dirty |= presentation_before != super::ribbon::presentation(app);
+}
+
+/// Output edits save one numerical job patch; merely revealing Effects is read-only.
+/// Keep the legacy master page's draft editor available until selection dispatch replaces it.
+pub(super) fn output_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let before = app.render_workspace.view.studio.clone();
+    let dirty = app.render_workspace.view.dirty;
+    presentation_controls(app, ui);
+    let after = &app.render_workspace.view.studio;
+    if (before.finishing, before.tone_map, before.denoise, before.linear_exr) == (after.finishing, after.tone_map, after.denoise, after.linear_exr) {
+        return;
+    }
+    let result = setups::snapshot(app).and_then(|setup| {
+        let name = app.render_workspace.view.name.clone();
+        app.run("render.settings.set", serde_json::json!({"name":name,"set":{"job":setup.job}})).map(|_| ())
+    });
+    if let Err(error) = result {
+        app.render_workspace.view.studio = before;
+        app.render_workspace.view.dirty = dirty;
+        app.set_status(error, true);
+    } else {
+        app.render_workspace.view.dirty = true;
+    }
 }
