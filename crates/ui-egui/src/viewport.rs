@@ -2793,7 +2793,7 @@ fn hit_candidate(app: &SolveApp, h: &Hit) -> Option<(Hit, Sel)> {
 
 /// Use the Browser's exact occurrence identity, including nested/repeated placements.
 /// Root bodies have no occurrence row, so retain their body identity.
-fn component_selection(app: &SolveApp, body: &str) -> Sel {
+pub(crate) fn component_selection(app: &SolveApp, body: &str) -> Sel {
     let doc = app.session.placed_document();
     let state = app.session.world_state();
     if let Some(b) = state.body(body) {
@@ -3064,6 +3064,7 @@ fn highlight_geometry_key(app: &SolveApp) -> u64 {
     app.session.active_component.hash(&mut h);
     app.session.active_occurrence_path.hash(&mut h);
     app.ui.visual_style.hash(&mut h);
+    crate::render_workspace::assign::preview_key(app).hash(&mut h);
     app.ui.pick_bodies.hash(&mut h);
     app.ui.pick_components.hash(&mut h);
     crate::render_workspace::active(app).hash(&mut h);
@@ -3310,13 +3311,14 @@ pub(crate) fn build_highlight(app: &SolveApp) -> GpuScene {
         }
     }
     // Component hover expands through the same occurrence selection as a Browser row.
-    let component_hover = app
-        .viewport
-        .hover
-        .as_ref()
-        .filter(|h| app.ui.pick_components && matches!(h, Hit::Face { .. }))
-        .and_then(|h| hit_candidate(app, h))
-        .map(|(_, s)| displayed_selection(app, &s));
+    let component_hover = crate::render_workspace::assign::hover(app).map(|sel| displayed_selection(app, sel)).or_else(|| {
+        app.viewport
+            .hover
+            .as_ref()
+            .filter(|h| app.ui.pick_components && matches!(h, Hit::Face { .. }))
+            .and_then(|h| hit_candidate(app, h))
+            .map(|(_, s)| displayed_selection(app, &s))
+    });
     let hover = app.viewport.hover.as_ref().filter(|_| component_hover.is_none());
     let size = origin_size(app.cam.half_height());
     if !product {
@@ -4606,7 +4608,7 @@ const STATUS_TOAST_MS: f64 = 6000.0;
 
 /// A single visual pattern for ongoing work, the existing six-second status and the 3D mouse
 /// calibration offer, stacked from the bottom of the free view. Returns the toasts' rects.
-fn transient_messages(app: &mut SolveApp, ui: &egui::Ui, viewport: Rect) -> Vec<Rect> {
+pub(crate) fn transient_messages(app: &mut SolveApp, ui: &egui::Ui, viewport: Rect) -> Vec<Rect> {
     // Nothing to show or time: an idle window skips the layout. The offer is checked too, as its clock
     // runs from the frames `due` sees.
     if app.status.is_none()
@@ -4643,21 +4645,24 @@ fn transient_messages(app: &mut SolveApp, ui: &egui::Ui, viewport: Rect) -> Vec<
     if let Some((msg, at, error)) = app.status.clone() {
         let shown_ms = crate::now_ms() - at;
         if shown_ms < STATUS_TOAST_MS {
-            if let Some(r) = paint_toast(ui, free, msg, error, false) {
+            let undo = app.status_undo;
+            let actions = if undo { vec![(crate::i18n::tr_label("Undo"), ToastKind::Secondary)] } else { Vec::new() };
+            if let Some((r, clicked)) = paint_toast_with(ui, free, msg, ToastLead::Dot(error), &actions) {
+                if undo && clicked == Some(0) {
+                    app.status = None;
+                    app.status_undo = false;
+                    let _ = app.run("edit.undo", json!({}));
+                }
                 obstacles.push(r);
                 crate::scenario::publish_rect("toast", r);
                 free.max.y = r.top() - t.space_8;
                 shown.push(r);
                 // Open the run's messages from the tokenised status toast.
                 crate::scenario::publish_handle("status:chip", r.center());
-                let hint = if app.status_undo { crate::i18n::tr_label("Undo") } else { crate::i18n::tr("messages.chip_hint") };
-                if ui.interact(r, egui::Id::new("sc_status_chip"), Sense::click()).on_hover_text(hint).clicked() {
-                    if app.status_undo {
-                        app.status = None;
-                        let _ = app.run("edit.undo", json!({}));
-                    } else {
-                        app.messages.open = true;
-                    }
+                if !undo
+                    && ui.interact(r, egui::Id::new("sc_status_chip"), Sense::click()).on_hover_text(crate::i18n::tr("messages.chip_hint")).clicked()
+                {
+                    app.messages.open = true;
                 }
             }
             // One frame when it is due to go, not a frame every half second while it shows.
@@ -5407,7 +5412,7 @@ pub(crate) fn scene_palette(dark: bool, mode: crate::theme::ColorVision) -> soli
 
 pub(crate) fn refresh_layout(app: &mut SolveApp, scale: f32) {
     if let Some(rect) = app.viewport.rect {
-        let docks = crate::shell::covered_rects(app);
+        let docks = crate::shell::fit_rects(app);
         let mut content = crate::shell::content_rect(app, rect);
         // The full-height Assistant reserves control space, while rendering and picking
         // keep the original viewport projection. Ordinary feature dialogs do not move controls.

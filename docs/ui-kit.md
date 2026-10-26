@@ -36,6 +36,10 @@ rules. Its compass is 110 pt; the 48 pt Shots strip clears the docks by 8 pt.
   scans new crates/apps automatically, including macro bodies and alias chains. See the [container audit and migration inventory](ui-container-audit.md).
 
 - Colours, typography, dimensions and spacing come from `theme::Tokens`.
+- `Container::selection_card` extends the navigation host with a bounded, rounded
+  selection pill. `selection_actions` composes its name chip and quiet icon actions;
+  callers supply command data and dispatch the chosen action. `Container::tooltip`
+  shares the library samples' tooltip frame and padding.
 - Sliders only via `ui_kit::slider`; `Slider` options change behaviour, never appearance.
   Raw sliders and duplicate track/thumb painters are forbidden in the UI and apps.
 - `scope(ui, add)` supplies form styling. `row(ui, label, add)` aligns labels and

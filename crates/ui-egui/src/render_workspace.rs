@@ -37,6 +37,9 @@ mod inspector;
 #[path = "render_workspace_library.rs"]
 mod library;
 
+#[path = "render_ui/assign.rs"]
+pub(crate) mod assign;
+
 #[path = "render_workspace_materials.rs"]
 mod materials;
 
@@ -266,6 +269,7 @@ pub enum RenderSelection {
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.
 #[derive(Clone, Debug)]
 pub struct ViewState {
+    pub(crate) assign: assign::State,
     job_shot: Option<String>,
     save_shot_name: Option<String>,
     pub name: String,
@@ -327,6 +331,7 @@ impl ImageMethod {
 impl Default for ViewState {
     fn default() -> Self {
         Self {
+            assign: assign::State::default(),
             job_shot: None,
             save_shot_name: None,
             name: "Studio".into(),
@@ -567,6 +572,7 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
         #[cfg(not(target_arch = "wasm32"))]
         app.render_workspace.start_deferred_path_host();
     } else {
+        assign::stop(app);
         if let Some((camera, perspective)) = app.render_workspace.design_camera.take() {
             app.cam = camera;
             app.ui.up_axis = camera.up;
@@ -1691,6 +1697,7 @@ pub fn preview_size(executor: Option<&ExecutorDescriptor>, full: (u64, u64)) -> 
 
 pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if app.render_workspace.view.result {
+        assign::stop(app);
         show_result(app, ui);
         return;
     }
@@ -1714,12 +1721,24 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         .filter(|_| input.inside && !navigating)
         .map(|p| crate::viewport::pick_cached(app, &crate::viewport::projection(app, rect), p))
         .unwrap_or_default();
-    let candidate = crate::viewport::candidate(app, &hits);
+    let candidate = assign::candidate(app, &hits, input.mods);
     app.viewport.hover = candidate.as_ref().map(|(hit, _)| hit.clone());
-    if response.clicked_by(egui::PointerButton::Primary) && input.inside && !navigating {
+    let assigning = assign::input(app, ui, &response, candidate.as_ref(), input.inside && !navigating);
+    if !assigning && input.inside && !navigating {
+        assign::hover_tooltip(app, &response, candidate.as_ref());
+    }
+    if !assigning && response.clicked_by(egui::PointerButton::Primary) && input.inside && !navigating {
         let (add, toggle) =
             crate::tool_modifiers::selection_click(crate::tool_modifiers::Held::from_modifiers(input.mods), app.preferences.selection_shift_add_only);
-        crate::viewport::select(app, candidate.map(|(_, sel)| sel), add, toggle);
+        crate::viewport::select(app, candidate.as_ref().map(|(_, sel)| sel.clone()), add, toggle);
+    }
+    if response.secondary_clicked()
+        && let Some((crate::viewport::Hit::Face { body, .. }, _)) = &candidate
+    {
+        if let Some(candidate) = &candidate {
+            assign::context(app, candidate);
+        }
+        crate::context_menu::open_for(app, input.hover.unwrap_or(rect.center()), crate::context_menu::Target::Body { name: body.clone() });
     }
     let bg = app.render_workspace.view.draft.background;
     ui.painter().rect_filled(rect, 0.0, Color32::from_rgb(bg[0], bg[1], bg[2]));
@@ -1756,9 +1775,13 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         let mut visibility = std::collections::hash_map::DefaultHasher::new();
         app.session.visibility.hidden_bodies.hash(&mut visibility);
         app.session.visibility.hidden_occurrences.hash(&mut visibility);
-        let signature = (app.session.revision, Arc::as_ptr(&app.session.world_state()) as usize, visibility.finish());
-        app.render_workspace
-            .prepare_preview(signature, || solidcraft_engine::product_scene::extract(&app.session).map_err(|error| error.to_string()))?;
+        let signature = (app.session.revision, Arc::as_ptr(&app.session.world_state()) as usize, visibility.finish() ^ assign::preview_key(app));
+        let preview = assign::preview(app);
+        app.render_workspace.prepare_preview(signature, || {
+            let mut scene = solidcraft_engine::product_scene::extract(&app.session).map_err(|error| error.to_string())?;
+            assign::preview_scene(&mut scene, preview.as_ref())?;
+            Ok(scene)
+        })?;
         let scene = app.render_workspace.scene.as_ref().ok_or("no product scene")?;
         request.features = scene.required_features();
         solidcraft_engine::render::resolve_request(&[app.session.render_backend()], &request).map_err(|e| e.to_string())?;
@@ -1822,5 +1845,5 @@ pub(crate) fn interactive_command_info(app: &SolveApp, command: &solidcraft_engi
     ribbon::command_info(app, command)
 }
 pub(crate) fn start_interactive(app: &mut SolveApp, id: &str) -> bool {
-    ribbon::start(app, id)
+    assign::start(app, id) || ribbon::start(app, id)
 }

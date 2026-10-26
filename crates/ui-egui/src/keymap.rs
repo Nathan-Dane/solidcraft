@@ -323,12 +323,17 @@ pub fn commands_for(app: &SolveApp, key: &str) -> Vec<&'static str> {
 enum Scope {
     Sketch,
     Model,
+    Render,
     Everywhere,
 }
 
 fn scope(id: &str) -> Scope {
+    if matches!(id, "appearance.paint" | "appearance.pick_up") {
+        return Scope::Render;
+    }
     match solidcraft_engine::find_command(id).map(|c| c.tab) {
         Some("SKETCH") => Scope::Sketch,
+        Some(tab) if tab.starts_with("RENDER") => Scope::Render,
         Some("") | None => Scope::Everywhere,
         Some(_) => Scope::Model,
     }
@@ -344,9 +349,19 @@ fn clash(a: &str, b: &str) -> bool {
 /// The enabled command a key press runs, if any: one of the mode the view is in (a sketch tool
 /// while a sketch is open, a model command otherwise) before any other.
 pub fn command_for(app: &SolveApp, key: &str) -> Option<&'static str> {
-    let here = if app.session.active_sketch.is_some() { Scope::Sketch } else { Scope::Model };
-    let enabled: Vec<&'static str> =
-        commands_for(app, key).into_iter().filter(|id| solidcraft_engine::find_command(id).is_some_and(|c| c.info(&app.session).enabled)).collect();
+    let here = if app.session.active_sketch.is_some() {
+        Scope::Sketch
+    } else if crate::render_workspace::active(app) {
+        Scope::Render
+    } else {
+        Scope::Model
+    };
+    let enabled: Vec<&'static str> = commands_for(app, key)
+        .into_iter()
+        .filter(|id| {
+            (here == Scope::Render || scope(id) != Scope::Render) && solidcraft_engine::find_command(id).is_some_and(|c| c.info(&app.session).enabled)
+        })
+        .collect();
     enabled.iter().find(|id| scope(id) == here).or(enabled.first()).copied()
 }
 

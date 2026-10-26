@@ -325,7 +325,7 @@ fn choose(app: &mut SolveApp, view: &mut View, kind: &str, id: &str) -> Result<(
 fn look_signature(entry: &Value) -> Value {
     json!([entry["name"], entry["color"], entry["opacity"], entry["pbr"]])
 }
-fn appearance_id(entry: &Value) -> String {
+pub(super) fn appearance_id(entry: &Value) -> String {
     entry["id"].as_str().map(str::to_owned).unwrap_or_else(|| look_signature(entry).to_string())
 }
 fn describe(app: &mut SolveApp, kind: &str, id: &str) -> Result<Value, String> {
@@ -372,7 +372,7 @@ fn preview_parameters(entry: &Value) -> Value {
     }
     source.clone()
 }
-fn tile_sphere(entry: &Value) -> ui_kit::Sphere {
+pub(super) fn tile_sphere(entry: &Value) -> ui_kit::Sphere {
     let p = preview_parameters(entry);
     let color = crate::dialogs_appearance::parse_color(&p["color"]).map(|[r, g, b]| egui::Color32::from_rgb(r, g, b)).unwrap_or(Tokens::get().body);
     let scalar = |key: &str, default: f64| p["pbr"][key].as_f64().filter(|v| v.is_finite()).unwrap_or(default).clamp(0.0, 1.0);
@@ -615,38 +615,6 @@ fn applicable(entry: &Value, selected: &[Value], used: &[Value]) -> bool {
         })
 }
 
-fn apply_look(app: &mut SolveApp, entry: &Value) -> Result<(), String> {
-    use solidcraft_engine::Sel;
-    let mut bodies = Vec::new();
-    let mut faces = Vec::new();
-    let mut components = Vec::new();
-    for sel in &app.session.selection {
-        match sel {
-            Sel::Body { name } => bodies.push(name.clone()),
-            Sel::Face { body, point, .. } => faces.push(json!({"body":body,"point":point})),
-            Sel::Occurrence { path } => {
-                if let Some(occurrence) = path.last().and_then(|id| app.session.doc.occurrences.iter().find(|o| o.id == *id)) {
-                    components.push(occurrence.component.to_string());
-                }
-            }
-            _ => {}
-        }
-    }
-    if bodies.is_empty() && faces.is_empty() && components.is_empty() {
-        return Ok(());
-    }
-    let mut params = if let Some(id) = entry["id"].as_str() {
-        json!({"appearance":id})
-    } else {
-        json!({"name":entry["name"],"color":entry["color"],"opacity":entry["opacity"],"pbr":entry["pbr"]})
-    };
-    params["bodies"] = json!(bodies);
-    params["faces"] = json!(faces);
-    params["components"] = json!(components);
-    app.run("appearance.assign", params)?;
-    Ok(())
-}
-
 pub(super) fn browse(app: &mut SolveApp, ui: &mut egui::Ui) {
     browse_contents(app, ui, false);
 }
@@ -798,9 +766,16 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
         })
         .collect();
     let identities: Vec<_> = entries.iter().map(|(_, id, _)| format!("render:library:{id}")).collect();
-    let footer = t.control_height * if view.collection == 0 && view.kind != "appearances" { 3.0 } else { 1.0 };
+    let hint = if view.kind == "appearances" { "render.assign_help" } else { "render.library_inspect_only" };
+    let footer = if stage_card && view.kind == "appearances" {
+        ui_kit::note_height(ui, app.tr(hint)) + ui.spacing().item_spacing.y
+    } else {
+        t.control_height * if view.collection == 0 && view.kind != "appearances" { 3.0 } else { 1.0 }
+            + if stage_card { 0.0 } else { ui_kit::note_height(ui, app.tr(hint)) }
+    };
     let height = (ui.available_height() - footer).max(t.control_height);
     let mut selected = None;
+    let mut dragged = None;
     egui::ScrollArea::vertical().id_salt(("render_library_items", &view.kind, view.collection)).max_height(height).auto_shrink([false, false]).show(
         ui,
         |ui| {
@@ -823,14 +798,15 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
                     .collect();
                 if applicable_count > 0 {
                     ui_kit::text(ui, app.tr("render.library_applicable"), ui_kit::Text::Inline);
-                    selected = ui_kit::sphere_grid(ui, tiles.get(..applicable_count).unwrap_or_default());
+                    (selected, dragged) = ui_kit::sphere_grid_drag(ui, tiles.get(..applicable_count).unwrap_or_default());
                 }
                 if applicable_count < tiles.len() {
                     if applicable_count > 0 {
                         ui_kit::text(ui, app.tr("render.library_other"), ui_kit::Text::Inline);
                     }
-                    let other = ui_kit::sphere_grid(ui, tiles.get(applicable_count..).unwrap_or_default()).map(|i| i + applicable_count);
-                    selected = selected.or(other);
+                    let (other, other_drag) = ui_kit::sphere_grid_drag(ui, tiles.get(applicable_count..).unwrap_or_default());
+                    selected = selected.or(other.map(|i| i + applicable_count));
+                    dragged = dragged.or(other_drag.map(|i| i + applicable_count));
                 }
             } else {
                 for (index, ((kind, id, entry), tip)) in entries.iter().zip(&tips).enumerate() {
@@ -900,17 +876,28 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
             });
         }
     }
-    if let Some((kind, id, entry)) = selected.and_then(|index| entries.get(index)) {
-        let result =
-            choose(app, &mut view, kind, id).and_then(|()| if stage_card && kind == "appearances" { apply_look(app, entry) } else { Ok(()) });
-        if let Err(error) = result {
-            app.set_status(error, true);
+    for (index, drag) in [(selected, false), (dragged, true)] {
+        if let Some((kind, id, entry)) = index.and_then(|index| entries.get(index)) {
+            let result = choose(app, &mut view, kind, id).and_then(|()| {
+                if kind == "appearances" {
+                    if entry["available"] == false {
+                        return Err("this appearance is not available".into());
+                    }
+                    let params = if let Some(id) = entry["id"].as_str() { json!({"appearance":id}) } else { preview_parameters(entry) };
+                    super::assign::tile(app, params, drag)
+                } else {
+                    Ok(())
+                }
+            });
+            if let Err(error) = result {
+                app.set_status(error, true);
+            }
         }
     }
-    if stage_card {
+    if stage_card && view.kind != "appearances" {
         ui_kit::catalog_footer(ui, app.tr("render.library_apply_hint"));
     } else {
-        ui_kit::text(ui, app.tr("render.library_inspect_only"), ui_kit::Text::Note("render.library_inspect_only"));
+        ui_kit::text(ui, app.tr(hint), ui_kit::Text::Note(hint));
     }
     app.render_workspace.view.library = view;
 }
@@ -1383,6 +1370,17 @@ fn availability_label<'a>(app: &'a SolveApp, status: Option<&str>) -> &'a str {
         Some("specification_only") => "render.library_specs",
         _ => "render.availability_reference",
     })
+}
+
+/// Focus the existing library card from the viewport Appearance menu.
+pub(super) fn focus_library(app: &mut SolveApp) {
+    let view = &mut app.render_workspace.view.library;
+    view.collection = 0;
+    switch_kind(view, "appearances");
+}
+
+pub(super) fn invalidate(app: &mut SolveApp) {
+    app.render_workspace.view.library.loaded = false;
 }
 
 #[cfg(test)]

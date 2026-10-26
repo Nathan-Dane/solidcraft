@@ -589,6 +589,7 @@ fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    super::assign::selection_controls(app, ui);
     ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     base_appearance(app, ui);
     browse_button(app, ui, "surfaces", "render.browse_surfaces");
@@ -1138,7 +1139,9 @@ fn camera_actions(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn confirmation_open(app: &SolveApp) -> bool {
-    app.render_workspace.view.inspector.pending.is_some() || app.render_workspace.view.save_shot_name.is_some()
+    app.render_workspace.view.inspector.pending.is_some()
+        || app.render_workspace.view.save_shot_name.is_some()
+        || super::assign::replacement_open(app)
 }
 pub(super) fn reveal(app: &mut SolveApp, section: &'static str) {
     app.render_workspace.view.inspector.reveal = Some(section);

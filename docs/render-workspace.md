@@ -366,6 +366,19 @@ GPU overlay on the live product view. The product scene and its upload stay unch
 CPU image jobs, exported PNGs, retained images and the Render Result canvas never
 contain this overlay; the Pick control is disabled on the result canvas.
 
+Look's tools row contains **Paint** (B) and **Pick Up** (I). A library click applies
+to the current selection or starts painting when nothing is selected; dragging
+previews the look until release. Esc or Done ends painting or sampling. Copy Look
+and Paste Look use Ctrl/Cmd+Alt+C and Ctrl/Cmd+Alt+V.
+
+The selection pill uses shared kit chrome and follows the projected selection.
+Its actions open the look chain, Replace All, toggle a library favourite and hide
+the selection. The name opens the selection menu. Assign, Replace All, Copy Look
+and Remove are available there and in the Appearance Inspector; commands also
+remain available to search and scripts. Replace All asks for the replacement in a
+shared confirmation and applies one undoable command. A changed document cancels
+that pending request. Hover uses the shared tooltip with the object and look names.
+
 ## Browser scene focus
 
 The shared Browser lists Environment (with its source), Lights, saved Shots,
