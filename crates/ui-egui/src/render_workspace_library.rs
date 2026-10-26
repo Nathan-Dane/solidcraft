@@ -531,7 +531,7 @@ pub(super) fn card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
             fill_height: true,
             compact: crate::render_ui::compact(app, bounds.width()),
             editor: false,
-            enabled: stage != super::Stage::Frame,
+            enabled: true,
             header_actions: (stage == super::Stage::Look).then_some(&mut actions as &mut dyn FnMut(&mut egui::Ui)),
         },
         &mut side,
@@ -545,11 +545,8 @@ pub(super) fn card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
                 }
             }),
             super::Stage::Light => light_panel(app, ui),
+            super::Stage::Frame => super::shot::presets(app, ui),
             super::Stage::Output => super::inspector::size_presets(app, ui),
-            super::Stage::Frame => {
-                let reason = app.tr("render.frame_presets_pending");
-                ui_kit::text(ui, reason, ui_kit::Text::Note("render:stage-presets-pending"));
-            }
         },
     );
     let look_tab = usize::from(mode == 2);
@@ -579,7 +576,7 @@ fn stage_title(stage: super::Stage) -> &'static str {
     match stage {
         super::Stage::Look => "render.appearances",
         super::Stage::Light => "render.studios_environments",
-        super::Stage::Frame => "render.frame_presets",
+        super::Stage::Frame => "render.stage_frame",
         super::Stage::Output => "render.size_presets",
     }
 }
@@ -1804,7 +1801,7 @@ mod studio_browser_tests {
         for (stage, key) in [
             ("look", "render.appearances"),
             ("light", "render.studios_environments"),
-            ("frame", "render.frame_presets"),
+            ("frame", "render.stage_frame"),
             ("output", "render.size_presets"),
         ] {
             h.app.run("view.render_stage", json!({"stage":stage})).unwrap();

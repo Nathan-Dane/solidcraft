@@ -1112,6 +1112,9 @@ impl SolveApp {
             if id == "appearance.favorite" {
                 render_workspace::assign::favorite_applied(self, v);
             }
+            if id == "view.render_frame" {
+                render_workspace::shot::apply_frame(self, v);
+            }
             if id == "view.render_select" {
                 use render_workspace::RenderSelection;
                 let selected = match v.get("kind").and_then(Value::as_str) {

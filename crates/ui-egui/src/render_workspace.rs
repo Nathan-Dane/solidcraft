@@ -48,6 +48,9 @@ mod materials;
 #[path = "render_workspace_setups.rs"]
 mod setups;
 
+#[path = "render_workspace_shot.rs"]
+pub(crate) mod shot;
+
 #[path = "render_workspace_shots.rs"]
 pub(crate) mod shots;
 
@@ -281,6 +284,7 @@ pub enum RenderSelection {
 #[derive(Clone, Debug)]
 pub struct ViewState {
     pub(crate) assign: assign::State,
+    pub(crate) frame: shot::Frame,
     job_shot: Option<String>,
     save_shot_name: Option<String>,
     pub name: String,
@@ -345,6 +349,7 @@ impl Default for ViewState {
         Self {
             assign: assign::State::default(),
             job_shot: None,
+            frame: Default::default(),
             save_shot_name: None,
             name: "Studio".into(),
             selection: RenderSelection::Nothing,
@@ -1835,8 +1840,10 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         show_result(app, ui);
         return;
     }
-    let rect = ui.max_rect();
-    app.viewport.rect = Some(rect);
+    let viewport = ui.max_rect();
+    app.viewport.rect = Some(viewport);
+    // Framing uses the output camera's own aspect, including navigation and picking.
+    let rect = shot::preview_rect(app, viewport).unwrap_or(viewport);
     crate::viewport::refresh_layout(app, ui.ctx());
     let response = ui.interact(rect, ui.id().with("render_preview"), Sense::click_and_drag());
     if !environment::ring_input(app, ui, rect, &response) {
@@ -1881,7 +1888,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         app.viewport.hover = None;
     }
     let bg = app.render_workspace.view.draft.background;
-    ui.painter().rect_filled(rect, 0.0, Color32::from_rgb(bg[0], bg[1], bg[2]));
+    ui.painter().rect_filled(viewport, 0.0, Color32::from_rgb(bg[0], bg[1], bg[2]));
     let result = (|| -> Result<(), String> {
         if app.viewport.gpu.is_none() {
             return Err(crate::i18n::tr("render.error_gpu_preview").into());
@@ -1980,8 +1987,9 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if let Err(error) = result {
         preview_error(app, ui, rect, &error);
     }
-    crate::viewport::axis_view(app, ui, rect);
-    crate::navigation_bar_view::show(app, ui, rect);
+    shot::overlay(app, ui, viewport);
+    crate::viewport::axis_view(app, ui, viewport);
+    crate::navigation_bar_view::show(app, ui, viewport);
 }
 
 /// Apply validated UI requests after the same registry call used by automation.
