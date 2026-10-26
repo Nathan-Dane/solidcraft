@@ -23,6 +23,12 @@ CommandSpec::new("view.ground_shadow", "Ground shadow", ground_shadow)
     .icon("style").noundo().doc_only().params("on?: bool (omitted: toggle) → on?; show the ground shadow"),
 CommandSpec::new("view.navigation_bar", "Navigation bar", navigation_bar)
     .icon("pan").noundo().doc_only().params("visible?: bool (omitted: toggle) → visible?; show the navigation bar (window setting)"),
+CommandSpec::new("view.render_browser", "Render Browser", render_browser)
+    .icon("list").noundo().doc_only()
+    .params("by_look?: bool; search?: bool; query?: string (up to 1024 bytes) → validated transient Browser controls; never edits the design or opens a dialog"),
+CommandSpec::new("view.render_select", "Render selection", render_select)
+    .icon("select").noundo().doc_only()
+    .params("kind: nothing|environment|light|shot|output; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_stage", "Render Stage", render_stage)
     .icon("render_scene").noundo().doc_only()
     .params("stage: look|light|frame|output → {stage}; per-document UI state, never edits or evaluates the design; headless validation only"),
@@ -208,6 +214,54 @@ fn ground_shadow(_s: &mut Session, p: &Value) -> Result<Value> {
 }
 fn navigation_bar(_s: &mut Session, p: &Value) -> Result<Value> {
     view_toggle(p, "view.navigation_bar", "visible")
+}
+
+fn render_select(s: &mut Session, p: &Value) -> Result<Value> {
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(deny_unknown_fields)]
+    struct Request {
+        kind: String,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        id: Option<String>,
+    }
+    let request: Request = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
+    let identified = matches!(request.kind.as_str(), "light" | "shot");
+    if !matches!(request.kind.as_str(), "nothing" | "environment" | "light" | "shot" | "output")
+        || identified != request.id.is_some()
+        || request.id.as_ref().is_some_and(|id| id.trim().is_empty() || id.len() > 1024)
+    {
+        return Err(bad("view.render_select", "expected a Browser kind and an id only for light or shot"));
+    }
+    let result = serde_json::to_value(request).map_err(|e| bad("view.render_select", e.to_string()))?;
+    if !s.selection.is_empty() {
+        s.selection.clear();
+        s.revision += 1;
+    }
+    Ok(result)
+}
+
+fn render_browser(_s: &mut Session, p: &Value) -> Result<Value> {
+    #[derive(serde::Deserialize, serde::Serialize)]
+    #[serde(deny_unknown_fields)]
+    struct Request {
+        #[serde(skip_serializing_if = "Option::is_none")]
+        by_look: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        search: Option<bool>,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        query: Option<String>,
+    }
+    if !p.is_object() {
+        return Err(bad("view.render_browser", "expected an object with Browser controls"));
+    }
+    let request: Request = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_browser", e.to_string()))?;
+    if request.by_look.is_none() && request.search.is_none() && request.query.is_none() {
+        return Err(bad("view.render_browser", "expected at least one Browser control"));
+    }
+    if request.query.as_ref().is_some_and(|q| q.len() > 1024) {
+        return Err(bad("query", "expected at most 1024 bytes"));
+    }
+    serde_json::to_value(request).map_err(|e| bad("view.render_browser", e.to_string()))
 }
 
 fn render_stage(_s: &mut Session, p: &Value) -> Result<Value> {
@@ -915,6 +969,63 @@ fn render_workspace_stage_validates_without_document_changes_or_evaluation() {
         json!({"stage":"look","extra":true}),
     ] {
         assert!(session.execute("view.render_stage", &params).is_err());
+    }
+    assert!(std::sync::Arc::ptr_eq(&document, &session.doc));
+    assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
+}
+
+#[cfg(test)]
+#[test]
+fn render_browser_focus_validates_without_document_changes_or_evaluation() {
+    let mut session = Session::default();
+    let doc = session.doc.clone();
+    let before = (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty());
+    for request in [
+        json!({"kind":"nothing"}),
+        json!({"kind":"environment"}),
+        json!({"kind":"light","id":"sun:0"}),
+        json!({"kind":"shot","id":"Hero"}),
+        json!({"kind":"output"}),
+    ] {
+        assert_eq!(session.execute("view.render_select", &request).unwrap(), request);
+    }
+    for request in [
+        Value::Null,
+        json!([]),
+        json!({}),
+        json!({"kind":"object"}),
+        json!({"kind":"shot"}),
+        json!({"kind":"light","id":1}),
+        json!({"kind":"light","id":" "}),
+        json!({"kind":"shot","id":"x".repeat(1025)}),
+        json!({"kind":"output","id":"extra"}),
+        json!({"kind":"environment","extra":true}),
+    ] {
+        assert!(session.execute("view.render_select", &request).is_err(), "{request}");
+    }
+    assert!(std::sync::Arc::ptr_eq(&doc, &session.doc));
+    assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
+}
+
+#[cfg(test)]
+#[test]
+fn render_browser_controls_validate_without_document_changes_or_evaluation() {
+    let mut session = Session::default();
+    let document = session.doc.clone();
+    let before = (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty());
+    for request in [json!({"by_look":true}), json!({"search":true,"query":"Copper"}), json!({"query":""})] {
+        assert_eq!(session.execute("view.render_browser", &request).unwrap(), request);
+    }
+    for request in [
+        Value::Null,
+        json!([]),
+        json!({}),
+        json!({"by_look":null}),
+        json!({"by_look":1}),
+        json!({"search":null,"extra":true}),
+        json!({"query":"x".repeat(1025)}),
+    ] {
+        assert!(session.execute("view.render_browser", &request).is_err());
     }
     assert!(std::sync::Arc::ptr_eq(&document, &session.doc));
     assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
