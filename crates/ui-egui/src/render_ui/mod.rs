@@ -189,6 +189,7 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
     } else {
         crate::shell::register_panel(app, "render:progress-pill", None, None);
     }
+    crate::render_workspace::environment_overlay(app, ui, viewport);
     crate::navigation_bar_view::show(app, ui, viewport);
     if !focused(app) {
         shots_pill(app, ui, free);

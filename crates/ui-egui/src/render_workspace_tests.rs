@@ -20,6 +20,170 @@ fn environment_editor_fixture() -> Harness {
 }
 
 #[test]
+fn environment_ring_angles_snap_wrap_and_refuse_hostile_geometry() {
+    let center = egui::pos2(100.0, 200.0);
+    for (point, expected) in
+        [(egui::pos2(150.0, 200.0), 0.0), (egui::pos2(100.0, 250.0), 90.0), (egui::pos2(50.0, 200.0), 180.0), (egui::pos2(100.0, 150.0), -90.0)]
+    {
+        assert_eq!(environment::pointer_angle(point, center, 50.0), Some(expected));
+    }
+    assert_eq!(environment::drag_rotation(170.0, 170.0, -170.0, false), Some(-170.0));
+    assert_eq!(environment::drag_rotation(170.0, 0.0, 30.0, true), Some(-165.0));
+    assert_eq!(environment::drag_rotation(-170.0, 0.0, -30.0, true), Some(165.0));
+    assert_eq!(environment::drag_rotation(0.0, 0.0, 180.0, false), Some(-180.0));
+    assert_eq!(environment::pointer_angle(center, center, 50.0), None);
+    for radius in [0.0, -1.0, f32::NAN, f32::INFINITY, 1e9] {
+        assert_eq!(environment::pointer_angle(egui::pos2(150.0, 200.0), center, radius), None);
+    }
+    for value in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+        assert_eq!(environment::pointer_angle(egui::pos2(value, 200.0), center, 50.0), None);
+        assert_eq!(environment::pointer_angle(center, egui::pos2(100.0, value), 50.0), None);
+    }
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, 1e300] {
+        assert_eq!(environment::drag_rotation(value, 0.0, 20.0, false), None);
+        assert_eq!(environment::drag_rotation(0.0, value, 20.0, true), None);
+        assert_eq!(environment::drag_rotation(0.0, 0.0, value, false), None);
+    }
+}
+
+fn environment_ring_frame(h: &mut Harness, mods: egui::Modifiers, events: Vec<egui::Event>) {
+    let mut output = h.ctx.run_ui(
+        egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(800.0, 600.0))),
+            focused: true,
+            events: std::iter::once(egui::Event::ModifiersChanged(mods)).chain(events).collect(),
+            ..Default::default()
+        },
+        |ui| {
+            let viewport = ui.max_rect();
+            show(&mut h.app, ui);
+            environment_overlay(&mut h.app, ui, viewport);
+        },
+    );
+    output.textures_delta.clear();
+}
+
+fn environment_ring_fixture() -> Harness {
+    let mut h = environment_editor_fixture();
+    enter(&mut h.app, true).unwrap();
+    h.app.render_workspace.view.inspector.page = inspector::Page::Environment;
+    h.app.preferences.nav = crate::prefs::OPENSCAD_NAV.into();
+    h.app.cam.fit(&solidcraft_engine::product_scene::extract(&h.app.session).unwrap().bounds);
+    environment_ring_frame(&mut h, egui::Modifiers::NONE, vec![]);
+    h
+}
+
+#[test]
+fn environment_ring_drag_is_one_undo_snaps_and_never_navigates_the_camera() {
+    use egui::{Event, Modifiers, PointerButton};
+    let mut h = environment_ring_fixture();
+    environment::commit_environment(&mut h.app, json!({"rotation_deg":170})).unwrap();
+    environment_ring_frame(&mut h, Modifiers::NONE, vec![]);
+    let ring = h.app.render_workspace.view.environment_ring.geometry.unwrap();
+    let at = |degrees: f32| ring.center + egui::vec2(degrees.to_radians().cos(), degrees.to_radians().sin()) * ring.radius;
+    let press = at(0.0);
+    let before = h.app.session.doc.clone();
+    let camera = h.app.cam;
+    let undo = h.app.session.undo.len();
+    let selection = h.app.session.selection.clone();
+    for pressed in [true, false] {
+        environment_ring_frame(
+            &mut h,
+            Modifiers::SHIFT,
+            vec![
+                Event::PointerMoved(press),
+                Event::PointerButton { pos: press, button: PointerButton::Primary, pressed, modifiers: Modifiers::SHIFT },
+            ],
+        );
+    }
+    assert!(Arc::ptr_eq(&before, &h.app.session.doc), "a Shift click without a drag does not snap or save");
+    environment_ring_frame(
+        &mut h,
+        Modifiers::NONE,
+        vec![
+            Event::PointerMoved(press),
+            Event::PointerButton { pos: press, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE },
+        ],
+    );
+    for angle in [10.0, 20.0, 30.0] {
+        environment_ring_frame(&mut h, Modifiers::SHIFT, vec![Event::PointerMoved(at(angle))]);
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc), "drag is temporary");
+        assert_eq!(h.app.session.undo.len(), undo);
+        assert_eq!(h.app.cam, camera, "OpenSCAD left-drag must not orbit through the ring");
+    }
+    let end = at(30.0);
+    environment_ring_frame(
+        &mut h,
+        Modifiers::SHIFT,
+        vec![Event::PointerButton { pos: end, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::SHIFT }],
+    );
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    assert!((h.app.render_workspace.view.studio.rotation_rad.to_degrees() + 165.0).abs() < 1e-6);
+    assert_eq!(h.app.cam, camera);
+    assert_eq!(h.app.session.selection, selection);
+    assert!(crate::scenario::rect_of("render:environment:ring-degrees").is_some());
+    h.app.run("edit.undo", json!({})).unwrap();
+    assert_eq!(h.app.session.doc, before);
+}
+
+#[test]
+fn environment_ring_cancel_or_stale_revision_discards_the_drag() {
+    use egui::{Event, Modifiers, PointerButton};
+    for stale in [false, true] {
+        let mut h = environment_ring_fixture();
+        let ring = h.app.render_workspace.view.environment_ring.geometry.unwrap();
+        let start = ring.center + egui::vec2(ring.radius, 0.0);
+        let end = ring.center + egui::vec2(0.0, ring.radius);
+        environment_ring_frame(
+            &mut h,
+            Modifiers::NONE,
+            vec![
+                Event::PointerMoved(start),
+                Event::PointerButton { pos: start, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE },
+            ],
+        );
+        environment_ring_frame(&mut h, Modifiers::NONE, vec![Event::PointerMoved(end)]);
+        if stale {
+            h.app.run("render.settings.set", json!({"name":"Studio","set":{"width":640}})).unwrap();
+        }
+        let before = h.app.session.doc.clone();
+        let undo = h.app.session.undo.len();
+        let camera = h.app.cam;
+        let cancel = if stale {
+            vec![]
+        } else {
+            vec![Event::Key { key: egui::Key::Escape, physical_key: None, pressed: true, repeat: false, modifiers: Modifiers::NONE }]
+        };
+        environment_ring_frame(&mut h, Modifiers::NONE, cancel);
+        environment_ring_frame(&mut h, Modifiers::NONE, vec![Event::PointerMoved(start)]);
+        environment_ring_frame(
+            &mut h,
+            Modifiers::NONE,
+            vec![Event::PointerButton { pos: start, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE }],
+        );
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+        assert_eq!(h.app.session.undo.len(), undo);
+        assert_eq!(h.app.cam, camera);
+    }
+}
+
+#[test]
+fn environment_ring_visibility_follows_editor_target_and_live_canvas() {
+    let mut h = environment_ring_fixture();
+    h.app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+    h.app.render_workspace.view.selection = RenderSelection::Environment;
+    environment_ring_frame(&mut h, egui::Modifiers::NONE, vec![]);
+    assert!(h.app.render_workspace.view.environment_ring.geometry.is_some());
+    h.app.render_workspace.view.selection = RenderSelection::Nothing;
+    environment_ring_frame(&mut h, egui::Modifiers::NONE, vec![]);
+    assert!(h.app.render_workspace.view.environment_ring.geometry.is_none());
+    h.app.render_workspace.view.inspector.page = inspector::Page::Environment;
+    h.app.render_workspace.view.result = true;
+    environment_ring_frame(&mut h, egui::Modifiers::NONE, vec![]);
+    assert!(h.app.render_workspace.view.environment_ring.geometry.is_none());
+}
+
+#[test]
 fn environment_editor_opening_pages_and_sources_preserves_design_and_history() {
     let mut h = environment_editor_fixture();
     let before = h.app.session.doc.clone();
