@@ -41,6 +41,8 @@ mod library;
 
 #[path = "render_ui/assign.rs"]
 pub(crate) mod assign;
+#[path = "render_workspace_light.rs"]
+pub(crate) mod light;
 
 #[path = "render_workspace_materials.rs"]
 mod materials;
@@ -295,6 +297,7 @@ pub(crate) fn selection_editor(app: &mut SolveApp, selection: &RenderSelection) 
 pub struct ViewState {
     pub(crate) assign: assign::State,
     pub(crate) frame: shot::Frame,
+    lights: light::View,
     job_shot: Option<String>,
     save_shot_name: Option<String>,
     pub name: String,
@@ -358,6 +361,7 @@ impl Default for ViewState {
     fn default() -> Self {
         Self {
             assign: assign::State::default(),
+            lights: Default::default(),
             job_shot: None,
             frame: Default::default(),
             save_shot_name: None,
@@ -793,6 +797,10 @@ fn image_params(app: &SolveApp) -> Result<serde_json::Value, String> {
 
 /// Pure request construction is shared with offline setup editing; host checks stay above.
 fn image_request(app: &SolveApp) -> Result<serde_json::Value, String> {
+    light::filter_request(app, raw_image_request(app)?)
+}
+
+fn raw_image_request(app: &SolveApp) -> Result<serde_json::Value, String> {
     cpu::validate_progressive_image(app)?;
     if !setups::has_runtime_inputs(app) {
         return Ok(json!({"settings":setups::snapshot(app)?}));
@@ -1962,6 +1970,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
         let slot = app.render_workspace.slot.clone();
         let callback = ViewportCallback(Frame {
+            product_lights: Some(light::preview(app)?),
             product: true,
             key,
             slot: slot.clone(),

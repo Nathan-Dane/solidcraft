@@ -688,6 +688,142 @@ fn render_workspace_frame_shot_edits_revert_duplicate_and_rename_use_existing_co
     }
 }
 
+fn render_lights_fixture() -> Harness {
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1440,"height":1400}));
+    h.app
+        .run(
+            "render.settings.set",
+            json!({"name":"Studio","set":{"job":{"method":"cpu_raytrace","options":{"lights":[
+                {"direction":[0.6,0,0.8],"color":[1,0.5,0.25],"intensity":3},
+                {"direction":[-0.8,0,0.6],"color":[0.25,0.5,1],"intensity":2}
+            ]}}}}),
+        )
+        .unwrap();
+    enter(&mut h.app, true).unwrap();
+    setups::load(&mut h.app);
+    h.app.pending_fit = None;
+    h
+}
+
+#[test]
+fn render_lights_solo_and_mute_filter_preview_and_render_copies_without_saving_or_history() {
+    let mut h = render_lights_fixture();
+    let original = setups::snapshot(&h.app).unwrap();
+    let document = h.app.session.doc.clone();
+    let json = document.to_json();
+    let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty());
+    h.app.run("render.lights.solo", json!({"id":"directional:1","solo":true})).unwrap();
+    assert_eq!(light::preview(&h.app).unwrap().len(), 1);
+    let request = image_request(&h.app).unwrap();
+    assert_eq!(request["settings"]["job"]["options"]["lights"][0]["intensity"], 0.0);
+    assert_eq!(request["settings"]["job"]["options"]["lights"][1]["intensity"], 2.0);
+    h.app.run("render.lights.mute", json!({"id":"directional:1","mute":true})).unwrap();
+    assert!(light::preview(&h.app).unwrap().is_empty());
+    assert_eq!(image_request(&h.app).unwrap()["settings"]["job"]["options"]["lights"][1]["intensity"], 0.0);
+    assert_eq!(setups::snapshot(&h.app).unwrap(), original);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(h.app.session.doc.to_json(), json);
+    assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty()));
+    let visibility = h.app.render_workspace.view.lights.visibility.clone();
+    assert!(h.app.run("render.lights.mute", json!({"id":"area:0","mute":true})).is_err());
+    assert_eq!(h.app.render_workspace.view.lights.visibility, visibility);
+    crate::documents::open_tab(&mut h.app, Session::default()).unwrap();
+    assert!(!h.app.render_workspace.view.lights.visibility.active());
+}
+
+#[test]
+fn render_lights_editor_opening_and_disabled_gpu_types_never_edit_or_start_a_job() {
+    let mut h = render_lights_fixture();
+    h.app
+        .run(
+            "render.settings.set",
+            json!({"name":"Studio","set":{"job":{"method":"gpu_path","options":{"lighting":{"area_lights":[
+                {"center":[0,0,100],"u":[1000000,0,0],"v":[0,-1000000,0],"radiance":[0,0,0]}
+            ]}}}}}),
+        )
+        .unwrap();
+    setups::load(&mut h.app);
+    h.app.run("view.render_select", json!({"kind":"light","id":"area:0"})).unwrap();
+    h.app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+    let document = h.app.session.doc.clone();
+    let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty());
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:light:editor").is_some());
+    h.step(&json!({"click":{"handle":"render:light:type:spot"}})).unwrap();
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty()));
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert!(h.app.dialog.is_none());
+    assert_eq!(light::rows(&h.app).unwrap()[0].geometry.kind(), "area");
+}
+
+#[test]
+fn render_lights_edit_commands_refresh_selected_editor_and_keep_visibility_separate_from_undo() {
+    let mut h = render_lights_fixture();
+    h.app.run("render.lights.mute", json!({"id":"directional:0","mute":true})).unwrap();
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    light::edit(&mut h.app, "render.lights.set", Some("directional:0"), Some(json!({"intensity_ev":2}))).unwrap();
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Light("directional:0".into()));
+    assert_eq!(light::rows(&h.app).unwrap()[0].intensity, 4.0);
+    assert!(!h.app.render_workspace.view.lights.visibility.visible("directional:0"));
+    h.app.run("edit.undo", json!({})).unwrap();
+    setups::load(&mut h.app);
+    assert_eq!(h.app.session.doc, document);
+    assert!(!h.app.render_workspace.view.lights.visibility.visible("directional:0"));
+    assert_eq!(light::rows(&h.app).unwrap()[0].intensity, 3.0);
+    light::edit(&mut h.app, "render.lights.duplicate", Some("directional:0"), None).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Light("directional:2".into()));
+    light::edit(&mut h.app, "render.lights.remove", Some("directional:2"), None).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Nothing);
+}
+
+#[test]
+fn render_lights_fixed_studio_requests_carry_transient_weights_without_saving_them() {
+    let mut h = Harness::new();
+    enter(&mut h.app, true).unwrap();
+    let document = h.app.session.doc.clone();
+    let history = h.app.session.undo.len();
+    h.app.run("render.lights.solo", json!({"id":"directional:1","solo":true})).unwrap();
+    let raster = image_request(&h.app).unwrap();
+    assert_eq!(raster["studio_weights"], json!([0.0, 1.0, 0.0]));
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
+    assert_eq!(image_request(&h.app).unwrap()["studio_weights"], json!([0.0, 1.0, 0.0]));
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(h.app.session.undo.len(), history);
+    assert!(serde_json::to_value(setups::snapshot(&h.app).unwrap()).unwrap().get("studio_weights").is_none());
+}
+
+#[test]
+fn render_lights_list_inspects_unsaved_ui_draft_without_applying_or_opening_anything() {
+    let mut h = Harness::new();
+    enter(&mut h.app, true).unwrap();
+    h.app.render_workspace.view.method = ImageMethod::CpuRaytrace;
+    h.app.render_workspace.view.raytrace.lights =
+        Some(vec![solidcraft_engine::render::job::DirectionalLightOptions { direction: [0.0, 0.0, 1.0], color: [1.0, 0.5, 0.25], intensity: 7.0 }]);
+    h.app.run("view.render_select", json!({"kind":"environment"})).unwrap();
+    let document = h.app.session.doc.clone();
+    let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty());
+    let camera = h.app.cam;
+    let page = h.app.render_workspace.view.inspector.page;
+    let snapshot = setups::snapshot(&h.app).unwrap();
+    let reply = h.app.run("render.lights.list", json!({"settings":snapshot})).unwrap();
+    assert_eq!(reply["lights"].as_array().unwrap().len(), 1);
+    assert_eq!(reply["lights"][0]["id"], "directional:0");
+    assert_eq!(reply["lights"][0]["name"], "Key");
+    assert_eq!(reply["lights"][0]["intensity"], 7.0);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty()));
+    assert_eq!(h.app.cam, camera);
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Environment);
+    assert_eq!(h.app.render_workspace.view.inspector.page, page);
+    assert_eq!(setups::snapshot(&h.app).unwrap(), snapshot);
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert!(h.app.dialog.is_none() && h.app.tool.is_none());
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 mod async_path_host {
     use super::*;
@@ -967,6 +1103,7 @@ fn opaque_pbr_product_gpu_and_cpu_share_color_and_material_semantics() {
         let mut task = ImageTask::new(
             scene,
             ImageRequest {
+                studio_weights: None,
                 environment: None,
                 textures: None,
                 camera,
@@ -3264,6 +3401,7 @@ fn cpu_resource_profile_edits_preserve_resolution_samples_and_saved_intent() {
 fn large_image_display_uses_captured_profile_and_keeps_export_pixels_unchanged() {
     use solidcraft_engine::render::job::{CpuBudget, ImageRequest, RaytraceOptions};
     let request = ImageRequest {
+        studio_weights: None,
         integrator: Integrator::Raytrace,
         raytrace: Some(RaytraceOptions { budget: CpuBudget::Studio, ..Default::default() }),
         camera: Camera::default(),
@@ -4521,7 +4659,7 @@ fn navigation_bar_render_canvases_filter_slots_and_keep_product_fit() {
 }
 
 #[test]
-fn render_workspace_browser_sections_and_lights_describe_only_current_job_entries() {
+fn render_lights_browser_sections_and_lights_describe_current_job_entries() {
     let mut h = Harness::new();
     h.call("ui.resize", json!({"width":1440,"height":1100}));
     enter(&mut h.app, true).unwrap();
@@ -4530,7 +4668,7 @@ fn render_workspace_browser_sections_and_lights_describe_only_current_job_entrie
     for section in ["Environment", "Lights", "Shots", "Objects"] {
         assert!(rows.iter().any(|label| label == section), "{section}: {rows:?}");
     }
-    assert!(scene::light_types(&h.app).is_empty());
+    assert_eq!(scene::light_types(&h.app), vec!["render.tree_directional"; 3]);
     assert_eq!(scene::environment(&h.app).0, "Fixed studio");
     h.app.render_workspace.view.method = ImageMethod::CpuRaytrace;
     h.app.render_workspace.view.raytrace = serde_json::from_value(json!({
@@ -4551,7 +4689,7 @@ fn render_workspace_browser_sections_and_lights_describe_only_current_job_entrie
     h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
     let studio = &mut h.app.render_workspace.view.studio;
     studio.sun_enabled = true;
-    assert!(scene::light_types(&h.app).is_empty(), "disabled rig must not expose editor defaults");
+    assert_eq!(scene::light_types(&h.app), vec!["render.tree_directional"; 3], "implicit studio sources are listed");
     h.app.render_workspace.view.studio.lighting_enabled = true;
     h.app
         .render_workspace
@@ -4567,7 +4705,7 @@ fn render_workspace_browser_sections_and_lights_describe_only_current_job_entrie
     h.frames(3);
     h.step(&json!({"click":{"handle":"render:tree:environment:current"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Environment);
-    h.step(&json!({"click":{"browser":"Sun"}})).unwrap();
+    h.step(&json!({"click":{"browser":"Key"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Lighting);
 }
 
@@ -4708,7 +4846,7 @@ fn render_workspace_browser_shot_switch_keeps_the_existing_dirty_confirmation() 
 }
 
 #[test]
-fn render_workspace_browser_focus_covers_each_kind_without_design_edits() {
+fn render_lights_browser_focus_covers_each_kind_without_design_edits() {
     use solidcraft_engine::Sel;
     let mut h = Harness::new();
     h.call("ui.resize", json!({"width":1440,"height":1400}));
@@ -4734,7 +4872,7 @@ fn render_workspace_browser_focus_covers_each_kind_without_design_edits() {
     assert!(h.app.session.selection.is_empty());
     let focused_revision = h.app.session.revision;
     h.step(&json!({"click":{"handle":"render:tree:light:0"}})).unwrap();
-    assert!(matches!(&h.app.render_workspace.view.selection, RenderSelection::Light(id) if id.contains("sun")));
+    assert!(matches!(&h.app.render_workspace.view.selection, RenderSelection::Light(id) if id=="directional:0"));
     setups::load(&mut h.app);
     h.frames(3);
     h.step(&json!({"click":{"handle":"render:tree:shot:Shot"}})).unwrap();
@@ -4751,37 +4889,27 @@ fn render_workspace_browser_focus_covers_each_kind_without_design_edits() {
 }
 
 #[test]
-fn render_workspace_browser_add_and_light_actions_share_disabled_reasons_and_never_edit() {
-    fn has_text(shape: &egui::Shape, needle: &str) -> bool {
-        match shape {
-            egui::Shape::Text(text) => text.galley.text().contains(needle),
-            egui::Shape::Vec(shapes) => shapes.iter().any(|shape| has_text(shape, needle)),
-            _ => false,
-        }
-    }
-    let mut h = Harness::new();
-    h.call("ui.resize", json!({"width":1440,"height":1200}));
-    enter(&mut h.app, true).unwrap();
-    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
-    h.app.render_workspace.view.studio.lighting_enabled = true;
-    h.app.render_workspace.view.studio.sun_enabled = true;
+fn render_lights_browser_eye_and_solo_are_view_state_and_editor_opening_is_read_only() {
+    let mut h = render_lights_fixture();
     h.frames(3);
-    let doc = h.app.session.doc.clone();
-    let history = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision);
-    for target in ["render:tree:lights:add", "render:tree:light:0:solo", "render:tree:light:0:mute", "render:tree:light:0:visibility"] {
-        assert!(crate::scenario::handle_at(target).is_none(), "{target} must be disabled");
-        let at = crate::scenario::rect_of(target).unwrap().center();
-        h.step(&json!({"move":[at.x,at.y]})).unwrap();
-        h.frames(120);
-        assert!(h.shapes.iter().any(|s| has_text(&s.shape, h.app.tr("render.tree_lights_pending"))), "{target}: must show its disabled reason");
-        h.step(&json!({"click":[at.x,at.y]})).unwrap();
-        assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Nothing);
-    }
+    assert!(crate::browser::drawn_rows().iter().any(|row| row.0 == "Key"));
+    assert!(crate::browser::drawn_rows().iter().any(|row| row.0 == "Fill"));
+    let document = h.app.session.doc.clone();
+    let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty());
+    h.step(&json!({"click":{"handle":"eye:Key"}})).unwrap();
+    assert!(!h.app.render_workspace.view.lights.visibility.visible("directional:0"));
+    h.step(&json!({"click":{"handle":"render:tree:light:1:solo"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.lights.visibility.solo.as_deref(), Some("directional:1"));
+    h.step(&json!({"click":{"handle":"render:tree:light:1"}})).unwrap();
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Lighting);
+    assert!(crate::scenario::rect_of("render:light:editor").is_some());
     assert!(crate::scenario::handle_at("render:tree:shots:add").is_some());
     h.step(&json!({"click":{"handle":"render:tree:shots:add"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Scene);
-    assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
-    assert_eq!(history, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision));
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty()));
+    assert!(h.app.render_workspace.view.job.is_none());
     assert!(h.app.dialog.is_none());
 }
 

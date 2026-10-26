@@ -663,6 +663,10 @@ fn advanced_appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     super::effects::aging_controls(app, ui);
 }
 fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    if let super::RenderSelection::Light(id) = app.render_workspace.view.selection.clone() {
+        super::light::editor(app, ui, &id);
+        return;
+    }
     browse_button(app, ui, "rigs", "render.browse_rigs");
 
     match app.render_workspace.view.method {
