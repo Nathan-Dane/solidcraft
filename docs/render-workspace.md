@@ -398,3 +398,16 @@ as before; the focus state is available to a later Inspector change.
 Look expands Objects, Light expands Lights and Environment, and Frame expands
 Shots. Output leaves expansion unchanged. Stages preserve selection and never
 lock rows or prevent manual expansion.
+
+## Appearance editor
+
+Look shows one Appearance editor with scope, current look, the four-step look
+chain and Edit controls. There is no Inspector page strip. Applies to chooses the
+selected target or every exact user of the look; mixed values remain inert until
+edited. Edit contains colour/hex, finish and metallic/roughness/opacity sliders.
+Advanced reuses the existing surface library, optical bindings, glass, clear coat,
+texture-map, reflection and aging controls. The separate Textures disclosure is
+marked Soon. The shared footer exports the design library through `library.export`
+and resets the current target's override through `appearance.assign`.
+`view.render_inspector {visible}` controls transient per-document visibility;
+selecting a stage reopens the editor. Selection focus routing is deferred.

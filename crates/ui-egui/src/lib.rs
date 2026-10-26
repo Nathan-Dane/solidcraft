@@ -1046,6 +1046,9 @@ impl SolveApp {
                 }
                 _ => {}
             }
+            if id == "view.render_inspector" {
+                render_workspace::set_inspector_visible(self, v.get("visible").and_then(Value::as_bool).unwrap_or(true));
+            }
             if id == "view.render_browser" {
                 render_workspace::apply_browser_controls(self, v);
             }
@@ -1334,6 +1337,10 @@ impl SolveApp {
         if id == "material.properties.validate" {
             self.material_card_review = Some(material_card_review::ReviewWindow::default());
             self.home.open = false;
+            return;
+        }
+        if id == "library.export" {
+            dialogs_library::start_export(self);
             return;
         }
         // A display toggle leaves the current modelling tool and camera in place.
