@@ -2,6 +2,131 @@ use super::*;
 use crate::scenario::Harness;
 use solidcraft_engine::Session;
 
+fn environment_editor_frame(h: &mut Harness, events: Vec<egui::Event>) {
+    let mut output = h.ctx.run_ui(
+        egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(305.0, 1600.0))), events, ..Default::default() },
+        |ui| environment::editor(&mut h.app, ui),
+    );
+    output.textures_delta.clear();
+}
+
+fn environment_editor_fixture() -> Harness {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":10,"width":20,"height":5})).unwrap();
+    let name = h.app.render_workspace.view.name.clone();
+    h.app.run("render.settings.set", json!({"name":name,"set":{"job":{"method":"gpu_path","options":{"environment":{"kind":"sky"}}}}})).unwrap();
+    setups::load(&mut h.app);
+    h
+}
+
+#[test]
+fn environment_editor_opening_pages_and_sources_preserves_design_and_history() {
+    let mut h = environment_editor_fixture();
+    let before = h.app.session.doc.clone();
+    let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
+    for page in [inspector::Page::Environment, inspector::Page::Background] {
+        h.app.render_workspace.view.inspector.page = page;
+        environment_editor_frame(&mut h, vec![]);
+        assert!(crate::scenario::rect_of("render:environment:rotation-slider").is_some());
+        h.app.ui.show_browser = false;
+        environment::open_sources(&mut h.app);
+        assert!(h.app.ui.show_browser);
+        assert_eq!(h.app.render_workspace.view.stage, Stage::Light);
+        assert_eq!(h.app.render_workspace.view.inspector.page, page);
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+        assert_eq!(history, (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()));
+    }
+}
+
+#[test]
+fn environment_editor_controls_commit_one_undo_each_and_refuse_hostile_edits() {
+    let mut h = environment_editor_fixture();
+    for request in [json!({"rotation_deg":215}), json!({"intensity":2.5})] {
+        let before = h.app.session.doc.clone();
+        let undo = h.app.session.undo.len();
+        environment::commit_environment(&mut h.app, request).unwrap();
+        assert_eq!(h.app.session.undo.len(), undo + 1);
+        h.app.run("edit.undo", json!({})).unwrap();
+        assert_eq!(h.app.session.doc, before);
+        h.app.run("edit.redo", json!({})).unwrap();
+    }
+    for (color, transparent) in [([40, 80, 120], false), ([40, 80, 120], true), ([40, 80, 120], false)] {
+        let undo = h.app.session.undo.len();
+        environment::commit_backdrop(&mut h.app, color, transparent).unwrap();
+        assert_eq!(h.app.session.undo.len(), undo + 1);
+    }
+    let mut ground = environment::Ground { margin: 0.25, gap: 0.1, color: [0.18; 3] };
+    for edit in 0..5 {
+        match edit {
+            1 => ground.margin = 1.0,
+            2 => ground.gap = 0.25,
+            3 => ground.color = [0.1, 0.3, 0.5],
+            _ => {}
+        }
+        let undo = h.app.session.undo.len();
+        environment::commit_ground(&mut h.app, edit != 4, ground.clone()).unwrap();
+        assert_eq!(h.app.session.undo.len(), undo + 1);
+    }
+    let before = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    for request in [json!({"rotation_deg":1e300}), json!({"intensity":-1}), json!({"rotation_deg":"NaN"}), json!(null), json!([])] {
+        assert!(environment::commit_environment(&mut h.app, request).is_err());
+    }
+    assert!(environment::commit_ground(&mut h.app, true, environment::Ground { gap: f64::NAN, ..ground }).is_err());
+    assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+    assert_eq!(h.app.session.undo.len(), undo);
+}
+
+#[test]
+fn environment_editor_slider_drag_commits_only_on_release() {
+    let mut h = environment_editor_fixture();
+    environment_editor_frame(&mut h, vec![]);
+    let rect = crate::scenario::rect_of("render:environment:rotation-slider").unwrap();
+    let start = rect.center();
+    let end = egui::pos2(rect.right() - 20.0, start.y);
+    let undo = h.app.session.undo.len();
+    environment_editor_frame(
+        &mut h,
+        vec![
+            egui::Event::PointerMoved(start),
+            egui::Event::PointerButton { pos: start, button: egui::PointerButton::Primary, pressed: true, modifiers: Default::default() },
+        ],
+    );
+    environment_editor_frame(&mut h, vec![egui::Event::PointerMoved(end)]);
+    assert_eq!(h.app.session.undo.len(), undo, "dragging is temporary");
+    environment_editor_frame(
+        &mut h,
+        vec![egui::Event::PointerButton { pos: end, button: egui::PointerButton::Primary, pressed: false, modifiers: Default::default() }],
+    );
+    assert_eq!(h.app.session.undo.len(), undo + 1, "release saves one edit");
+    environment_editor_frame(&mut h, vec![]);
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+}
+
+#[test]
+fn environment_editor_hdr_header_reads_catalog_without_applying_or_saving() {
+    let mut h = environment_editor_fixture();
+    let name = h.app.render_workspace.view.name.clone();
+    h.app.run("render.library.environment.apply", json!({"id":"HDR-001","name":name,"replace_environment":true})).unwrap();
+    setups::load(&mut h.app);
+    let before = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    let mut output = h.ctx.run_ui(
+        egui::RawInput { screen_rect: Some(egui::Rect::from_min_size(egui::Pos2::ZERO, egui::vec2(305.0, 1600.0))), ..Default::default() },
+        |ui| environment::editor(&mut h.app, ui),
+    );
+    let named = crate::test_support::text_shapes(&output).any(|text| text.galley.job.text.contains("Neutral side softbox"));
+    output.textures_delta.clear();
+    assert!(named);
+    assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+    assert_eq!(h.app.session.undo.len(), undo);
+    for request in [json!({"rotation_deg":540}), json!({"intensity":0})] {
+        let undo = h.app.session.undo.len();
+        environment::commit_environment(&mut h.app, request).unwrap();
+        assert_eq!(h.app.session.undo.len(), undo + 1);
+    }
+}
+
 #[cfg(not(target_arch = "wasm32"))]
 mod async_path_host {
     use super::*;

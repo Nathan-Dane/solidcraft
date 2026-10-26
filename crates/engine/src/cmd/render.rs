@@ -29,6 +29,10 @@ mod textures;
 mod transmission;
 
 pub static COMMANDS: &[CommandSpec] = &[
+    CommandSpec::new("render.environment.set", "Set Render Environment", crate::checked!("render.environment.set", environment::set)).icon("settings").doc_only()
+        .contract(&environment::CONTRACT)
+        .output(crate::schema::output_schema_for::<crate::schema::render::EnvironmentResult>)
+        .params("name; set?: numerical setup patch; rotation_deg?: finite degrees within +/-1000000, wrapped to [-180,180); intensity?: finite linear intensity 0..64 CPU or 0..100 GPU. Edits the existing HDR, sky or constant environment in one undo, without selecting a source, moving the camera or starting a render. Absent environments and raster refuse."),
     CommandSpec::new("render.aging.describe","Layered Surface Aging",effects::aging).icon("appearance").noundo().doc_only()
         .params("Empty object. Read-only original Rust/patina/dust/grime/scratch/chip/fading presets and exact GPU aging contract. UI activation opens the shared Aging tab; edits remain a saved render draft, never engineering geometry or material-property mutation."),
     CommandSpec::new("render.effects.describe","Lens and Creative Effects",effects::presentation).icon("camera").noundo().doc_only()

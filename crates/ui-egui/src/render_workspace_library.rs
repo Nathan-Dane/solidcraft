@@ -498,7 +498,7 @@ fn stage_title(stage: super::Stage) -> &'static str {
 
 fn light_panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     egui::ScrollArea::vertical().id_salt("render_light_resources").auto_shrink([false, false]).show(ui, |ui| {
-        for (kind, heading) in [("native_scenes", "render.library_native_scenes"), ("hdr", "render.library_hdr")] {
+        for (kind, heading) in [("native_scenes", "render.env_studios"), ("hdr", "render.env_environments")] {
             ui_kit::text(ui, app.tr(heading), ui_kit::Text::Inline);
             let reply = match app.run("render.library.list", json!({"kind":kind,"limit":128})) {
                 Ok(reply) => reply,

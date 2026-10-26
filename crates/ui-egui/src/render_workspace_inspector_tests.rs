@@ -304,6 +304,7 @@ fn ribbon_navigation_reuses_inspector_and_preserves_exact_unsaved_intent() {
         ("render.stage.ground", Page::Background),
         ("render.stage.clear", Page::Background),
         ("render.hdr.inspect", Page::Environment),
+        ("render.environment.set", Page::Environment),
         ("render.settings.capture_hdr", Page::Environment),
         ("render.aging.describe", Page::Aging),
         ("render.effects.describe", Page::Effects),

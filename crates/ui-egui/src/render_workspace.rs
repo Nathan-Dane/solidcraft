@@ -31,6 +31,8 @@ mod hdr;
 
 #[path = "render_workspace_effects.rs"]
 mod effects;
+#[path = "render_workspace_environment.rs"]
+mod environment;
 #[path = "render_workspace_inspector.rs"]
 mod inspector;
 
@@ -930,6 +932,7 @@ fn image_edit_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             crate::ui_kit::number_field(ui, &mut app.render_workspace.view.draft.exposure_ev, -32.0..=32.0, 0.1, " EV");
             ui.small(app.tr("render.gpu_options_help"));
             studio::controls(app, ui);
+            studio::backdrop_controls(app, ui);
         });
     }
     library::controls(app, ui);

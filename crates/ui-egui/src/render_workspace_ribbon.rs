@@ -15,6 +15,7 @@ fn handled(id: &str) -> bool {
             id,
             "render.aging.describe"
                 | "render.effects.describe"
+                | "render.environment.set"
                 | "render.preset.resolve"
                 | "render.preset.apply"
                 | "render.settings.get"
@@ -221,7 +222,7 @@ fn navigate(app: &mut SolveApp, id: &str) -> Result<(), String> {
         "render.library.studio.prepare" => focus(app, Page::Lighting, Some("rigs")),
         "render.library.studio.apply" => focus(app, Page::Lighting, None),
         "render.library.environment.apply" => focus(app, Page::Environment, Some("hdr")),
-        "render.hdr.inspect" | "render.settings.capture_hdr" => focus(app, Page::Environment, None),
+        "render.environment.set" | "render.hdr.inspect" | "render.settings.capture_hdr" => focus(app, Page::Environment, None),
         "render.stage.backdrop" => focus(app, Page::Background, None),
         "render.stage.ground" | "render.stage.clear" => {
             focus(app, Page::Background, None);
