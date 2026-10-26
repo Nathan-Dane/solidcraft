@@ -196,6 +196,7 @@ pub(super) fn presentation_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if !gpu(app, ui) {
         return;
     }
+    studio::tone_controls(app, ui);
     note(app, ui, "render.effects_help");
     let mut editor = std::mem::take(&mut app.render_workspace.view.inspector.effects);
     let before = app.render_workspace.view.studio.finishing;

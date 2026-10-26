@@ -228,3 +228,86 @@ fn save_shot_dashes_leave_rounded_corners_at_the_chip_radius() {
     }
     output.textures_delta.clear();
 }
+
+#[test]
+fn segmented_unavailable_choices_remain_visible_and_cannot_change_selection() {
+    let ctx = crate::fonts::test_context();
+    let mut selected = 1;
+    let mut draw = |ui: &mut Ui| {
+        row(ui, "Quality", |ui| {
+            segmented(
+                ui,
+                &mut selected,
+                &["Draft", "Custom"],
+                Segments { disabled_reasons: &[Some("waiting for the quality contract"), None], ..Default::default() },
+            )
+        });
+    };
+    frame(&ctx, vec![], &mut draw);
+    let draft = scenario::handle_at("dialog:Quality:Draft").unwrap();
+    frame(&ctx, pointer(draft, true), &mut draw);
+    frame(&ctx, pointer(draft, false), &mut draw);
+    assert_eq!(selected, 1);
+    assert!(scenario::handle_at("dialog:Quality:Custom").is_some());
+}
+
+#[test]
+fn output_radio_rows_keep_titles_summaries_and_disabled_choices_in_both_themes() {
+    for dark in [false, true] {
+        let tokens = if dark { crate::theme::Tokens::dark() } else { crate::theme::Tokens::light() };
+        let _restore = crate::theme::scoped_tokens(tokens);
+        for language in ["en", "ja", "zh", "de", "ko"] {
+            let locale = crate::i18n::Locale::for_language(language);
+            let ctx = crate::fonts::test_context();
+            let mut enabled = true;
+            let mut clicked = false;
+            let mut draw = |ui: &mut Ui| {
+                ui.set_width(240.0);
+                let response = ui
+                    .add_enabled_ui(enabled, |ui| {
+                        settings_choice_row(
+                            ui,
+                            &SettingsChoice {
+                                key: "test:output:radio",
+                                title: locale.text("render.size_full_hd"),
+                                summary: "1920 × 1080",
+                                detail: "Full HD",
+                            },
+                            true,
+                        )
+                    })
+                    .inner;
+                assert_eq!(response.rect.height(), 40.0);
+                assert_eq!(response.rect.width(), 240.0);
+                clicked |= response.clicked();
+            };
+            let output = crate::test_support::frame(&ctx, egui::RawInput::default(), &mut draw);
+            let texts: Vec<_> = crate::test_support::text_shapes(&output).collect();
+            let title = texts.iter().find(|text| text.galley.text() == locale.text("render.size_full_hd")).unwrap();
+            let summary = texts.iter().find(|text| text.galley.text() == "1920 × 1080").unwrap();
+            assert!(title.pos.x + title.galley.size().x <= summary.pos.x, "{language}: title must clear its summary");
+            frame(&ctx, vec![], &mut draw);
+            let point = scenario::handle_at("test:output:radio").unwrap();
+            frame(&ctx, pointer(point, true), &mut draw);
+            frame(&ctx, pointer(point, false), &mut draw);
+            assert!(clicked);
+            enabled = false;
+            clicked = false;
+            let mut disabled = |ui: &mut Ui| {
+                ui.add_enabled_ui(enabled, |ui| {
+                    clicked |= settings_choice_row(
+                        ui,
+                        &SettingsChoice { key: "test:output:radio", title: "4K", summary: "3840 × 2160", detail: "Over budget" },
+                        false,
+                    )
+                    .clicked();
+                });
+            };
+            frame(&ctx, vec![], &mut disabled);
+            let point = scenario::handle_at("test:output:radio").unwrap();
+            frame(&ctx, pointer(point, true), &mut disabled);
+            frame(&ctx, pointer(point, false), &mut disabled);
+            assert!(!clicked);
+        }
+    }
+}

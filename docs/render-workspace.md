@@ -52,9 +52,9 @@ catalog navigation from the Inspector retains the read-only resource browser.
 Light hosts the existing native studios and HDR environments in the same tile grid.
 A click runs `render.preset.apply` or `render.library.environment.apply`, preserving
 those commands' validation and undo behavior. Studios require an explicitly selected
-GPU path setup; environments require CPU or GPU ray tracing. Frame and Output show
-faded Frame presets / Size presets placeholders with their Shot editor / Output
-editor reasons. Stage navigation itself never applies a resource.
+GPU path setup; environments require CPU or GPU ray tracing. Frame shows a faded
+Frame presets placeholder with its Shot editor reason. Output hosts the Size presets
+card described below. Stage navigation itself never applies a resource.
 
 The 110 pt compass uses the free canvas beside the Inspector; the navigation bar
 keeps its shared handler. The Shots strip's independent `view.shots_strip`
@@ -406,8 +406,8 @@ current numerical image setup, without inventing a saved rig.
 engine selection), Environment, Light, Shot and Output. It belongs to each document
 view and is never saved in a design. `view.render_select` validates semantic focus
 requests without opening dialogs or editing/evaluating a design. Object picks and
-Browser selections keep the existing selection commands. Inspector routing stays
-as before; the focus state is available to a later Inspector change.
+Browser selections keep the existing selection commands. Selecting Output opens the Output editor. Other focus types retain their existing
+Inspector routing for subsequent selection-following editor changes.
 
 Look expands Objects, Light expands Lights and Environment, and Frame expands
 Shots. Output leaves expansion unchanged. Stages preserve selection and never
@@ -424,4 +424,26 @@ texture-map, reflection and aging controls. The separate Textures disclosure is
 marked Soon. The shared footer exports the design library through `library.export`
 and resets the current target's override through `appearance.assign`.
 `view.render_inspector {visible}` controls transient per-document visibility;
-selecting a stage reopens the editor. Selection focus routing is deferred.
+selecting a stage reopens the editor. Output selection routes to its dedicated editor;
+other semantic selection focus routing remains deferred.
+
+## Output editor
+
+The Output stage offers size, format, quality and a Check summary in the stage bar's
+second row. Its lower-left Size presets card offers Preview (1280 × 720), Full HD,
+4K, Square and Custom. Presets outside the selected executor's limits stay visible
+with a disabled explanation. Custom retains the current size and reveals its fields.
+Numerical size edits and presets use `render.output.size`; they never save a shot
+or start a job.
+
+Selecting Output in the Browser shows one editor with Image, Effects and Check
+sections, without page navigation or pinned job actions. Image retains size/aspect,
+format, sampling, method, transparency and export destination controls. Effects owns
+tone, bloom, grading and regrade. Check retains the preflight list, freshness checks,
+installed backend/status metadata and expandable diagnostics. Named quality presets
+and EXR settings remain unavailable with their existing reasons. Destination selection
+uses the existing completed-image export picker.
+
+Render and Cancel stay in the stage bar. Active jobs also show a single-row progress
+pill with Cancel. The result viewer retains Copy, export, close, Fit/100% and shared
+pan/zoom. R starts the active setup; Escape closes the image without cancelling its job.

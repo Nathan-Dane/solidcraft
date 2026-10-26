@@ -1008,7 +1008,10 @@ impl SolveApp {
         }
         let t0 = now_ms();
         let selected_before = self.session.selection.clone();
-        let r = self.session.execute(id, &params).map_err(|e| e.to_string());
+        let r = self.session.execute(id, &params).map_err(|e| e.to_string()).and_then(|reply| {
+            render_workspace::apply_command(self, id, &reply)?;
+            Ok(reply)
+        });
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         let done = self.command_completed(id, r);
         // Render focus already applies its semantic selection after clearing object picks.

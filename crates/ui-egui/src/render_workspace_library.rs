@@ -462,7 +462,7 @@ pub(super) fn card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
             fill_height: true,
             compact: crate::render_ui::compact(app, bounds.width()),
             editor: false,
-            enabled: matches!(stage, super::Stage::Look | super::Stage::Light),
+            enabled: stage != super::Stage::Frame,
             header_actions: (stage == super::Stage::Look).then_some(&mut actions as &mut dyn FnMut(&mut egui::Ui)),
         },
         &mut side,
@@ -470,8 +470,9 @@ pub(super) fn card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
         |ui| match stage {
             super::Stage::Look => ui_kit::catalog_scope(ui, |ui| browse_contents(app, ui, true)),
             super::Stage::Light => light_panel(app, ui),
-            super::Stage::Frame | super::Stage::Output => {
-                let reason = app.tr(if stage == super::Stage::Frame { "render.frame_presets_pending" } else { "render.size_presets_pending" });
+            super::Stage::Output => super::inspector::size_presets(app, ui),
+            super::Stage::Frame => {
+                let reason = app.tr("render.frame_presets_pending");
                 ui_kit::text(ui, reason, ui_kit::Text::Note("render:stage-presets-pending"));
             }
         },
