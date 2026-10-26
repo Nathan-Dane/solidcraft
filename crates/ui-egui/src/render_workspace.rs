@@ -37,6 +37,9 @@ mod inspector;
 #[path = "render_workspace_library.rs"]
 mod library;
 
+#[path = "render_workspace_light.rs"]
+pub(crate) mod light;
+
 #[path = "render_workspace_materials.rs"]
 mod materials;
 
@@ -266,6 +269,7 @@ pub enum RenderSelection {
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.
 #[derive(Clone, Debug)]
 pub struct ViewState {
+    lights: light::View,
     job_shot: Option<String>,
     save_shot_name: Option<String>,
     pub name: String,
@@ -327,6 +331,7 @@ impl ImageMethod {
 impl Default for ViewState {
     fn default() -> Self {
         Self {
+            lights: Default::default(),
             job_shot: None,
             save_shot_name: None,
             name: "Studio".into(),
@@ -697,6 +702,10 @@ fn image_params(app: &SolveApp) -> Result<serde_json::Value, String> {
 
 /// Pure request construction is shared with offline setup editing; host checks stay above.
 fn image_request(app: &SolveApp) -> Result<serde_json::Value, String> {
+    light::filter_request(app, raw_image_request(app)?)
+}
+
+fn raw_image_request(app: &SolveApp) -> Result<serde_json::Value, String> {
     cpu::validate_progressive_image(app)?;
     if !setups::has_runtime_inputs(app) {
         return Ok(json!({"settings":setups::snapshot(app)?}));
@@ -1779,6 +1788,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
         let slot = app.render_workspace.slot.clone();
         let callback = ViewportCallback(Frame {
+            product_lights: Some(light::preview(app)?),
             product: true,
             key,
             slot: slot.clone(),

@@ -983,6 +983,10 @@ impl SolveApp {
             solidcraft_engine::slicers::set_chosen_programs(&self.preferences.custom_slicers);
         }
         let t0 = now_ms();
+        if matches!(id, "render.lights.solo" | "render.lights.mute") {
+            render_workspace::light::validate_visibility(self, &params)?;
+        }
+        let params = if matches!(id, "render.start" | "render.preflight") { render_workspace::light::filter_request(self, params)? } else { params };
         let selected_before = self.session.selection.clone();
         let r = self.session.execute(id, &params).map_err(|e| e.to_string());
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
@@ -993,6 +997,14 @@ impl SolveApp {
             } else {
                 render_workspace::RenderSelection::Object(self.session.selection.clone())
             };
+        }
+        if let Ok(v) = &done {
+            if matches!(id, "render.lights.solo" | "render.lights.mute") {
+                render_workspace::light::apply_visibility(self, id, v);
+            }
+            if matches!(id, "render.lights.set" | "render.lights.add" | "render.lights.duplicate" | "render.lights.remove") {
+                render_workspace::light::edited(self, &params, v);
+            }
         }
         done
     }

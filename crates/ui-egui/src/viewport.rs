@@ -3952,6 +3952,7 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         let size_px = [rect.width() * ppp, rect.height() * ppp];
         let ssaa = supersampling(app, ui.ctx(), proj.vp.to_f32(), size_px);
         let cb = ViewportCallback(Frame {
+            product_lights: None,
             ssaa,
             product: false,
             key: app.viewport.key,
@@ -7157,6 +7158,7 @@ mod tests {
                 let proj = projection(&app, rect);
                 let e = proj.cam.eye().to_f32();
                 let frame = Frame {
+                    product_lights: None,
                     product: false,
                     key: 1,
                     slot: slot.clone(),

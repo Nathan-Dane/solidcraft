@@ -601,6 +601,10 @@ fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    if let super::RenderSelection::Light(id) = app.render_workspace.view.selection.clone() {
+        super::light::editor(app, ui, &id);
+        return;
+    }
     browse_button(app, ui, "rigs", "render.browse_rigs");
     library::inspect_kinds(app, ui, &["rigs", "lighting"]);
     match app.render_workspace.view.method {
