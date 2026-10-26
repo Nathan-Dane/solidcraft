@@ -291,6 +291,7 @@ pub struct ViewState {
     materials: materials::View,
     library: library::View,
     inspector: inspector::View,
+    environment_ring: environment::RingView,
 
     cpu: cpu::View,
     overwrite: bool,
@@ -352,6 +353,7 @@ impl Default for ViewState {
             materials: materials::View::default(),
             library: library::View::default(),
             inspector: inspector::View::default(),
+            environment_ring: environment::RingView::default(),
 
             cpu: cpu::View::default(),
             overwrite: false,
@@ -1694,6 +1696,7 @@ pub fn preview_size(executor: Option<&ExecutorDescriptor>, full: (u64, u64)) -> 
 
 pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     if app.render_workspace.view.result {
+        app.render_workspace.view.environment_ring = environment::RingView::default();
         show_result(app, ui);
         return;
     }
@@ -1701,28 +1704,34 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
     app.viewport.rect = Some(rect);
     crate::viewport::refresh_layout(app, ui.ctx().pixels_per_point());
     let response = ui.interact(rect, ui.id().with("render_preview"), Sense::click_and_drag());
-    let input = crate::navigation::handle(app, ui, rect, &response, crate::navigation::NavCaps::RENDER);
-    let navigating = input.scroll != 0.0
-        || input.pinch != 1.0
-        || input.pan != egui::Vec2::ZERO
-        || input.middle
-        || input.secondary_down
-        || (input.primary_nav.is_some() && input.primary_down)
-        || input.mode.is_some()
-        || app.viewport.axis_drag.is_some()
-        || app.viewport.spin
-        || app.cam_anim.is_some();
-    let hits = input
-        .hover
-        .filter(|_| input.inside && !navigating)
-        .map(|p| crate::viewport::pick_cached(app, &crate::viewport::projection(app, rect), p))
-        .unwrap_or_default();
-    let candidate = crate::viewport::candidate(app, &hits);
-    app.viewport.hover = candidate.as_ref().map(|(hit, _)| hit.clone());
-    if response.clicked_by(egui::PointerButton::Primary) && input.inside && !navigating {
-        let (add, toggle) =
-            crate::tool_modifiers::selection_click(crate::tool_modifiers::Held::from_modifiers(input.mods), app.preferences.selection_shift_add_only);
-        crate::viewport::select(app, candidate.map(|(_, sel)| sel), add, toggle);
+    if !environment::ring_input(app, ui, rect, &response) {
+        let input = crate::navigation::handle(app, ui, rect, &response, crate::navigation::NavCaps::RENDER);
+        let navigating = input.scroll != 0.0
+            || input.pinch != 1.0
+            || input.pan != egui::Vec2::ZERO
+            || input.middle
+            || input.secondary_down
+            || (input.primary_nav.is_some() && input.primary_down)
+            || input.mode.is_some()
+            || app.viewport.axis_drag.is_some()
+            || app.viewport.spin
+            || app.cam_anim.is_some();
+        let hits = input
+            .hover
+            .filter(|_| input.inside && !navigating)
+            .map(|p| crate::viewport::pick_cached(app, &crate::viewport::projection(app, rect), p))
+            .unwrap_or_default();
+        let candidate = crate::viewport::candidate(app, &hits);
+        app.viewport.hover = candidate.as_ref().map(|(hit, _)| hit.clone());
+        if response.clicked_by(egui::PointerButton::Primary) && input.inside && !navigating {
+            let (add, toggle) = crate::tool_modifiers::selection_click(
+                crate::tool_modifiers::Held::from_modifiers(input.mods),
+                app.preferences.selection_shift_add_only,
+            );
+            crate::viewport::select(app, candidate.map(|(_, sel)| sel), add, toggle);
+        }
+    } else {
+        app.viewport.hover = None;
     }
     let bg = app.render_workspace.view.draft.background;
     ui.painter().rect_filled(rect, 0.0, Color32::from_rgb(bg[0], bg[1], bg[2]));
@@ -1819,6 +1828,10 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
         preview_error(app, ui, rect, &error);
     }
     crate::viewport::axis_view(app, ui, rect);
+}
+
+pub(crate) fn environment_overlay(app: &mut SolveApp, ui: &mut egui::Ui, viewport: egui::Rect) {
+    environment::ring_overlay(app, ui, viewport);
 }
 
 pub(crate) fn interactive_command_info(app: &SolveApp, command: &solidcraft_engine::CommandSpec) -> solidcraft_engine::CommandInfo {

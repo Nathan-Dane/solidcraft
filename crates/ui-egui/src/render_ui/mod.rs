@@ -170,6 +170,7 @@ pub(crate) fn overlays(app: &mut SolveApp, ui: &mut egui::Ui) {
     if !free.is_positive() {
         return;
     }
+    crate::render_workspace::environment_overlay(app, ui, viewport);
     crate::viewport::nav_bar(app, ui, viewport);
     shots_pill(app, ui, free);
 }
