@@ -361,6 +361,7 @@ pub struct JobStatus {
 }
 
 struct Data {
+    completed_duration: Option<std::time::Duration>,
     punctual_diagnostics: Option<super::PunctualDiagnostics>,
     sampling: Option<super::adaptive::SamplingReport>,
     progress: Progress,
@@ -369,6 +370,7 @@ struct Data {
     preview: Option<Arc<RenderPreview>>,
 }
 struct Record {
+    started: web_time::Instant,
     presentation: Option<Arc<RetainedPresentation>>,
     textures: Option<super::textures::TextureSummary>,
     options: JobOptions,
@@ -397,6 +399,10 @@ pub struct JobHandle(Arc<Record>);
 impl JobHandle {
     pub fn id(&self) -> JobId {
         self.0.id
+    }
+    /// Submission-to-publication time, captured once by the host, independent of UI polling.
+    pub fn completed_duration(&self) -> Result<Option<std::time::Duration>> {
+        self.0.data.lock().map(|data| data.completed_duration).map_err(|_| JobError::new(ErrorCode::Internal, "render duration lock poisoned"))
     }
     pub fn status(&self) -> Result<JobStatus> {
         let data = self.0.data.lock().map_err(|_| JobError::new(ErrorCode::Internal, "render status lock poisoned"))?;
@@ -860,6 +866,7 @@ impl Running {
         }));
         data.preview = None;
         data.progress = Progress { phase: Phase::Completed, done: 1, total: 1 };
+        data.completed_duration = Some(self.handle.0.started.elapsed());
         self.handle.0.notify();
         Ok(false)
     }
@@ -1317,6 +1324,7 @@ impl ImageHost {
             (request, None)
         };
         let handle = JobHandle(Arc::new(Record {
+            started: web_time::Instant::now(),
             presentation: None,
             textures,
             options,
@@ -1328,6 +1336,7 @@ impl ImageHost {
             resolved,
             cancel: CancelToken::default(),
             data: Mutex::new(Data {
+                completed_duration: None,
                 punctual_diagnostics: None,
                 sampling: None,
                 progress: Progress { phase: Phase::Queued, done: 0, total: 1 },
@@ -1433,6 +1442,7 @@ impl ImageHost {
         let metadata = self.0.shared.budget.reserve(metadata_bytes)?;
         let origin = Arc::new(RetainedPresentation { info: origin, _reservation: metadata });
         let handle = JobHandle(Arc::new(Record {
+            started: web_time::Instant::now(),
             presentation: Some(origin),
             textures: None,
             options,
@@ -1444,6 +1454,7 @@ impl ImageHost {
             resolved,
             cancel: CancelToken::default(),
             data: Mutex::new(Data {
+                completed_duration: None,
                 punctual_diagnostics: None,
                 sampling: None,
                 progress: Progress { phase: Phase::Queued, done: 0, total: 1 },
