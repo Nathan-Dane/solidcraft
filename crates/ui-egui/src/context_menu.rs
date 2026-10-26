@@ -131,7 +131,7 @@ impl Item {
             swatch: None,
         }
     }
-    fn heading(label: &str) -> Item {
+    pub(crate) fn heading(label: &str) -> Item {
         Item {
             id: format!("#{label}"),
             label: label.into(),
@@ -438,6 +438,11 @@ pub fn items(app: &SolveApp, target: &Target) -> Vec<Item> {
                     .on(crate::render_workspace::scene::same_look(app, &bodies)),
             );
         }
+    }
+    if crate::render_workspace::active(app)
+        && let Target::Body { name } = target
+    {
+        v.push(crate::render_workspace::assign::menu(app, name));
     }
     // Several items of the folder selected: they can be grouped.
     if let Some(p) = crate::browser::selection_group(app, target) {
@@ -1230,6 +1235,9 @@ pub fn run_item(app: &mut SolveApp, item: &Item, at: Pos2) {
     let p = item.params.clone().unwrap_or(Value::Null);
     let bodies = strs(&p, "bodies");
     match item.id.as_str() {
+        "appearance.library" if crate::render_workspace::active(app) => {
+            app.start("appearance.library");
+        }
         "parts.resize" => {
             if let Some(component) = id_of(&p, "component") {
                 crate::dialogs_part_size::open(app, component);

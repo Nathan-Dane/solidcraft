@@ -35,8 +35,13 @@ pub static COMMANDS: &[CommandSpec] = &[
         .doc_only()
         .params("No parameters. Return to Model Preview; headless echo only, never cancels a job."),
     waiting!("render.lights.add", "Add Light", "RENDER SCENE", "LIGHTS", "render_scene", "named light creation"),
-    waiting!("appearance.paint", "Paint Appearance", "RENDER APPEARANCE", "APPEARANCE", "appearance", "product picking and appearance painting"),
-    waiting!("appearance.pick_up", "Pick Up Appearance", "RENDER APPEARANCE", "APPEARANCE", "select", "product picking and appearance sampling"),
+    CommandSpec::new("appearance.paint", "Paint Appearance", super::inspect::appearance_gestures::paint)
+        .icon("appearance").key("B").noundo()
+        .params("appearance or color/name/opacity/pbr: appearance.assign look parameters; validates and returns look for ui.start paint. done?: true ends the UI tool. Programmatic calls never open UI."),
+    CommandSpec::new("appearance.pick_up", "Pick Up Appearance", super::inspect::appearance_gestures::pick_up)
+        .icon("select").key("I").noundo()
+        .params("target?: appearance.chain target; returns its resolved look, or requests the UI sampling tool when omitted. Programmatic calls never open UI."),
+
     waiting!("render.lights.solo", "Solo Light", "RENDER SCENE", "LIGHTS", "render_scene", "light visibility and solo controls"),
     waiting!("render.compare", "Compare Images", "RENDER", "RESULT", "compare", "retained image comparison"),
     waiting!("render.batch", "Render All Shots", "RENDER", "BATCH", "render_image", "the saved-shot render queue"),

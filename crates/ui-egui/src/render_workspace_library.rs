@@ -371,7 +371,7 @@ fn choose_in_stage(app: &mut SolveApp, view: &mut View, kind: &str, id: &str) ->
 fn look_signature(entry: &Value) -> Value {
     json!([entry["name"], entry["color"], entry["opacity"], entry["pbr"]])
 }
-fn appearance_id(entry: &Value) -> String {
+pub(super) fn appearance_id(entry: &Value) -> String {
     entry["id"].as_str().map(str::to_owned).unwrap_or_else(|| look_signature(entry).to_string())
 }
 fn describe(app: &mut SolveApp, kind: &str, id: &str) -> Result<Value, String> {
@@ -947,38 +947,6 @@ fn applicable(entry: &Value, selected: &[Value], used: &[Value]) -> bool {
         })
 }
 
-fn apply_look(app: &mut SolveApp, entry: &Value) -> Result<(), String> {
-    use solidcraft_engine::Sel;
-    let mut bodies = Vec::new();
-    let mut faces = Vec::new();
-    let mut components = Vec::new();
-    for sel in &app.session.selection {
-        match sel {
-            Sel::Body { name } => bodies.push(name.clone()),
-            Sel::Face { body, point, .. } => faces.push(json!({"body":body,"point":point})),
-            Sel::Occurrence { path } => {
-                if let Some(occurrence) = path.last().and_then(|id| app.session.doc.occurrences.iter().find(|o| o.id == *id)) {
-                    components.push(occurrence.component.to_string());
-                }
-            }
-            _ => {}
-        }
-    }
-    if bodies.is_empty() && faces.is_empty() && components.is_empty() {
-        return Ok(());
-    }
-    let mut params = if let Some(id) = entry["id"].as_str() {
-        json!({"appearance":id})
-    } else {
-        json!({"name":entry["name"],"color":entry["color"],"opacity":entry["opacity"],"pbr":entry["pbr"]})
-    };
-    params["bodies"] = json!(bodies);
-    params["faces"] = json!(faces);
-    params["components"] = json!(components);
-    app.run("appearance.assign", params)?;
-    Ok(())
-}
-
 fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
     let mut view = std::mem::take(&mut app.render_workspace.view.library);
     let document_changed =
@@ -1131,6 +1099,7 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
     let identities: Vec<_> = entries.iter().map(|(_, id, _)| format!("render:library:{id}")).collect();
     let layout = ui_kit::CatalogLayout::new(ui, "render:library:catalog", 0);
     let mut selected = None;
+    let mut dragged = None;
     // Keep each catalog/collection's independent scroll position.
     ui.push_id((&view.kind, view.collection), |ui| {
         layout.body(ui, |ui| {
@@ -1152,7 +1121,18 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
                         badge: Some(tile_badge(app, entry)),
                     })
                     .collect();
-                selected = ui_kit::sphere_grid(ui, &tiles);
+                if applicable_count > 0 {
+                    ui_kit::text(ui, app.tr("render.library_applicable"), ui_kit::Text::Inline);
+                    (selected, dragged) = ui_kit::sphere_grid_drag(ui, tiles.get(..applicable_count).unwrap_or_default());
+                }
+                if applicable_count < tiles.len() {
+                    if applicable_count > 0 {
+                        ui_kit::text(ui, app.tr("render.library_other"), ui_kit::Text::Inline);
+                    }
+                    let (other, other_drag) = ui_kit::sphere_grid_drag(ui, tiles.get(applicable_count..).unwrap_or_default());
+                    selected = selected.or(other.map(|i| i + applicable_count));
+                    dragged = dragged.or(other_drag.map(|i| i + applicable_count));
+                }
             } else {
                 for (index, ((kind, id, entry), tip)) in entries.iter().zip(&tips).enumerate() {
                     if index == 0 && applicable_count > 0 {
@@ -1222,48 +1202,54 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
                 });
             }
         }
-        if let Some((kind, id, entry)) = selected.and_then(|index| entries.get(index)) {
-            let result = if stage_card { choose_in_stage(app, &mut view, kind, id) } else { choose(app, &mut view, kind, id) }.and_then(|()| {
-                if !stage_card {
-                    return Ok(());
-                }
-                if kind == "appearances" {
-                    return apply_look(app, entry);
-                }
-                if kind == "selene_appearances" {
-                    let bodies: Vec<_> = app
-                        .session
-                        .selection
-                        .iter()
-                        .filter_map(|selection| match selection {
-                            solidcraft_engine::Sel::Body { name } => Some(name.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    if !bodies.is_empty() {
-                        return review::open(
-                            app,
-                            "uniform",
-                            entry["name"].as_str().unwrap_or(id).into(),
-                            view.details.clone().unwrap_or_default(),
-                            review::Apply::Command {
-                                id: "render.library.appearance.apply".into(),
-                                params: json!({"id":id,"variant":"uniform_opaque","bodies":bodies}),
-                            },
-                        );
+        for (index, drag) in [(selected, false), (dragged, true)] {
+            if let Some((kind, id, entry)) = index.and_then(|index| entries.get(index)) {
+                let result = if stage_card { choose_in_stage(app, &mut view, kind, id) } else { choose(app, &mut view, kind, id) }.and_then(|()| {
+                    if !stage_card {
+                        return Ok(());
                     }
-                    if !app.session.selection.is_empty() {
-                        return Err(app.tr("render.material_choose_body").to_string());
+                    if kind == "appearances" {
+                        if entry["available"] == false {
+                            return Err(app.tr("render.library_blocked").to_string());
+                        }
+                        let params = if let Some(id) = entry["id"].as_str() { json!({"appearance":id}) } else { preview_parameters(entry) };
+                        return super::assign::tile(app, params, drag);
                     }
+                    if kind == "selene_appearances" && !drag {
+                        let bodies: Vec<_> = app
+                            .session
+                            .selection
+                            .iter()
+                            .filter_map(|selection| match selection {
+                                solidcraft_engine::Sel::Body { name } => Some(name.clone()),
+                                _ => None,
+                            })
+                            .collect();
+                        if !bodies.is_empty() {
+                            return review::open(
+                                app,
+                                "uniform",
+                                entry["name"].as_str().unwrap_or(id).into(),
+                                view.details.clone().unwrap_or_default(),
+                                review::Apply::Command {
+                                    id: "render.library.appearance.apply".into(),
+                                    params: json!({"id":id,"variant":"uniform_opaque","bodies":bodies}),
+                                },
+                            );
+                        }
+                        if !app.session.selection.is_empty() {
+                            return Err(app.tr("render.material_choose_body").to_string());
+                        }
+                    }
+                    Ok(())
+                });
+                if let Err(error) = result {
+                    app.set_status(error, true);
                 }
-                Ok(())
-            });
-            if let Err(error) = result {
-                app.set_status(error, true);
             }
         }
         if stage_card {
-            ui_kit::catalog_footer_with_tip(ui, app.tr("render.stage_layout.appearance_note"), app.tr("render.stage_panels.paint_pending"));
+            ui_kit::catalog_footer_with_tip(ui, app.tr("render.stage_layout.appearance_note"), app.tr("render.assign_help"));
             if view.kind == "materials" {
                 ui_kit::text(ui, app.tr("render.library_specification_only"), ui_kit::Text::Note("appearance:reference:reason"));
             }
@@ -1680,6 +1666,17 @@ fn availability_label<'a>(app: &'a SolveApp, status: Option<&str>) -> &'a str {
         Some("specification_only") => "render.library_specs",
         _ => "render.availability_reference",
     })
+}
+
+/// Focus the existing library card from the viewport Appearance menu.
+pub(super) fn focus_library(app: &mut SolveApp) {
+    let view = &mut app.render_workspace.view.library;
+    view.collection = 0;
+    switch_kind(view, "appearances");
+}
+
+pub(super) fn invalidate(app: &mut SolveApp) {
+    app.render_workspace.view.library.loaded = false;
 }
 
 #[cfg(test)]

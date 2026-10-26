@@ -2287,6 +2287,10 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
                     app.last_escape = None;
                     continue;
                 }
+                if crate::render_workspace::assign::cancel(app) {
+                    app.last_escape = None;
+                    continue;
+                }
                 // Two quick presses in a sketch finish it (keeping it, like Finish Sketch);
                 // the first one has already cancelled whatever was active.
                 let now = ctx.input(|i| i.time);

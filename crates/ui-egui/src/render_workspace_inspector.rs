@@ -564,6 +564,7 @@ fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    super::assign::selection_controls(app, ui);
     if selection_appearance::controls(app, ui) {
         return;
     }
@@ -1253,6 +1254,7 @@ pub(super) fn confirmation_open(app: &SolveApp) -> bool {
         || app.render_workspace.view.save_shot_name.is_some()
         || materials::confirmation_open(app)
         || library::review_open(app)
+        || super::assign::replacement_open(app)
 }
 pub(super) fn reveal(app: &mut SolveApp, section: &'static str) {
     app.render_workspace.view.inspector.reveal = Some(section);

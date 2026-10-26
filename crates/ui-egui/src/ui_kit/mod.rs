@@ -5,8 +5,6 @@ mod actions;
 mod assistant;
 mod assistant_entry;
 mod checks;
-#[cfg(test)]
-pub(crate) use checks::tests::{raster as test_raster, textures_update as test_textures_update};
 mod choice;
 mod color;
 mod confirm;
@@ -50,6 +48,8 @@ pub(crate) use assistant::*;
 pub(crate) use assistant_entry::*;
 #[cfg(test)]
 pub(crate) use checks::tests::{raster as raster_ui, textures_update as update_test_textures};
+#[cfg(test)]
+pub(crate) use checks::tests::{raster as test_raster, textures_update as test_textures_update};
 pub(crate) use checks::*;
 pub(crate) use choice::*;
 pub(crate) use color::*;
@@ -69,7 +69,9 @@ pub use name_list::{NameList, NameRow, name_list};
 pub(crate) use navigation::*;
 pub(crate) use navigation_menu::*;
 pub(crate) use navigation_settings::*;
-pub(crate) use panel::{ComputeStatus, FeatureOptions, Panel, Part, WindowPage, WorkspaceOptions, panel_header_hover};
+pub(crate) use panel::{
+    ComputeStatus, FeatureOptions, InspectorAction, Panel, Part, WindowPage, WorkspaceOptions, inspector_header, panel_header_hover,
+};
 pub use panel::{DialogButtons, Window};
 #[cfg(test)]
 pub(crate) use panel::{collapsible_header, header};
@@ -85,7 +87,7 @@ pub(crate) use shortcuts::*;
 #[cfg(test)]
 pub(crate) use sphere::sphere_preview;
 pub use sphere::{FinishKind, Sphere, sphere_thumbnail};
-pub(crate) use sphere::{SphereTile, sphere_grid, sphere_preview_with_source};
+pub(crate) use sphere::{SphereTile, sphere_cursor, sphere_grid, sphere_grid_drag, sphere_preview_with_source};
 pub(crate) use stages::{StageAction, StageBar};
 pub(crate) use status::*;
 pub(crate) use table::*;
@@ -116,5 +118,3 @@ pub(crate) fn fits_steadily(ui: &egui::Ui, key: impl std::hash::Hash + std::fmt:
     ui.data_mut(|data| data.insert_temp(id, fits));
     fits
 }
-
-pub(crate) use panel::{InspectorAction, inspector_header};

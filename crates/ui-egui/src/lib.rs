@@ -1037,11 +1037,17 @@ impl SolveApp {
         let t0 = now_ms();
         let revision = self.session.revision;
         let selected_before = self.session.selection.clone();
+        let revision = self.session.revision;
         let r = self.session.execute(id, &params).map_err(|e| e.to_string()).and_then(|reply| {
             render_workspace::apply_command(self, id, &reply)?;
             Ok(reply)
         });
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
+        // An Undo offered by the last toast is stale once another command changed the design.
+        if self.status_undo && revision != self.session.revision {
+            self.status_undo = false;
+            self.status = None;
+        }
         let done = self.command_completed(id, r);
         if self.session.revision != revision {
             timeline::stop_playback(self);
@@ -1103,6 +1109,9 @@ impl SolveApp {
             }
             if id == "view.render_browser" {
                 render_workspace::apply_browser_controls(self, v);
+            }
+            if id == "appearance.favorite" {
+                render_workspace::assign::favorite_applied(self, v);
             }
             if id == "view.render_select" {
                 use render_workspace::RenderSelection;
@@ -1224,6 +1233,12 @@ impl SolveApp {
             sketch_palette::apply_mode(self, id, v);
         }
         self.finish_command(id, &r);
+        if render_workspace::active(self)
+            && matches!(id, "appearance.assign" | "appearance.paste")
+            && let Ok(value) = &r
+        {
+            render_workspace::assign::assigned(self, value);
+        }
         r
     }
 

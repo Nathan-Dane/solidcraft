@@ -244,6 +244,15 @@ const ELEMENTS: &[Element] = &[
             [TreeAction { icon: "lookat", hover_only: true, label: "Solo", reason: Some("Not available yet"), target: "gallery:tree:solo" }];
         tree_row(ui, ui.id().with("tree_actions"), &Row { label: "Light", actions: &actions, ..Default::default() });
     }),
+    element!("selection_actions", |ui, _| {
+        let actions = [
+            StageAction { icon: Some("chain"), label: "Appearance Chain", enabled: true, primary: false, reason: None },
+            StageAction { icon: Some("reorder"), label: "Replace All", enabled: true, primary: false, reason: None },
+            StageAction { icon: Some("star"), label: "Favourite Look", enabled: true, primary: true, reason: None },
+            StageAction { icon: Some("suppress"), label: "Hide", enabled: true, primary: false, reason: None },
+        ];
+        selection_actions(ui, "Boss", &actions);
+    }),
     element!("catalog_scope", |ui, state| {
         catalog_scope(ui, |ui| {
             search_field(ui, ui.id().with("catalog_search"), &mut state.value, "Search appearances");
@@ -353,6 +362,28 @@ const ELEMENTS: &[Element] = &[
             badge: None,
         });
         sphere_grid(ui, &tiles);
+    }),
+    element!("sphere_grid_drag", |ui, _| {
+        let tiles = [SphereTile {
+            id: "gallery:drag-grid",
+            name: "Copper",
+            sphere: Sphere { color: Tokens::get().render_accent, kind: FinishKind::Metal, opacity: None },
+            selected: true,
+            users: 1,
+            tip: "Drag to apply",
+            badge: None,
+        }];
+        sphere_grid_drag(ui, &tiles);
+    }),
+    element!("sphere_cursor", |ui, _| {
+        let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };
+        sphere_thumbnail(ui, "gallery:cursor-sample", sphere, Tokens::get().control_height);
+        sphere_cursor(ui, sphere);
+    }),
+    element!("note_height", |ui, _| {
+        let label = "A wrapped note reserves its measured height in a bounded card.";
+        let _height = note_height(ui, label);
+        text(ui, label, Text::Note("gallery:measured-note"));
     }),
     element!("sphere_tile", "gallery:tile", Some("gallery:tile"), |ui, _| {
         SphereTile {
