@@ -288,8 +288,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                         Page::Appearance => appearance_controls(app, ui),
                         Page::Effects => super::effects::presentation_controls(app, ui),
                         Page::Lighting => lighting_controls(app, ui),
-                        Page::Environment => environment_controls(app, ui),
-                        Page::Background => background_controls(app, ui),
+                        Page::Environment | Page::Background => super::environment::editor(app, ui),
                         Page::Camera => camera_controls(app, ui),
                         Page::Output => output_editor(app, ui),
                         Page::Diagnostics => diagnostics(app, ui),
@@ -516,45 +515,6 @@ fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 
-fn background_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    ui_kit::text(ui, app.tr("render.background_workflow"), ui_kit::Text::Note("render.background_workflow"));
-    let title = app.tr("render.background_camera_section").to_string();
-    ui_kit::section(ui, "render_camera_background_section", &title, true, |ui| {
-        ui.label(app.tr("render.background"));
-        let color = ui_kit::color_field(ui, &mut app.render_workspace.view.draft.background);
-        crate::scenario::publish_target("render:background-color", color.rect);
-        app.render_workspace.view.dirty |= color.changed();
-        if app.render_workspace.view.method == ImageMethod::GpuRaytrace {
-            studio::backdrop_controls(app, ui);
-        }
-        if !app.render_workspace.view.draft.stage.is_empty() {
-            ui_kit::text(ui, app.tr("render.background_stage_occlusion"), ui_kit::Text::Note("render.background_stage_occlusion"));
-        }
-        if app.render_workspace.view.result {
-            ui_kit::text(ui, app.tr("render.background_completed_frozen"), ui_kit::Text::Note("render.background_completed_frozen"));
-        }
-        let enabled = super::ribbon::action_ready(app, "render.result.regrade").is_ok();
-        let apply = ui_kit::button(ui, app.tr("render.background_regrade"), ui_kit::Button::Enabled(enabled));
-        crate::scenario::publish_target("render:background-regrade", apply.rect);
-        if apply.clicked() {
-            if let Err(error) = super::ribbon::perform_job(app, "render.result.regrade") {
-                app.set_status(error, true);
-            }
-            ui.ctx().request_repaint();
-        }
-        ui_kit::text(ui, app.tr("render.background_no_alpha_override"), ui_kit::Text::Note("render.background_no_alpha_override"));
-    });
-    physical_stage_controls(app, ui);
-    let title = app.tr("render.background_lighting_section").to_string();
-    ui_kit::section(ui, "render_background_hdr_section", &title, false, |ui| {
-        ui_kit::text(ui, app.tr("render.background_hdr_separate"), ui_kit::Text::Note("render.background_hdr_separate"));
-        if ui_kit::button(ui, app.tr("render.browse_environments"), ui_kit::Button::Normal).clicked() {
-            app.render_workspace.view.inspector.page = Page::Environment;
-            library::open_category(app, "hdr");
-        }
-    });
-}
-
 fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.shot_manager").to_string();
     reveal_section(app, ui, "render_shot_manager");
@@ -615,26 +575,6 @@ fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             super::cpu_lighting_controls(app, ui);
             cpu::light_controls(app, ui);
         }
-        ImageMethod::Raster => {
-            ui_kit::text(ui, app.tr("render.method_limit_raster"), ui_kit::Text::Note("render.method_limit_raster"));
-        }
-    }
-}
-fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    ui.label(app.tr("render.background"));
-    let r = ui_kit::color_field(ui, &mut app.render_workspace.view.draft.background);
-    if r.changed() {
-        app.render_workspace.view.dirty = true;
-    }
-    ui_kit::text(ui, app.tr("render.background_not_light"), ui_kit::Text::Note("render.background_not_light"));
-    if app.render_workspace.view.method == ImageMethod::GpuRaytrace {
-        studio::backdrop_controls(app, ui);
-    }
-    browse_button(app, ui, "hdr", "render.browse_environments");
-
-    match app.render_workspace.view.method {
-        ImageMethod::GpuRaytrace => studio::environment_controls(app, ui),
-        ImageMethod::CpuRaytrace => cpu::environment_controls(app, ui),
         ImageMethod::Raster => {
             ui_kit::text(ui, app.tr("render.method_limit_raster"), ui_kit::Text::Note("render.method_limit_raster"));
         }
