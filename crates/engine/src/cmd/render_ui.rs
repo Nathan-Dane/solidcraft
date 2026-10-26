@@ -1,5 +1,6 @@
 //! Planned Render interactions, with explicit non-mutating refusals.
 use super::CommandSpec;
+use crate::schema::{TypedContract, output_schema_for, render_ui::CheckReport};
 use crate::{Result, Session, params::bad};
 use serde::Deserialize;
 use serde_json::{Value, json};
@@ -17,7 +18,16 @@ macro_rules! waiting {
     };
 }
 
+const CHECK_REPORT: TypedContract<CheckReport> = TypedContract::new();
+
 pub static COMMANDS: &[CommandSpec] = &[
+    CommandSpec::new("render.preflight.copy", "Copy Render Check Report", crate::checked!("render.preflight.copy", copy_check))
+        .icon("copy")
+        .contract(&CHECK_REPORT)
+        .output(output_schema_for::<CheckReport>)
+        .noundo()
+        .doc_only()
+        .params("text: nonempty report, at most 65536 bytes. Validated clipboard request; headless echo only, never renders or edits a design."),
     CommandSpec::new("render.output.size", "Set Render Output Size", output_size)
         .icon("settings")
         .noundo()
@@ -41,6 +51,14 @@ pub static COMMANDS: &[CommandSpec] = &[
     waiting!("render.compare", "Compare Images", "RENDER", "RESULT", "compare", "retained image comparison"),
     waiting!("render.batch", "Render All Shots", "RENDER", "BATCH", "render_image", "the saved-shot render queue"),
 ];
+
+fn copy_check(_: &mut Session, params: &Value) -> Result<Value> {
+    let report: CheckReport = serde_json::from_value(params.clone()).map_err(|e| bad("render.preflight.copy", e.to_string()))?;
+    if report.text.is_empty() || report.text.len() > 65536 {
+        return Err(bad("render.preflight.copy", "report must contain 1..65536 bytes"));
+    }
+    Ok(json!({"text":report.text}))
+}
 
 #[cfg(test)]
 #[test]
@@ -136,4 +154,19 @@ fn output_viewer_requests_are_validated_headless_echoes() {
     }
     assert!(std::sync::Arc::ptr_eq(&document, &s.doc));
     assert_eq!(before, (s.revision, s.undo.len(), s.evaluations));
+}
+
+#[cfg(test)]
+#[test]
+fn output_sections_copy_report_validates_without_design_history_or_job_changes() {
+    let mut s = Session::default();
+    let doc = s.doc.clone();
+    let before = (s.revision, s.undo.len(), s.redo.len(), s.evaluations, s.is_dirty());
+    let report = json!({"text":"Check\n✓ Size is within the renderer limit"});
+    assert_eq!(s.execute("render.preflight.copy", &report).unwrap(), report);
+    for request in [json!({}), json!({"text":""}), json!({"text":true}), json!({"text":"check","job":1}), json!({"text":"x".repeat(65537)})] {
+        assert!(s.execute("render.preflight.copy", &request).is_err());
+    }
+    assert!(std::sync::Arc::ptr_eq(&doc, &s.doc));
+    assert_eq!(before, (s.revision, s.undo.len(), s.redo.len(), s.evaluations, s.is_dirty()));
 }

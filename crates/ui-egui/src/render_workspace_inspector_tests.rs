@@ -515,7 +515,7 @@ fn resolution_lock_reanchors_for_explicit_presets_and_does_not_affect_other_inte
 }
 
 #[test]
-fn actual_output_ratio_and_orientation_controls_are_local_and_preserve_saved_capture() {
+fn actual_output_ratio_is_local_and_orientation_saves_once_preserving_other_capture_fields() {
     let mut h = fixture();
     super::super::select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
     h.app.render_workspace.view.draft.width = 1920;
@@ -523,22 +523,29 @@ fn actual_output_ratio_and_orientation_controls_are_local_and_preserve_saved_cap
     h.app.render_workspace.view.samples = 37;
     h.app.render_workspace.view.inspector.page = Page::Output;
     setups::save(&mut h.app).unwrap();
-    let saved = h.app.session.doc.to_json();
+    let saved = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
     let camera = h.app.cam;
     reveal(&mut h.app, "render_output_advanced");
     h.frames(24);
     h.step(&json!({"click":{"handle":"render:aspect-lock"}})).unwrap();
     assert!(h.app.render_workspace.view.inspector.resolution.locked);
     assert!(!h.app.render_workspace.view.dirty, "coupling editor coordinates is not a saved numerical edit");
+    assert!(Arc::ptr_eq(&saved, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
     h.step(&json!({"click":{"handle":"render:swap-size"}})).unwrap();
     assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (1080, 1920));
     assert_eq!(h.app.render_workspace.view.samples, 37);
     assert_eq!(h.app.cam, camera);
-    assert_eq!(h.app.session.doc.to_json(), saved);
+    let mut expected = saved.render.setups[&h.app.render_workspace.view.name].clone();
+    expected.width = 1080;
+    expected.height = 1920;
+    assert_eq!(h.app.session.doc.render.setups[&h.app.render_workspace.view.name], expected);
+    assert_eq!(h.app.session.undo.len(), undo + 1);
     assert!(h.app.render_workspace.view.dirty);
     setups::load(&mut h.app);
     h.frames(3);
-    assert_eq!(h.app.render_workspace.view.inspector.resolution.anchor, Some([1920, 1080]));
+    assert_eq!(h.app.render_workspace.view.inspector.resolution.anchor, Some([1080, 1920]));
 }
 
 #[test]
@@ -1064,6 +1071,9 @@ fn output_effects_retains_ordered_looks_and_photographic_intent_across_save_and_
     h.app.start("render.effects.describe");
     h.frames(24);
     assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
+    assert_eq!(h.app.session.doc.to_json(), before, "opening Effects is read-only");
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"click":{"handle":format!("dialog:section:{}", h.app.tr("render.look_title"))}})).unwrap();
     for code in [3, 6] {
         h.step(&json!({"click":{"handle":"render:look-add"}})).unwrap();
         h.frames(2);
@@ -1075,7 +1085,8 @@ fn output_effects_retains_ordered_looks_and_photographic_intent_across_save_and_
     h.step(&json!({"click":{"handle":"render:look-up"}})).unwrap();
     h.frames(2);
     assert_eq!(h.app.render_workspace.view.studio.finishing.looks.get(0).unwrap().kind, LookKind::Faded);
-    assert_eq!(h.app.session.doc.to_json(), before);
+    assert_eq!(h.app.session.undo.len(), undo + 3);
+    assert_eq!(setups::snapshot(&h.app).unwrap().job, h.app.session.doc.render.setups[&h.app.render_workspace.view.name].job);
     h.app.render_workspace.view.studio.finishing.photographic.chromatic_pixels = 1.5;
     h.app.render_workspace.view.studio.finishing.photographic.flare.strength = 0.4;
     let expected = setups::snapshot(&h.app).unwrap();
@@ -1210,6 +1221,97 @@ fn shots_strip_uses_the_existing_dirty_shot_confirmation() {
     h.step(&json!({"widget":h.app.tr("render.discard_continue")})).unwrap();
     assert_eq!(h.app.render_workspace.view.name, "B");
     assert_eq!(h.app.render_workspace.view.draft.width, 321);
+}
+
+#[test]
+fn output_sections_bloom_tone_and_grading_save_one_command_per_edit_without_starting() {
+    use solidcraft_engine::render::job::ToneMap;
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1440,"height":2200}));
+    super::super::select_image_method(&mut h.app, ImageMethod::GpuRaytrace);
+    let document = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.app.start("render.effects.describe");
+    h.frames(24);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert_eq!(undo, h.app.session.undo.len());
+    let bloom = crate::scenario::rect_of("render:bloom-enable").unwrap();
+    let tone = crate::scenario::rect_of("render:tone-map").unwrap();
+    let grading = crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr("render.output_grading"))).unwrap();
+    assert!(bloom.top() < tone.top() && tone.top() < grading.top());
+    h.step(&json!({"click":{"handle":"render:bloom-enable"}})).unwrap();
+    assert_eq!(undo + 1, h.app.session.undo.len());
+    assert!(h.app.render_workspace.view.studio.finishing.bloom.is_some());
+    h.step(&json!({"click":{"handle":"render:tone-map"}})).unwrap();
+    let next = if h.app.render_workspace.view.studio.tone_map == ToneMap::Reinhard { "ACES fitted" } else { "Reinhard" };
+    h.step(&json!({"click":{"handle":format!("dialog:list:{next}")}})).unwrap();
+    assert_eq!(undo + 2, h.app.session.undo.len());
+    h.step(&json!({"click":{"handle":format!("dialog:section:{}", h.app.tr("render.output_grading"))}})).unwrap();
+    h.step(&json!({"click":{"handle":"render.post_contrast"},"double":true})).unwrap();
+    h.step(&json!({"key":"A","cmd":true})).unwrap();
+    h.step(&json!({"text":"1.4"})).unwrap();
+    h.step(&json!({"key":"Enter"})).unwrap();
+    assert_eq!(h.app.render_workspace.view.studio.finishing.contrast, 1.4);
+    assert_eq!(undo + 3, h.app.session.undo.len());
+    assert_eq!(setups::snapshot(&h.app).unwrap().job, h.app.session.doc.render.setups[&h.app.render_workspace.view.name].job);
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert_eq!(h.app.session.doc.features, document.features);
+}
+
+#[test]
+fn output_sections_check_report_copies_success_staleness_and_errors_through_platform_queue() {
+    let mut h = fixture();
+    h.app.session.set_render_job_host(Some(solidcraft_engine::render::job::CpuHost::cooperative())).unwrap();
+    let doc = h.app.session.doc.clone();
+    let state = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.is_dirty());
+    super::super::ribbon::perform_job(&mut h.app, "render.preflight").unwrap();
+    let report = check_report(&h.app).unwrap();
+    assert!(report.contains(h.app.tr("render.output_ready")));
+    assert!(report.contains("cpu-raster"));
+    h.app.run("render.preflight.copy", json!({"text":report})).unwrap();
+    assert_eq!(h.app.render_workspace.clipboard_text.as_deref(), Some(report.as_str()));
+    h.frames(1);
+    assert!(h.output.commands.iter().any(|command| matches!(command, egui::OutputCommand::CopyText(text) if text == &report)));
+    assert!(h.app.render_workspace.clipboard_text.is_none());
+    assert!(h.app.render_workspace.view.job.is_none());
+    assert_eq!(h.app.session.render_job_host().unwrap().admitted_bytes(), 0);
+    assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
+    assert_eq!(state, (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.is_dirty()));
+    h.app.render_workspace.view.draft.width = 32;
+    let lines = check_lines(&h.app);
+    assert_eq!(lines[0].key, "stale");
+    assert_eq!(lines[0].status, ui_kit::CheckStatus::Warning);
+    assert!(check_report(&h.app).unwrap().contains(h.app.tr("render.review_stale")));
+    let request = super::super::image_params(&h.app).unwrap();
+    record_check(&mut h.app, &request, &json!({"error":"host refused the request"}));
+    let lines = check_lines(&h.app);
+    assert_eq!(lines[0].status, ui_kit::CheckStatus::Error);
+    assert_eq!(lines[0].label, "host refused the request");
+    assert!(check_report(&h.app).unwrap().contains("host refused the request"));
+}
+
+#[test]
+fn output_sections_sizes_refuse_hostile_input_and_4k_follows_the_selected_budget() {
+    let mut h = fixture();
+    let before = h.app.render_workspace.view.draft.clone();
+    let doc = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    for (width, height) in [(0, 1), (1, 0), (u32::MAX, 1), (4096, 4096), (3840, 2160)] {
+        assert!(apply_size(&mut h.app, width, height, false).is_err());
+        assert_eq!(h.app.render_workspace.view.draft, before);
+        assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
+        assert_eq!(h.app.session.undo.len(), undo);
+    }
+    let reason = size_limit_reason(&h.app, 3840, 2160);
+    assert!(reason.contains("4194304"));
+    assert!(reason.contains("2730 × 1536"));
+    super::super::select_image_method(&mut h.app, ImageMethod::CpuRaytrace);
+    h.app.render_workspace.view.raytrace.budget = solidcraft_engine::render::job::CpuBudget::Studio;
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:preset:4k"}})).unwrap();
+    assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (3840, 2160));
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    assert!(h.app.render_workspace.view.job.is_none());
 }
 
 #[test]

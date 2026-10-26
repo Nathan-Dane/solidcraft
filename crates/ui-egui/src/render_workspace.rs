@@ -91,6 +91,7 @@ pub struct State {
     image_info: Option<solidcraft_engine::render::job::FrameInfo>,
     preview_image: Option<PreviewImage>,
     clipboard_image: Option<egui::ColorImage>,
+    clipboard_text: Option<String>,
 }
 
 /// Provisional pixels are never an export source and never replace the retained final image.
@@ -393,6 +394,7 @@ impl Default for State {
             image_info: None,
             preview_image: None,
             clipboard_image: None,
+            clipboard_text: None,
         }
     }
 }
@@ -507,6 +509,9 @@ pub fn sync_backend(app: &mut SolveApp) {
 /// Cooperative work belongs to the frame loop, never to a status/control request. Keep
 /// scheduling frames even after leaving Render so a browser job can finish in Design.
 pub fn tick(app: &mut SolveApp, ctx: &egui::Context) {
+    if let Some(text) = app.render_workspace.clipboard_text.take() {
+        ctx.copy_text(text);
+    }
     if let Some(image) = app.render_workspace.clipboard_image.take() {
         ctx.copy_image(image);
     }
@@ -1922,6 +1927,9 @@ pub fn show(app: &mut SolveApp, ui: &mut egui::Ui) {
 /// Apply validated UI requests after the same registry call used by automation.
 pub(crate) fn apply_command(app: &mut SolveApp, id: &str, reply: &serde_json::Value) -> Result<(), String> {
     match id {
+        "render.preflight.copy" => {
+            app.render_workspace.clipboard_text = Some(reply["text"].as_str().ok_or("invalid check report")?.to_string());
+        }
         "render.output.size" => {
             let width = reply["width"].as_u64().and_then(|v| u32::try_from(v).ok()).ok_or("invalid output width")?;
             let height = reply["height"].as_u64().and_then(|v| u32::try_from(v).ok()).ok_or("invalid output height")?;

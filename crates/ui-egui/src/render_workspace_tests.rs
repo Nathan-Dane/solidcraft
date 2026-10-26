@@ -5162,8 +5162,8 @@ fn output_viewer_size_chips_obey_limits_and_largest_upscales_at_the_current_aspe
     let before = h.app.render_workspace.view.draft.clone();
     assert!(h.app.run("render.output.size", json!({"width":4096,"height":4096})).is_err());
     assert_eq!(h.app.render_workspace.view.draft, before);
-    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
-    assert_eq!(undo, h.app.session.undo.len());
+    assert_eq!(h.app.session.doc.features, document.features);
+    assert_eq!(undo + 3, h.app.session.undo.len());
     assert!(h.app.render_workspace.view.job.is_none());
 }
 
@@ -5386,17 +5386,22 @@ fn output_viewer_presets_are_commands_with_limits_and_custom_keeps_the_size() {
     let mut h = output_viewer_fixture();
     let document = h.app.session.doc.clone();
     let undo = h.app.session.undo.len();
-    for (key, expected) in [("720", (1280, 720)), ("1080", (1920, 1080)), ("square", (2048, 2048))] {
+    h.frames(6);
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc), "opening Size presets does not apply anything");
+    for (index, (key, expected)) in [("720", (1280, 720)), ("1080", (1920, 1080)), ("square", (2048, 2048))].into_iter().enumerate() {
         h.step(&json!({"click":{"handle":format!("render:preset:{key}")}})).unwrap();
         assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), expected);
+        assert_eq!(h.app.session.undo.len(), undo + index + 1);
+        let saved = &h.app.session.doc.render.setups[&h.app.render_workspace.view.name];
+        assert_eq!((saved.width, saved.height), expected);
     }
     h.step(&json!({"click":{"handle":"render:preset:4k"}})).unwrap();
     assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (2048, 2048));
     h.step(&json!({"click":{"handle":"render:preset:custom"}})).unwrap();
     assert!(h.app.render_workspace.view.inspector.resolution.custom);
     assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (2048, 2048));
-    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
-    assert_eq!(undo, h.app.session.undo.len());
+    assert_eq!(document.features, h.app.session.doc.features);
+    assert_eq!(undo + 3, h.app.session.undo.len());
     assert!(h.app.render_workspace.view.job.is_none());
 }
 
