@@ -95,14 +95,37 @@ final edge-aware denoising, and a thin-lens depth-of-field control. Positive ape
 requires a perspective product camera. Denoising preserves raw accumulation but can
 soften detail; glass and sharp specular first hits bypass its final spatial filter.
 
-The Environment section selects no map, an original artistic sky gradient, or a local
-Radiance `.hdr` panorama. HDR input is bounded to 16 MiB, 2048 × 1024, 2:1, and linear
+The Environment Browser row opens the Environment editor. The legacy Environment
+and Background pages use that same editor, with five sections in order: Source,
+Orientation and strength, Backdrop, Ground and stage, and Atmosphere (GPU).
+Source offers None, Artistic sky, HDR file and embedded HDR for GPU, or None,
+Constant and HDR for CPU. Change opens the Environments scope of Studios and
+environments. Embedded HDR shows its name, kind and saved-in-design status; sky
+exposes zenith, horizon and ground linear colours. CPU HDR has lighting samples.
+Radiance `.hdr` input is bounded to 16 MiB, 2048 × 1024, 2:1, and linear
 sRGB/D65 primaries; unspecified primaries require the explicit interpretation checkbox.
 EXR is not supported. Rotation and intensity affect illumination, while the saved
 background remains the camera backplate. Selecting a file runs the bounded public
 `render.hdr.inspect` command; a typed path has an explicit **Check HDR file** action.
 The picker belongs to the originating document revision, setup, method and input
 selection. A cancelled or stale answer never replaces a newer selection.
+
+Rotate and Intensity use the existing environment command; the rotation ring is
+their shortcut. Backdrop offers World, Colour, Gradient and Clear. Gradient uses
+the existing GPU camera backdrop (vertical, horizontal or radial, two colours,
+centre and radius). It never lights, casts shadows or reflects, and is refused
+with transparent output. World visibility and blur remain faded because no saved
+renderer setting backs them. Unsupported method choices stay faded with a reason.
+
+Ground and stage fits a saved ground, floor and wall, or polygonal cyclorama.
+Replacing a stage requires the explicit consent checkbox; removing it uses the
+shared **Remove the saved stage?** confirmation. The fields expose extent margin,
+clearance gap and linear reflectance, followed by the saved panel count.
+Atmosphere edits the bounded participating medium: enable, world bounds in mm,
+extinction, scattering albedo and phase. The transitional Aging page's airborne
+section calls this same function. CPU and raster show the controls faded with
+the GPU requirement. These controls use existing render state and commands;
+opening the editor never changes the design or renderer.
 
 The panel distinguishes a pending file, a checked file and **HDR saved inside this
 design**. It shows dimensions, declared colour primaries and intensity; the source
@@ -378,8 +401,8 @@ current numerical image setup, without inventing a saved rig.
 engine selection), Environment, Light, Shot and Output. It belongs to each document
 view and is never saved in a design. `view.render_select` validates semantic focus
 requests without opening dialogs or editing/evaluating a design. Object picks and
-Browser selections keep the existing selection commands. Inspector routing stays
-as before; the focus state is available to a later Inspector change.
+Browser selections keep the existing selection commands. Selecting Environment
+opens its editor; the legacy Environment and Background entry points share it.
 
 Look expands Objects, Light expands Lights and Environment, and Frame expands
 Shots. Output leaves expansion unchanged. Stages preserve selection and never

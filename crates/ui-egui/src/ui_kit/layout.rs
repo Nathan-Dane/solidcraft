@@ -265,6 +265,18 @@ pub(crate) fn section<R>(ui: &mut Ui, id: impl egui::AsIdSalt, title: &str, defa
     section_count(ui, id, title, default_open, None::<usize>, add)
 }
 
+/// Section with a renderer/method tag. Shares disclosure, typography and badge tokens with section_count.
+pub(crate) fn section_method<R>(
+    ui: &mut Ui,
+    id: impl egui::AsIdSalt,
+    title: &str,
+    default_open: bool,
+    method: &str,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> Option<R> {
+    section_count(ui, id, title, default_open, Some(method), add)
+}
+
 /// Section heading with an optional count badge; disclosure state uses the same identity.
 pub(crate) fn section_count<R>(
     ui: &mut Ui,
