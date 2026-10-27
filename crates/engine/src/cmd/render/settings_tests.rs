@@ -1,4 +1,5 @@
 use super::*;
+use solidcraft_doc::render_settings::RenderJob;
 
 fn save(s: &mut Session, patch: Value) {
     s.execute("render.settings.set", &json!({"name":"Studio", "set":patch})).unwrap();
@@ -860,4 +861,117 @@ fn settings_history_and_checkpoint_preserve_a_stale_live_drag() {
     s.execute("sketch.finish", &json!({})).unwrap();
     assert!(!s.model.is_stale());
     assert!(s.evaluations > 0);
+}
+
+#[test]
+fn render_lights_shape_falloff_and_world_vectors_lower_to_existing_fields_with_undo() {
+    use crate::schema::render_lights::Geometry;
+    let mut s = Session::default();
+    for method in ["cpu_raytrace", "gpu_path"] {
+        light_fixture(&mut s, method);
+        s.execute("render.lights.add", &json!({"name":"Studio","set":{"kind":"area"}})).unwrap();
+        let before = s.doc.clone();
+        s.execute(
+            "render.lights.set",
+            &json!({"name":"Studio","id":"area:0","set":{
+                "position_mm":[2,3,40],"width_mm":60,"height_mm":40,"radiance":[8,4,2]
+            }}),
+        )
+        .unwrap();
+        let lights = crate::render_lights::inspect(&s.doc.render.setups["Studio"]).unwrap();
+        assert_eq!(lights[0].colour.map(|c| c * lights[0].intensity), [8.0, 4.0, 2.0]);
+        let Geometry::Area { position_mm, edge_u_mm: [ux, uy, uz], edge_v_mm: [vx, vy, vz] } = lights[0].geometry else { panic!("area") };
+        assert_eq!(position_mm, [2.0, 3.0, 40.0]);
+        assert!((ux.hypot(uy).hypot(uz) - 60.0).abs() < 1e-9);
+        assert!((vx.hypot(vy).hypot(vz) - 40.0).abs() < 1e-9);
+        let changed = s.doc.clone();
+        s.execute("edit.undo", &json!({})).unwrap();
+        assert_eq!(s.doc, before);
+        s.execute("edit.redo", &json!({})).unwrap();
+        assert_eq!(s.doc, changed);
+        // GPU stores half-edges, CPU full sides. Both inspect as the same full vectors.
+        s.execute("render.lights.set", &json!({"name":"Studio","id":"area:0","set":{"edge_u_mm":[0,60,0],"edge_v_mm":[40,0,0]}})).unwrap();
+        let roundtrip = solidcraft_doc::Document::from_json(&s.doc.to_json()).unwrap();
+        assert_eq!(roundtrip, *s.doc);
+        s.execute("render.lights.add", &json!({"name":"Studio","set":{"kind":"directional"}})).unwrap();
+        s.execute("render.lights.set", &json!({"name":"Studio","id":"directional:0","set":{"direction":[-0.4,-0.6,0.7]}})).unwrap();
+        let lights = crate::render_lights::inspect(&s.doc.render.setups["Studio"]).unwrap();
+        let Geometry::Directional { direction, .. } = lights[0].geometry else { panic!("directional") };
+        assert_eq!(direction, [-0.4, -0.6, 0.7]);
+    }
+    light_fixture(&mut s, "cpu_raytrace");
+    s.execute("render.lights.add", &json!({"name":"Studio","set":{"kind":"point"}})).unwrap();
+    s.execute(
+        "render.lights.set",
+        &json!({"name":"Studio","id":"point:0","set":{
+            "position_mm":[5,10,20],"reference_distance_mm":1000,"minimum_distance_mm":10
+        }}),
+    )
+    .unwrap();
+    let lights = crate::render_lights::inspect(&s.doc.render.setups["Studio"]).unwrap();
+    assert!(matches!(
+        lights[0].geometry,
+        Geometry::Point { position_mm: [5.0, 10.0, 20.0], reference_distance_mm: 1000.0, minimum_distance_mm: 10.0 }
+    ));
+}
+
+#[test]
+fn render_lights_new_numeric_fields_refuse_hostile_and_inapplicable_patches_atomically() {
+    use crate::schema::render_lights::LightPatch;
+    let mut s = Session::default();
+    light_fixture(&mut s, "cpu_raytrace");
+    for kind in ["area", "point", "directional"] {
+        s.execute("render.lights.add", &json!({"name":"Studio","set":{"kind":kind}})).unwrap();
+    }
+    for (id, set) in [
+        ("area:0", json!({"width_mm":1e300})),
+        ("area:0", json!({"height_mm":-1})),
+        ("area:0", json!({"radiance":[1e300,0,0]})),
+        ("area:0", json!({"edge_u_mm":[0,0,0]})),
+        ("area:0", json!({"edge_v_mm":[1,0,0],"edge_u_mm":[1,0,0]})),
+        ("area:0", json!({"position_mm":[1e300,0,0]})),
+        ("area:0", json!({"minimum_distance_mm":1})),
+        ("point:0", json!({"width_mm":1})),
+        ("point:0", json!({"reference_distance_mm":1e300})),
+        ("point:0", json!({"reference_distance_mm":1,"minimum_distance_mm":2})),
+        ("point:0", json!({"minimum_distance_mm":0})),
+        ("directional:0", json!({"direction":[0,0,0]})),
+        ("directional:0", json!({"direction":[1e300,0,0]})),
+    ] {
+        let before = s.doc.clone();
+        let history = (s.undo.len(), s.revision);
+        assert!(s.execute("render.lights.set", &json!({"name":"Studio","id":id,"set":set})).is_err());
+        assert!(Arc::ptr_eq(&before, &s.doc));
+        assert_eq!((s.undo.len(), s.revision), history);
+    }
+    for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+        for edit in [
+            LightPatch { width_mm: Some(invalid), ..Default::default() },
+            LightPatch { height_mm: Some(invalid), ..Default::default() },
+            LightPatch { radiance: Some([invalid, 1.0, 1.0]), ..Default::default() },
+            LightPatch { direction: Some([invalid, 0.0, 1.0]), ..Default::default() },
+            LightPatch { position_mm: Some([invalid, 0.0, 1.0]), ..Default::default() },
+            LightPatch { reference_distance_mm: Some(invalid), ..Default::default() },
+            LightPatch { minimum_distance_mm: Some(invalid), ..Default::default() },
+        ] {
+            let mut light = crate::render_lights::inspect(&s.doc.render.setups["Studio"]).unwrap().remove(0);
+            assert!(crate::render_lights::patch(&mut light, &edit, [0.0; 3], 100.0).is_err());
+        }
+    }
+}
+
+#[test]
+fn render_lights_removing_last_area_clears_area_only_sampling_settings() {
+    let mut s = Session::default();
+    light_fixture(&mut s, "cpu_raytrace");
+    s.execute("render.lights.add", &json!({"name":"Studio","set":{"kind":"area"}})).unwrap();
+    let mut setup = s.doc.render.setups["Studio"].clone();
+    if let Some(RenderJob::CpuRaytrace { options }) = &mut setup.job {
+        options.area_samples = Some(64);
+        options.seed = Some(123);
+    }
+    s.execute("render.lights.remove", &json!({"name":"Studio","id":"area:0","settings":setup})).unwrap();
+    let Some(RenderJob::CpuRaytrace { options }) = &s.doc.render.setups["Studio"].job else { panic!("CPU") };
+    assert!(options.area_samples.is_none() && options.seed.is_none());
+    assert!(options.area_lights.as_ref().unwrap().is_empty());
 }

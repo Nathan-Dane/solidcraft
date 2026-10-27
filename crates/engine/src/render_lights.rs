@@ -77,10 +77,29 @@ pub fn patch(light: &mut Light, edit: &crate::schema::render_lights::LightPatch,
         (edit.elevation_deg, -90.0, 90.0),
         (edit.distance_mm, 0.001, 1e6),
         (edit.size_mm, 0.0002, 2e6),
+        (edit.width_mm, 0.000002, 2e6),
+        (edit.height_mm, 0.000002, 2e6),
+        (edit.reference_distance_mm, 0.001, 1e6),
+        (edit.minimum_distance_mm, 0.001, 1e6),
     ] {
         if value.is_some_and(|v| !v.is_finite() || !(low..=high).contains(&v)) {
             return Err("light edit exceeds finite numerical bounds".into());
         }
+    }
+    for (value, low, high) in [
+        (edit.position_mm, -1e12, 1e12),
+        (edit.direction, -1e6, 1e6),
+        (edit.edge_u_mm, -2e6, 2e6),
+        (edit.edge_v_mm, -2e6, 2e6),
+        (edit.radiance, 0.0, 1e8),
+        (edit.colour, 0.0, 1.0),
+    ] {
+        if value.is_some_and(|v| v.iter().any(|v| !v.is_finite() || !(low..=high).contains(v))) {
+            return Err("light vector exceeds finite numerical bounds".into());
+        }
+    }
+    if edit.direction.is_some_and(|v| solidcraft_render::surface::unit_direction(vector(v)).is_err()) {
+        return Err("light direction must be nonzero".into());
     }
     let aim = edit.aim_at.unwrap_or(target);
     if aim.iter().any(|v| !v.is_finite() || v.abs() > 1e9) {
@@ -119,25 +138,63 @@ pub fn patch(light: &mut Light, edit: &crate::schema::render_lights::LightPatch,
     if let Some(k) = edit.temperature_k {
         light.colour = temperature_colour(k);
     }
+    if let Some(colour) = edit.colour {
+        light.colour = colour;
+    }
+    if let Some(rgb) = edit.radiance {
+        if !matches!(light.geometry, Geometry::Area { .. } | Geometry::Directional { angular_radius_rad: Some(_), .. }) {
+            return Err("radiance requires an area light or GPU sun".into());
+        }
+        (light.intensity, light.colour) = radiance(rgb);
+    }
+    if !matches!(light.geometry, Geometry::Area { .. })
+        && (edit.width_mm.is_some() || edit.height_mm.is_some() || edit.edge_u_mm.is_some() || edit.edge_v_mm.is_some())
+    {
+        return Err("shape requires an area light".into());
+    }
+    if !matches!(light.geometry, Geometry::Point { .. } | Geometry::Spot { .. })
+        && (edit.reference_distance_mm.is_some() || edit.minimum_distance_mm.is_some())
+    {
+        return Err("falloff requires a point light".into());
+    }
+    if !matches!(light.geometry, Geometry::Directional { .. }) && edit.direction.is_some() {
+        return Err("direction requires a directional light".into());
+    }
     let moved = type_changed || edit.azimuth_deg.is_some() || edit.elevation_deg.is_some() || edit.distance_mm.is_some() || edit.aim_at.is_some();
     match &mut light.geometry {
         Geometry::Directional { direction: axis, angular_radius_rad } => {
-            if edit.distance_mm.is_some() || edit.size_mm.is_some() || edit.aim_at.is_some() {
+            if edit.distance_mm.is_some() || edit.size_mm.is_some() || edit.aim_at.is_some() || edit.position_mm.is_some() {
                 return Err("directional lights have no position, size or aim point".into());
             }
             if moved {
                 *axis = array(direction);
             }
+            if let Some(direction) = edit.direction {
+                *axis = direction;
+            }
             if let Some(softness) = edit.softness {
                 *angular_radius_rad = Some(0.001 + softness * (std::f64::consts::FRAC_PI_2 - 0.001));
             }
         }
-        Geometry::Point { position_mm, .. } | Geometry::Spot { position_mm, .. } => {
+        Geometry::Point { position_mm, reference_distance_mm, minimum_distance_mm }
+        | Geometry::Spot { position_mm, reference_distance_mm, minimum_distance_mm, .. } => {
             if edit.softness.is_some() || edit.size_mm.is_some() {
                 return Err("point/spot lights have no finite emitter size or soft shadows".into());
             }
             if moved {
                 *position_mm = array(point);
+            }
+            if let Some(position) = edit.position_mm {
+                *position_mm = position;
+            }
+            if let Some(reference) = edit.reference_distance_mm {
+                *reference_distance_mm = reference;
+            }
+            if let Some(minimum) = edit.minimum_distance_mm {
+                *minimum_distance_mm = minimum;
+            }
+            if *minimum_distance_mm > *reference_distance_mm {
+                return Err("minimum distance exceeds reference distance".into());
             }
         }
         Geometry::Area { position_mm, edge_u_mm, edge_v_mm } => {
@@ -155,6 +212,21 @@ pub fn patch(light: &mut Light, edit: &crate::schema::render_lights::LightPatch,
             } else if edit.size_mm.is_some() || edit.softness.is_some() {
                 *edge_u_mm = array(solidcraft_render::surface::unit_direction(vector(*edge_u_mm)).unwrap_or(Vec3::X) * size);
                 *edge_v_mm = array(solidcraft_render::surface::unit_direction(vector(*edge_v_mm)).unwrap_or(Vec3::Y) * size * ratio);
+            }
+            if let Some(position) = edit.position_mm {
+                *position_mm = position;
+            }
+            if let Some(u) = edit.edge_u_mm {
+                *edge_u_mm = u;
+            }
+            if let Some(v) = edit.edge_v_mm {
+                *edge_v_mm = v;
+            }
+            if let Some(width) = edit.width_mm {
+                *edge_u_mm = array(solidcraft_render::surface::unit_direction(vector(*edge_u_mm)).unwrap_or(Vec3::X) * width);
+            }
+            if let Some(height) = edit.height_mm {
+                *edge_v_mm = array(solidcraft_render::surface::unit_direction(vector(*edge_v_mm)).unwrap_or(Vec3::Y) * height);
             }
         }
     }
@@ -240,6 +312,10 @@ pub fn write(setup: &mut RenderSetup, lights: &[Light]) -> Result<(), String> {
                     })
                     .collect(),
             );
+            if options.area_lights.as_ref().is_none_or(Vec::is_empty) {
+                options.area_samples = None;
+                options.seed = None;
+            }
         }
         Some(RenderJob::GpuPath { options, .. }) => {
             if !punctual.is_empty() || directional.len() > 1 {

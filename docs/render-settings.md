@@ -59,7 +59,9 @@ directional `angular_radius_rad` identifies a finite GPU sun.
 undo step. They accept `name`, `id` except for add, optional complete `settings`
 as an unsaved starting point, and optional `expected_revision`. Add/set accept
 `set` with `kind`, `intensity_ev`, `temperature_k`, `softness`, `azimuth_deg`,
-`elevation_deg`, `distance_mm`, `size_mm` and `aim_at`. These lower into the existing
+`elevation_deg`, `distance_mm`, `size_mm`, `aim_at`, `width_mm`, `height_mm`,
+`position_mm`, `direction`, `edge_u_mm`, `edge_v_mm`, `radiance`, `colour`,
+`reference_distance_mm` and `minimum_distance_mm`. These lower into the existing
 light fields; there is no new saved light metadata. Temperature is an original
 three-band, 6500 K white-balanced Planck tint approximation stored as linear RGB.
 Area softness changes emitter size; GPU Sun softness changes angular radius.
@@ -83,8 +85,24 @@ they are finite 0..1 runtime values, never fields of `RenderSetup`. CPU raster
 uses them in `studio::shade_weighted`; the GPU path uses its captured uniform.
 CPU ray tracing and explicit GPU rigs refuse these fixed-studio weights.
 
+The selectable Lights group runs `view.render_select {kind: "lighting"}` and opens
+Lighting: Light source, Shadows and sampling, then Budget. Its + still adds a
+light. CPU presets require review and consent before replacing directional lights;
+Custom materialises their existing values. GPU budgets show one Sun and four
+Areas; CPU eight directional and eight point/spot plus four Areas. Counts are
+read-only sliders. Unsupported controls stay faded with a reason. No rig identity
+is saved, so there is no Rig row.
+
 Browser eyes and solo actions run the same view commands. A selected light mounts
-`render_workspace_light::editor` in the old Inspector's Lighting page. Opening it
+`render_workspace_light::editor` in the Inspector's Lighting page. Without a
+selected light, that page calls the same group editor. Light has a name/type
+header, Area/Point/Sun segments, intensity, temperature and softness; Position;
+Shape for areas; Falloff for points; and Behaviour (Solo, Mute, Duplicate, Delete).
+Distances displayed as subject-size multiples lower to millimetres. Width U and
+Height V are full side lengths (GPU storage uses half-edges). Independent vector
+edits preserve the other side. Radiance and temperature lower to existing linear
+RGB fields. Sun directions remain world vectors. Every edit is bounded and finite,
+with the renderer validating the complete candidate. Opening an editor
 does not apply or save anything. Edits run the four light commands; Place by
 highlight stays disabled with its viewport-picking reason. The live product view
 receives bounded analytic light samples in `Frame.product_lights`; both PBR and

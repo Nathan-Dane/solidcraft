@@ -750,7 +750,7 @@ fn render_lights_editor_opening_and_disabled_gpu_types_never_edit_or_start_a_job
     let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty());
     h.frames(3);
     assert!(crate::scenario::rect_of("render:light:editor").is_some());
-    h.step(&json!({"click":{"handle":"render:light:type:spot"}})).unwrap();
+    h.step(&json!({"click":{"handle":"render:light:type:point"}})).unwrap();
     assert!(Arc::ptr_eq(&document, &h.app.session.doc));
     assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.revision, h.app.session.is_dirty()));
     assert!(h.app.render_workspace.view.job.is_none());
@@ -2887,22 +2887,6 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
     let completed = h.app.render_workspace.view.completed;
     let result_camera = h.app.render_workspace.view.result_camera;
     h.frames(3);
-    // Open the real editors inside the bounded, scrolling floating card.
-    let open_section = |h: &mut Harness, handle: String| {
-        for _ in 0..4 {
-            let at = crate::scenario::handle_at(&handle).unwrap();
-            let inspector = crate::scenario::rect_of("render:inspector").unwrap();
-            let top = crate::scenario::rect_of("render:inspector:header").unwrap().bottom() + Tokens::get().space_8;
-            let bottom = crate::scenario::rect_of("render:job-footer").map_or(inspector.bottom(), |r| r.top()) - Tokens::get().space_8;
-            if (top..=bottom).contains(&at.y) {
-                break;
-            }
-            let x = crate::scenario::rect_of("render:inspector").unwrap().center().x;
-            h.call("ui.scroll", json!({"x":x,"y":(top+bottom)/2.0,"delta":at.y.clamp(top,bottom)-at.y}));
-            h.frames(20);
-        }
-        h.step(&json!({"click":{"handle":handle}})).unwrap();
-    };
     h.app.run("view.render_select", json!({"kind":"sampling"})).unwrap();
     h.frames(3);
     h.app.run("view.render_select", json!({"kind":"effects"})).unwrap();
@@ -2910,10 +2894,10 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
     h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
     h.app.run("view.render_stage", json!({"stage":"light"})).unwrap();
     h.frames(3);
-    open_section(&mut h, format!("dialog:section:{} 1", crate::i18n::tr("render.studio_area")));
-    h.app.start("render.hdr.inspect");
+    h.app.run("view.render_select", json!({"kind":"lighting"})).unwrap();
     h.frames(3);
-    h.app.run("view.render_stage", json!({"stage":"frame"})).unwrap();
+    assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
+    h.app.run("view.render_select", json!({"kind":"light","id":"area:0"})).unwrap();
     h.frames(3);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
     assert!(!h.app.render_workspace.view.dirty);
@@ -2977,10 +2961,10 @@ fn cpu_setup_reload_preserves_unedited_numeric_options_and_explicit_empty_values
     h.app.render_workspace.view.name = "CPU numeric".into();
     setups::load(&mut h.app);
     h.frames(3);
-    for key in ["render.cpu_lights", "render.cpu_directional"] {
-        let label = if key == "render.cpu_directional" { format!("{} 1", h.app.tr(key)) } else { h.app.tr(key).to_string() };
-        h.step(&json!({"click":{"handle":format!("dialog:section:{label}")}})).unwrap();
-    }
+    h.app.run("view.render_select", json!({"kind":"lighting"})).unwrap();
+    h.frames(3);
+    assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
+    h.app.run("view.render_select", json!({"kind":"light","id":"directional:0"})).unwrap();
     h.frames(3);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
     assert_eq!(image_request(&h.app).unwrap(), json!({"settings":expected}));
@@ -4726,6 +4710,8 @@ fn render_workspace_browser_look_lens_counts_distinct_objects_and_selects_them()
     assert_eq!(groups[red].objects, ["A", "B", "C"]);
     assert_eq!(groups.len(), 2);
     h.app.render_workspace.view.by_look = true;
+    // Keep the object rows inside the ten-row Browser viewport while testing their hover.
+    crate::browser::toggle(&mut h.app, "render:tree:lights", true);
     h.frames(3);
     let at = crate::scenario::handle_at("row:A").unwrap();
     h.step(&json!({"move":[at.x,at.y]})).unwrap();
@@ -4946,6 +4932,7 @@ fn render_workspace_browser_semantic_focus_survives_clearing_object_picks() {
     let before = (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.is_dirty());
     for (request, expected) in [
         (json!({"kind":"environment"}), RenderSelection::Environment),
+        (json!({"kind":"lighting"}), RenderSelection::Lighting),
         (json!({"kind":"light","id":"sun"}), RenderSelection::Light("sun".into())),
         (json!({"kind":"shot","id":"Shot"}), RenderSelection::Shot("Shot".into())),
         (json!({"kind":"output"}), RenderSelection::Output),
@@ -4973,6 +4960,7 @@ fn render_workspace_browser_focus_is_per_document_and_invalid_selection_is_atomi
         json!({"kind":"object"}),
         json!({"kind":"light"}),
         json!({"kind":"shot","id":""}),
+        json!({"kind":"lighting","id":"extra"}),
         json!({"kind":"output","id":"x"}),
         json!({"kind":"shot","id":"x".repeat(1025)}),
         json!({"kind":"nothing","extra":1}),
@@ -6016,6 +6004,64 @@ fn render_assign_gestures_labels_translate_in_all_five_catalogs() {
 }
 
 #[test]
+fn render_lighting_group_selection_opens_ordered_editor_and_plus_still_adds() {
+    let mut h = render_lights_fixture();
+    h.call("ui.resize", json!({"width":1440,"height":2400}));
+    let before = h.app.session.doc.clone();
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:tree:lights"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Lighting);
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Lighting);
+    assert!(crate::scenario::rect_of("render:lighting:editor").is_some());
+    assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+    let sections: Vec<_> = ["render.lighting_source_section", "render.lighting_shadows_section", "render.lighting_budget"]
+        .iter()
+        .map(|key| crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr(key))).unwrap())
+        .collect();
+    assert!(sections.windows(2).all(|pair| pair[0].bottom() <= pair[1].top()));
+    h.step(&json!({"click":{"handle":"render:tree:lights:add"}})).unwrap();
+    assert!(light::rows(&h.app).unwrap().iter().any(|l| l.geometry.kind() == "area"));
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Light("area:0".into()));
+    assert!(crate::scenario::rect_of("render:light:editor").is_some());
+}
+
+#[test]
+fn render_lighting_methods_show_reasons_and_budgets_without_changing_method_or_design() {
+    for method in [ImageMethod::Raster, ImageMethod::CpuRaytrace, ImageMethod::GpuRaytrace] {
+        let mut h = render_lights_fixture();
+        h.call("ui.resize", json!({"width":1440,"height":2400}));
+        if method == ImageMethod::GpuRaytrace {
+            h.app.run("render.settings.set", json!({"name":"Studio","set":{"job":{"method":"gpu_path","options":{"lighting":{}}}}})).unwrap();
+            setups::load(&mut h.app);
+        } else {
+            h.app.render_workspace.view.method = method;
+        }
+        h.app.run("view.render_select", json!({"kind":"lighting"})).unwrap();
+        let before = h.app.session.doc.clone();
+        let revision = h.app.session.revision;
+        h.frames(3);
+        for section in ["render.lighting_source_section", "render.lighting_shadows_section", "render.lighting_budget"] {
+            assert!(crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr(section))).is_some());
+        }
+        let reason = match method {
+            ImageMethod::Raster => "render.method_limit_raster",
+            ImageMethod::CpuRaytrace => "render.lighting_samples_need_area",
+            ImageMethod::GpuRaytrace => "render.light_gpu_punctual",
+        };
+        assert!(crate::scenario::rect_of(&format!("dialog:note:{reason}")).is_some());
+        if method == ImageMethod::GpuRaytrace {
+            assert!(crate::scenario::rect_of("dialog:note:render.lighting_shadow_cpu").is_some());
+            assert!(crate::scenario::rect_of("dialog:note:render.lighting_samples_cpu").is_some());
+        }
+        assert!(h.widget(h.app.tr("render.lighting_budget_help")).is_some());
+        assert_eq!(h.app.render_workspace.view.method, method);
+        assert_eq!(h.app.session.revision, revision);
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+        assert!(h.app.dialog.is_none() && h.app.render_workspace.view.job.is_none());
+    }
+}
+
+#[test]
 fn render_assign_gestures_stage_tools_and_selection_actions_use_commands() {
     let (mut h, _) = render_pick_sample();
     h.app.run("appearance.assign", json!({"bodies":["Plate"],"appearance":"ABS - Blue"})).unwrap();
@@ -6138,4 +6184,117 @@ fn render_assign_gestures_geometry_and_theme_evidence() {
         }
     }
     crate::theme::set_dark(previous);
+}
+
+#[test]
+fn render_lights_each_kind_contains_design_sections_and_real_parameter_fields_in_order() {
+    for (method, kind) in
+        [("cpu_raytrace", "area"), ("cpu_raytrace", "point"), ("cpu_raytrace", "directional"), ("gpu_path", "area"), ("gpu_path", "directional")]
+    {
+        let mut h = render_lights_fixture();
+        h.call("ui.resize", json!({"width":1440,"height":3000}));
+        let options = if method == "gpu_path" { json!({"lighting":{}}) } else { json!({"lights":[],"punctual_lights":[],"area_lights":[]}) };
+        h.app.run("render.settings.set", json!({"name":"Studio","set":{"job":{"method":method,"options":options}}})).unwrap();
+        setups::load(&mut h.app);
+        light::edit(&mut h.app, "render.lights.add", None, Some(json!({"kind":kind}))).unwrap();
+        h.app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+        let before = h.app.session.doc.clone();
+        h.frames(3);
+        assert!(crate::scenario::rect_of("render:light:editor").is_some());
+        let mut sections = vec!["render.light_position"];
+        if kind == "area" {
+            sections.push("render.lighting_shape");
+        }
+        if kind == "point" {
+            sections.push("render.lighting_falloff");
+        }
+        sections.push("render.light_behaviour");
+        let rects: Vec<_> = sections.iter().map(|key| crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr(key))).unwrap()).collect();
+        assert!(rects.windows(2).all(|pair| pair[0].bottom() <= pair[1].top()), "{method}/{kind}");
+        let fields: &[&str] = match kind {
+            "area" => &["width_mm", "height_mm", "radiance:0", "edge_u_mm:0", "edge_v_mm:0", "position_mm:0"],
+            "point" => &["reference_distance_mm", "minimum_distance_mm", "position_mm:0"],
+            _ => &["direction:0", "direction:1", "direction:2"],
+        };
+        for field in fields {
+            assert!(crate::scenario::rect_of(&format!("render:light:{field}")).is_some(), "{method}/{kind}: {field}");
+        }
+        for key in ["render.lighting_solo", "render.lighting_mute", "render.light_duplicate", "render.light_delete"] {
+            assert!(h.widget(h.app.tr(key)).is_some(), "{method}/{kind}: {key}");
+        }
+        assert!(crate::scenario::rect_of("dialog:note:render.light_place_pending").is_some());
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+    }
+}
+
+#[test]
+fn render_lighting_preset_materialises_values_and_replacement_requires_review_consent() {
+    let mut h = render_lights_fixture();
+    h.call("ui.resize", json!({"width":1440,"height":2400}));
+    h.app.run("view.render_select", json!({"kind":"lighting"})).unwrap();
+    h.frames(3);
+    let before = h.app.session.doc.clone();
+    h.step(&json!({"click":{"handle":"render:lighting:preset"}})).unwrap();
+    assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+    // Confirm's primary action is disabled until its explicit acknowledgement.
+    h.step(&json!({"widget":h.app.tr("render.lighting_consent")})).unwrap();
+    h.step(&json!({"widget":h.app.tr("render.lighting_apply")})).unwrap();
+    assert!(h.app.render_workspace.view.raytrace.preset.is_some());
+    assert!(h.app.render_workspace.view.raytrace.lights.is_none());
+    let lights = light::rows(&h.app).unwrap();
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"click":{"handle":"render:lighting:custom"}})).unwrap();
+    assert!(h.app.render_workspace.view.raytrace.preset.is_none());
+    assert_eq!(h.app.render_workspace.view.raytrace.lights.as_ref().unwrap().len(), lights.len());
+    let materialised = light::rows(&h.app).unwrap();
+    for (before, after) in lights.iter().zip(materialised) {
+        assert_eq!(before.colour, after.colour);
+        assert_eq!(before.intensity, after.intensity);
+    }
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Lighting);
+}
+
+#[test]
+fn render_lighting_hostile_numeric_edits_refuse_without_panics_or_partial_state() {
+    let mut h = render_lights_fixture();
+    light::edit(&mut h.app, "render.lights.add", None, Some(json!({"kind":"point"}))).unwrap();
+    let before = h.app.session.doc.clone();
+    let history = h.app.session.undo.len();
+    for set in
+        [json!({"reference_distance_mm":1e300}), json!({"minimum_distance_mm":-1}), json!({"position_mm":[1e300,0,0]}), json!({"direction":[0,0,0]})]
+    {
+        assert!(light::edit(&mut h.app, "render.lights.set", Some("point:0"), Some(set)).is_err());
+        assert!(Arc::ptr_eq(&before, &h.app.session.doc));
+        assert_eq!(h.app.session.undo.len(), history);
+    }
+    h.app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:light:editor").is_some());
+}
+
+#[test]
+fn render_lighting_shadow_edits_are_undoable_and_preset_reviews_reject_changed_drafts() {
+    let mut h = render_lights_fixture();
+    h.call("ui.resize", json!({"width":1440,"height":2400}));
+    h.app.run("view.render_select", json!({"kind":"lighting"})).unwrap();
+    h.frames(3);
+    let before = h.app.session.doc.clone();
+    let undo = h.app.session.undo.len();
+    h.step(&json!({"widget":h.app.tr("render.lighting_shadows")})).unwrap();
+    assert!(!h.app.render_workspace.view.raytrace.shadows);
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    assert!(matches!(&h.app.session.doc.render.setups["Studio"].job,
+        Some(solidcraft_engine::doc::render_settings::RenderJob::CpuRaytrace { options }) if !options.shadows));
+    h.app.run("edit.undo", json!({})).unwrap();
+    setups::load(&mut h.app);
+    assert_eq!(h.app.session.doc, before);
+    h.frames(3);
+    h.step(&json!({"click":{"handle":"render:lighting:preset"}})).unwrap();
+    assert!(h.widget(h.app.tr("render.lighting_consent")).is_some());
+    h.app.render_workspace.view.draft.width = 1200;
+    h.frames(3);
+    assert!(h.widget(h.app.tr("render.lighting_consent")).is_none());
+    assert_eq!(h.app.session.doc, before);
+    assert_eq!(h.app.render_workspace.view.draft.width, 1200);
 }

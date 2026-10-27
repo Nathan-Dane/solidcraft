@@ -1135,11 +1135,18 @@ impl SolveApp {
                 let selected = match v.get("kind").and_then(Value::as_str) {
                     Some("environment") => RenderSelection::Environment,
                     Some("wear") => RenderSelection::Wear,
+                    Some("lighting") => {
+                        render_workspace::select_lighting(self);
+                        RenderSelection::Lighting
+                    }
                     Some("output") => RenderSelection::Output,
                     Some("sampling") => RenderSelection::Sampling,
                     Some("effects") => RenderSelection::Effects,
                     Some("check") => RenderSelection::Check,
-                    Some("light") => RenderSelection::Light(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
+                    Some("light") => {
+                        render_workspace::select_lighting(self);
+                        RenderSelection::Light(v.get("id").and_then(Value::as_str).unwrap_or_default().into())
+                    }
                     Some("shot") => RenderSelection::Shot(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
                     _ => RenderSelection::Nothing,
                 };

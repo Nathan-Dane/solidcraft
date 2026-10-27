@@ -96,6 +96,7 @@ fn section(app: &mut SolveApp, ui: &mut egui::Ui, key: &str) -> bool {
             }
             .to_string(),
             fold: Some(open),
+            selected: key == "lights" && app.render_workspace.view.selection == RenderSelection::Lighting,
             actions: if matches!(key, "lights" | "shots") { &actions } else { &[] },
             ..Default::default()
         },
@@ -113,7 +114,10 @@ fn section(app: &mut SolveApp, ui: &mut egui::Ui, key: &str) -> bool {
             app.start("render.settings.get");
         }
     }
-    if row.fold || row.clicked {
+    if row.clicked && key == "lights" {
+        select(app, "lighting", None);
+    }
+    if row.fold || (row.clicked && key != "lights") {
         browser::toggle(app, &id, true);
     }
     open
