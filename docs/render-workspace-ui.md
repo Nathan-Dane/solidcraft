@@ -102,7 +102,9 @@ Each step is its own PR. Steps that edit the shared Render files are taken one a
 18. Output children (Sampling, Effects, Check) and Size presets. New.
 19. Several retained results, Live | Render compare, render all shots. New.
 20. Focus view, compact and dark layouts, localisation pass. New.
-21. A lighting rig shared across shots (needs an owner decision and one `format/pending` file). New.
+21. Deferred: a lighting rig shared across shots. It needs an owner decision and one
+    `format/pending` file; no UI step depends on it, so the UI work goes first and every shot
+    keeps its own lights until it is decided.
 22. Wear, Lighting, Sampling and Check editors with every remaining control of the Render studio
     panel moved to its home ([panel plan](render-panels.md)); the Render studio panel is deleted. New.
 
