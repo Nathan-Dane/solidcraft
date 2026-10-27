@@ -59,6 +59,20 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("review_and_apply", |ui, state| {
+        ReviewAndApply {
+            title: "Review native studio",
+            name: "Soft enveloping studio",
+            subtitle: "Native studio · whole scene",
+            replaces: "Lighting, environment, exposure and stage",
+            kept: "Camera, sampling, dimensions, optical bindings and geometry",
+            acknowledgement: "Confirm replacing saved state",
+            apply: "Apply studio",
+            copy: false,
+            notice: None,
+        }
+        .content(ui, &mut state.checked, |_| {});
+    }),
     element!("tree_row_rect", |ui, _| {
         for (index, row) in [
             Row { label: "Objects", ..Default::default() },
@@ -123,6 +137,28 @@ const ELEMENTS: &[Element] = &[
     element!("catalog_footer", |ui, _| {
         catalog_footer(ui, "Click to apply · drag onto the model");
     }),
+    element!("catalog_footer_with_tip", |ui, _| {
+        catalog_footer_with_tip(ui, "Click to apply to the selection.", "Paint and drag assignment are not supported yet.");
+    }),
+    element!("catalog_layout", |ui, _| {
+        ui.allocate_ui(egui::vec2(ui.available_width(), 300.0), |ui| {
+            let layout = CatalogLayout::new(ui, "gallery:catalog", 3);
+            layout.body(ui, |ui| {
+                for index in 0..12 {
+                    MenuItem::new("catalog_item", &format!("Surface {index}"), "grid").search_row(ui, "", "Authored map", None);
+                }
+            });
+            layout.footer(ui, |ui| {
+                catalog_footer(ui, "Select a surface to review.");
+            });
+        });
+    }),
+    element!("catalog_footer_height", |ui, _| {
+        let note = "Click to apply to the selection. Drag onto the model. With nothing selected, a click arms Paint.";
+        let expected = catalog_footer_height(ui);
+        catalog_footer(ui, note);
+        assert_eq!(crate::scenario::rect_of("catalog:footer").unwrap().height(), expected);
+    }),
     element!("sphere_thumbnail", |ui, _| {
         ui.horizontal(|ui| {
             for kind in [FinishKind::Matte, FinishKind::Satin, FinishKind::Gloss, FinishKind::Metal, FinishKind::Glass] {
@@ -139,11 +175,12 @@ const ELEMENTS: &[Element] = &[
         let sphere = Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None };
         let tiles = ["gallery:grid:a", "gallery:grid:b", "gallery:grid:c"].map(|id| SphereTile {
             id,
-            name: "Satin",
+            name: "Aluminum - Anodized satin finish",
             sphere,
             selected: id.ends_with('b'),
             users: 1,
             tip: "Satin",
+            badge: Some("native"),
         });
         sphere_grid(ui, &tiles);
     }),
@@ -155,6 +192,7 @@ const ELEMENTS: &[Element] = &[
             selected: true,
             users: 3,
             tip: "Satin metal",
+            badge: Some("native"),
         }
         .show(ui);
     }),

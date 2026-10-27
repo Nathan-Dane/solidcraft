@@ -713,13 +713,11 @@ fn saved_optics_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             let remove = ui_kit::button(ui, app.tr("render.optics_remove"), ui_kit::Button::Enabled(!app.render_workspace.view.dirty));
             crate::scenario::publish_target(&format!("render:optics-remove:{index}"), remove.rect);
             if remove.clicked() {
-                match app.run(
+                super::library::review::remove(
+                    app,
                     "render.optics.unbind",
                     json!({"name":app.render_workspace.view.name,"target":binding.target,"expected_revision":app.session.revision}),
-                ) {
-                    Ok(_) => super::setups::load(app),
-                    Err(error) => app.set_status(error, true),
-                }
+                );
             }
         }
     });
