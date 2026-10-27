@@ -56,6 +56,8 @@ mod transport;
 
 #[path = "render_workspace_thumbnails.rs"]
 mod thumbnails;
+#[path = "render_ui/wear.rs"]
+mod wear;
 
 #[cfg(test)]
 #[path = "render_workspace_tests.rs"]
@@ -257,6 +259,7 @@ pub enum RenderSelection {
     Nothing,
     Object(Vec<solidcraft_engine::Sel>),
     Environment,
+    Wear,
     /// Method/type/index identity until named light commands provide persistent IDs.
     Light(String),
     Shot(String),
@@ -1822,5 +1825,14 @@ pub(crate) fn interactive_command_info(app: &SolveApp, command: &solidcraft_engi
     ribbon::command_info(app, command)
 }
 pub(crate) fn start_interactive(app: &mut SolveApp, id: &str) -> bool {
-    ribbon::start(app, id)
+    let handled = ribbon::start(app, id);
+    // Until Atmosphere moves, explicitly opening the old Aging page must still reach its air controls.
+    if handled
+        && id == "render.aging.describe"
+        && app.render_workspace.view.inspector.page == inspector::Page::Aging
+        && app.render_workspace.view.selection == RenderSelection::Wear
+    {
+        let _ = app.run("view.render_select", json!({"kind":"nothing"}));
+    }
+    handled
 }

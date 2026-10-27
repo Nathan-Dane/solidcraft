@@ -221,8 +221,9 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let bounds = crate::shell::panel_bounds(app, ui.available_rect_before_wrap());
     let mut side = app.preferences.render_inspector_side.clone();
     let mut width = app.preferences.render_inspector_width;
-    let title = app.tr("render.studio_title").to_string();
-    let icon = app.render_workspace.view.inspector.page.icon();
+    let wear = app.render_workspace.view.selection == super::RenderSelection::Wear;
+    let title = app.tr(if wear { "render.wear_title" } else { "render.studio_title" }).to_string();
+    let icon = if wear { "appearance" } else { app.render_workspace.view.inspector.page.icon() };
     let content = ui_kit::Panel::workspace(
         ui,
         ui_kit::WorkspaceOptions { id: "render:inspector", title: &title, icon, bounds, fill_height: true, enabled: true, header_actions: None },
@@ -231,7 +232,9 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         |ui| {
             ui_kit::scope(ui, |ui| {
                 header(app, ui);
-                pages(app, ui);
+                if !wear {
+                    pages(app, ui);
+                }
                 ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
                     ui.separator();
                     super::job_controls(app, ui, true);
@@ -243,9 +246,14 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                     crate::scenario::publish_rect("render:job-footer", ui.min_rect());
                 });
                 let page = app.render_workspace.view.inspector.page;
-                egui::ScrollArea::vertical().id_salt(("render_inspector", page.handle(), app.docs.active)).auto_shrink([false, false]).show(
+                egui::ScrollArea::vertical().id_salt(("render_inspector", wear, page.handle(), app.docs.active)).auto_shrink([false, false]).show(
                     ui,
                     |ui| {
+                        if wear {
+                            super::wear::controls(app, ui);
+                            setups::refresh_dirty(app);
+                            return;
+                        }
                         ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
                         match page {
                             Page::Scene => scene_controls(app, ui),

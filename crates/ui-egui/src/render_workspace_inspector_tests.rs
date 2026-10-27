@@ -553,6 +553,85 @@ fn aging_tab_adds_reorders_disables_and_persists_layers_without_engineering_edit
 }
 
 #[test]
+fn wear_selection_shows_disabled_controls_with_reason_and_never_changes_method() {
+    use solidcraft_engine::render::job::aging::{AgingKind, AgingLayer};
+    fn text_color(shape: &egui::Shape, label: &str) -> Option<egui::Color32> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text().to_lowercase().contains(&label.to_lowercase()) => Some(text.fallback_color),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_color(shape, label)),
+            _ => None,
+        }
+    }
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1440,"height":1800}));
+    h.app.render_workspace.view.studio.aging.push(AgingLayer::preset(AgingKind::Rust)).unwrap();
+    h.app.render_workspace.view.dirty = true;
+    let document = h.app.session.doc.to_json();
+    let stack = h.app.render_workspace.view.studio.aging.clone();
+    h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+    let mut colours = Vec::new();
+    for method in [ImageMethod::Raster, ImageMethod::CpuRaytrace, ImageMethod::GpuRaytrace] {
+        h.app.render_workspace.view.method = method;
+        h.frames(3);
+        assert_eq!(h.app.render_workspace.view.method, method);
+        assert!(crate::scenario::rect_of("render:wear:controls").is_some());
+        assert!(crate::scenario::rect_of("render:aging-enabled").is_some());
+        assert!(crate::scenario::rect_of("render:aging-target").is_some());
+        assert!(crate::scenario::rect_of("render:page:aging").is_none(), "Wear has no master page switcher");
+        assert!(h.shapes.iter().any(|s| text_color(&s.shape, h.app.tr("render.effects_gpu_only")).is_some()));
+        colours.push(h.shapes.iter().find_map(|s| text_color(&s.shape, h.app.tr("render.wear_layers"))).unwrap());
+        if method != ImageMethod::GpuRaytrace {
+            for handle in ["render:aging-add", "render:aging-enabled", "render:aging-layer:0:enabled", "render:aging-remove"] {
+                h.step(&json!({"click":{"handle":handle}})).unwrap();
+                assert_eq!(h.app.render_workspace.view.studio.aging, stack);
+            }
+        }
+        assert_eq!(h.app.session.doc.to_json(), document);
+    }
+    for colour in &colours[..2] {
+        assert!(colour.a() < colours[2].a(), "unsupported methods fade the editor");
+    }
+    h.step(&json!({"click":{"handle":"render:aging-layer:0:enabled"}})).unwrap();
+    assert!(!h.app.render_workspace.view.studio.aging.get(0).unwrap().enabled);
+    h.app.start("render.aging.describe");
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.selection, super::super::RenderSelection::Nothing);
+    assert!(crate::scenario::rect_of("render:wear:controls").is_some(), "old Aging page mounts the same editor");
+    assert!(h.shapes.iter().any(|s| text_color(&s.shape, h.app.tr("render.aging_airborne")).is_some()));
+}
+
+#[test]
+fn wear_editor_bounds_stale_selection_and_hostile_layer_values_never_panic() {
+    use solidcraft_engine::render::job::aging::{AgingKind, AgingLayer};
+    let mut h = fixture();
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
+    h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+    h.app.render_workspace.view.inspector.effects.selected_aging = usize::MAX;
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.inspector.effects.selected_aging, 0);
+    h.app.render_workspace.view.studio.aging.push(AgingLayer::preset(AgingKind::Dust)).unwrap();
+    h.app.render_workspace.view.dirty = true;
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1e300, 1e300] {
+        let layer = h.app.render_workspace.view.studio.aging.get_mut(0).unwrap();
+        layer.strength = value;
+        layer.coverage = value;
+        layer.scale_mm = value;
+        layer.roughness = value;
+        layer.metallic = value;
+        layer.upward_bias = value;
+        layer.origin_mm = [value; 3];
+        layer.seed = u32::MAX;
+        h.app.render_workspace.view.inspector.effects.selected_aging = usize::MAX;
+        h.frames(3);
+        assert_eq!(h.app.render_workspace.view.inspector.effects.selected_aging, 0);
+    }
+    h.step(&json!({"click":{"handle":"render:aging-remove"}})).unwrap();
+    assert!(h.app.render_workspace.view.studio.aging.is_empty());
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:aging-enabled").is_none());
+}
+
+#[test]
 fn effects_tab_retains_ordered_looks_and_photographic_intent_across_save_and_reload() {
     use solidcraft_engine::render::job::looks::LookKind;
     let mut h = fixture();

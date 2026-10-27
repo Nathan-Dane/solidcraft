@@ -26,9 +26,11 @@ CommandSpec::new("view.navigation_bar", "Navigation bar", navigation_bar)
 CommandSpec::new("view.render_browser", "Render Browser", render_browser)
     .icon("list").noundo().doc_only()
     .params("by_look?: bool; search?: bool; query?: string (up to 1024 bytes) → validated transient Browser controls; never edits the design or opens a dialog"),
-CommandSpec::new("view.render_select", "Render selection", render_select)
+CommandSpec::new("view.render_select", "Render selection", crate::checked!("view.render_select", render_select))
+    .contract(&RENDER_SELECT_CONTRACT)
+    .output(crate::schema::output_schema_for::<crate::schema::view_navigation::RenderSelect>)
     .icon("select").noundo().doc_only()
-    .params("kind: nothing|environment|light|shot|output; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
+    .params("kind: nothing|environment|light|shot|output|wear; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_stage", "Render Stage", render_stage)
     .icon("render_scene").noundo().doc_only()
     .params("stage: look|light|frame|output → {stage}; per-document UI state, never edits or evaluates the design; headless validation only"),
@@ -216,22 +218,11 @@ fn navigation_bar(_s: &mut Session, p: &Value) -> Result<Value> {
     view_toggle(p, "view.navigation_bar", "visible")
 }
 
+const RENDER_SELECT_CONTRACT: crate::schema::TypedContract<crate::schema::view_navigation::RenderSelect> = crate::schema::TypedContract::new();
+
 fn render_select(s: &mut Session, p: &Value) -> Result<Value> {
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(deny_unknown_fields)]
-    struct Request {
-        kind: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        id: Option<String>,
-    }
-    let request: Request = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
-    let identified = matches!(request.kind.as_str(), "light" | "shot");
-    if !matches!(request.kind.as_str(), "nothing" | "environment" | "light" | "shot" | "output")
-        || identified != request.id.is_some()
-        || request.id.as_ref().is_some_and(|id| id.trim().is_empty() || id.len() > 1024)
-    {
-        return Err(bad("view.render_select", "expected a Browser kind and an id only for light or shot"));
-    }
+    let request: crate::schema::view_navigation::RenderSelect =
+        serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
     let result = serde_json::to_value(request).map_err(|e| bad("view.render_select", e.to_string()))?;
     if !s.selection.is_empty() {
         s.selection.clear();
@@ -983,6 +974,7 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
     for request in [
         json!({"kind":"nothing"}),
         json!({"kind":"environment"}),
+        json!({"kind":"wear"}),
         json!({"kind":"light","id":"sun:0"}),
         json!({"kind":"shot","id":"Hero"}),
         json!({"kind":"output"}),
@@ -993,6 +985,9 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
         Value::Null,
         json!([]),
         json!({}),
+        json!({"kind":"wear","id":"extra"}),
+        json!({"kind":"wear","extra":true}),
+        json!({"kind":"wear","id":1e300}),
         json!({"kind":"object"}),
         json!({"kind":"shot"}),
         json!({"kind":"light","id":1}),
@@ -1005,6 +1000,30 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
     }
     assert!(std::sync::Arc::ptr_eq(&doc, &session.doc));
     assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
+}
+
+#[cfg(test)]
+#[test]
+fn render_select_wear_schema_and_strict_contract_agree() {
+    let mut session = Session { param_check: crate::schema::ParamCheck::Strict, ..Session::default() };
+    let spec = crate::find_command("view.render_select").unwrap();
+    let contract = spec.contract.unwrap();
+    assert_eq!(contract.allowed_keys().iter().map(String::as_str).collect::<Vec<_>>(), ["id", "kind"]);
+    let input = contract.input_schema().to_value();
+    let output = spec.output.unwrap()().to_value();
+    for schema in [input, output] {
+        assert!(schema["oneOf"][0]["properties"]["kind"]["enum"].as_array().unwrap().contains(&json!("wear")));
+        assert_eq!(schema["oneOf"][0]["additionalProperties"], false);
+    }
+    let request = json!({"kind":"wear"});
+    assert!(contract.check(&request).is_empty());
+    assert_eq!(session.execute("view.render_select", &request).unwrap(), request);
+    for request in [json!({"kind":"wear","id":"extra"}), json!({"kind":"wear","extra":true}), json!({"kind":"wear","id":1e300})] {
+        assert!(!contract.check(&request).is_empty());
+        assert!(session.execute("view.render_select", &request).is_err());
+    }
+    assert!(session.undo.is_empty() && session.redo.is_empty());
+    assert_eq!(session.evaluations, 0);
 }
 
 #[cfg(test)]

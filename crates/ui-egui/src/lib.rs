@@ -987,7 +987,10 @@ impl SolveApp {
         let r = self.session.execute(id, &params).map_err(|e| e.to_string());
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
         let done = self.command_completed(id, r);
-        if done.is_ok() && (self.session.selection != selected_before || matches!(id, "select.set" | "select.clear" | "select.same_look")) {
+        if done.is_ok()
+            && id != "view.render_select"
+            && (self.session.selection != selected_before || matches!(id, "select.set" | "select.clear" | "select.same_look"))
+        {
             self.render_workspace.view.selection = if self.session.selection.is_empty() {
                 render_workspace::RenderSelection::Nothing
             } else {
@@ -1033,6 +1036,7 @@ impl SolveApp {
                 use render_workspace::RenderSelection;
                 let selected = match v.get("kind").and_then(Value::as_str) {
                     Some("environment") => RenderSelection::Environment,
+                    Some("wear") => RenderSelection::Wear,
                     Some("output") => RenderSelection::Output,
                     Some("light") => RenderSelection::Light(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
                     Some("shot") => RenderSelection::Shot(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
