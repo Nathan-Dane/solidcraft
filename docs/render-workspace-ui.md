@@ -33,12 +33,20 @@ or in the view.
 
 | Selection | Editor | Holds | In the view |
 | --- | --- | --- | --- |
-| Body, face, component | Appearance | look chain, Applies to scope, colour, finish, transparency; Advanced: glass, clear coat, maps, optical bindings, aging | outline in the live view only |
-| Environment | Environment | source, rotation, intensity, backdrop, blur, ground shadow and reflection | rotation ring |
+| Body, face, component | Appearance | look chain, Applies to scope, colour, finish, transparency; Advanced: glass, clear coat, maps, saved optics, CPU reflections | outline in the live view only |
+| Wear | Wear | aging layers, selected layer, target | none |
+| Environment | Environment | source, rotation, intensity, backdrop, blur, ground and stage, atmosphere | rotation ring |
+| Lights group | Lighting | light source, shadows and sampling, per-type light budget | none |
 | A light | Light | type, intensity, colour, softness, position, aim, Place by highlight, duplicate, delete | handle, intensity dial, distance, orbit |
 | A shot | Shot | projection, field of view, distance, exposure, frame and aspect, size, update, revert, duplicate, remove | frame overlay |
-| Output | Output | size, format, quality and sampling, method, transparency, destination; Effects (bloom, tone, grading); Check, backends, status | result viewer |
+| Output | Output | renderer, size, format, transparency, destination, render | result viewer |
+| Output › Sampling | Sampling | quality, path tracing, adaptive sampling, glass transport, CPU ray tracing | none |
+| Output › Effects | Effects | tone, creative looks, lens effects, finishing, regrade | none |
+| Output › Check | Check | request check, this request, renderers, under the hood | none |
 | Nothing | Scene overview | one line per stage, Check, Render shot | none |
+
+[Render workspace panels](render-panels.md) lists every panel, what it is attached to, how it is
+reached and when, and where each control of the removed Render studio panel went.
 
 - **Docks.** The Browser and the Inspector float and share the same top and bottom edges, starting
   below the stage bar and ending above the Shots strip. The compass floats in the canvas beside
@@ -91,10 +99,12 @@ Each step is its own PR. Steps that edit the shared Render files are taken one a
 15. Environment editor, ground, Studios and Environments panel, rotation ring. New.
 16. Lights: named lights, Light editor, solo and mute, handles in the view, Place by highlight. New.
 17. Shot editor, frame overlay, aspect presets, guides, Frame presets. New.
-18. Output sections: Effects and Check, Size presets. New.
+18. Output children (Sampling, Effects, Check) and Size presets. New.
 19. Several retained results, Live | Render compare, render all shots. New.
 20. Focus view, compact and dark layouts, localisation pass. New.
 21. A lighting rig shared across shots (needs an owner decision and one `format/pending` file). New.
+22. Wear, Lighting, Sampling and Check editors with every remaining control of the Render studio
+    panel moved to its home ([panel plan](render-panels.md)); the Render studio panel is deleted. New.
 
 ## Rules for every PR
 
