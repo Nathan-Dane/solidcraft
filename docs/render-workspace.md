@@ -82,16 +82,16 @@ anisotropy, area lights and spot cones remain API capabilities without panel edi
 Its independent image device requires Vulkan; the live viewport may use another backend.
 When no compatible Vulkan device is available, GPU settings remain editable and
 saveable, while Check and Start explain why GPU execution is unavailable.
-The panel exposes progressive sample counts from 1 to 4096 and an Advanced section
-for maximum path depth (1–16), random seed and exposure (−32 to +32 EV). One setup
+Sampling > Path tracing exposes progressive sample counts from 1 to 4096,
+maximum path depth (1–16) and random seed. Exposure (−32 to +32 EV) lives in Shot. One setup
 exposure field controls the selected image method. Switching methods retains their
 local numeric drafts while submitting and saving only the active method. Reloading
 or choosing another setup replaces those drafts with the saved numeric intent.
 The live product preview keeps its fixed studio response and does not apply image
 exposure, environments, lens or material overrides.
 
-The GPU Advanced section also exposes Reinhard / ACES fitted tone mapping, optional
-final edge-aware denoising, and a thin-lens depth-of-field control. Positive aperture
+Effects > Tone exposes Reinhard / ACES fitted tone mapping. Sampling > Path tracing
+owns optional final edge-aware denoising; Shot owns thin-lens depth of field. Positive aperture
 requires a perspective product camera. Denoising preserves raw accumulation but can
 soften detail; glass and sharp specular first hits bypass its final spatial filter.
 
@@ -397,20 +397,23 @@ and reveals its fields through `render.output.size`. Numerical size edits and pr
 clicks patch width and height with `render.settings.set`, as one undo step. Opening
 the panel never applies a preset or starts a job.
 
-Selecting Output in the Browser shows one editor with Image, Effects and Check
-sections, without page navigation or pinned job actions. Image retains size/aspect,
-format, sampling, method, transparency and export destination controls. Effects owns
-bloom, tone mapping, grading and regrade, in that order. Effect edits patch the saved
-job with `render.settings.set`; opening Effects does not save anything. Check retains the preflight list, freshness checks,
-installed backend/status metadata and expandable diagnostics. Named quality presets
-and EXR settings remain unavailable with their existing reasons. Destination selection
-uses the existing completed-image export picker.
+Selecting Output in the Browser shows a short editor with Renderer, Image,
+Destination and Render sections. Sampling, Effects and Check are child rows under
+Output, each with a summary and its own editor. Sampling owns Quality, GPU Path
+tracing, Adaptive, Glass transport and CPU ray tracing. Method-specific controls
+stay visible and faded with their reason on other methods. Effects owns Tone,
+Creative looks, Lens effects, Finishing and Regrade, in that order; its controls
+need GPU path tracing. Effect edits patch the saved job with `render.settings.set`;
+opening an editor never saves or switches methods. Check owns the preflight notes,
+This request, Renderers and collapsed Under the hood diagnostics. The legacy
+Effects, Output and Diagnostics pages call the same editors.
 
-Run check and the stage bar's Check button run the read-only `render.preflight`,
-without admitting a job. Success, warning and failure rows use the shared status
-glyphs and theme colours. Copy report runs `render.preflight.copy` and queues text
-through the same platform clipboard path as the result viewer's image Copy; a
-headless call only validates and echoes its bounded text.
+The stage bar's Check chip and Output's note count open Check. Check now runs the
+read-only `render.preflight` without admitting a job. Notes offer links to their
+owning editor. Copy report and diagnostic JSON use `render.preflight.copy` and the
+platform clipboard queue; headless calls only validate and echo bounded text.
+Named quality presets, EXR export and rendering all shots remain faded with their
+existing reasons. Destination selection uses the completed-image export picker.
 
 Render and Cancel stay in the stage bar. Active jobs also show a single-row progress
 pill with Cancel. The result viewer retains Copy, export, close, Fit/100% and shared

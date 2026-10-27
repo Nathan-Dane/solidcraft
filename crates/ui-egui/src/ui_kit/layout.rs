@@ -265,6 +265,24 @@ pub(crate) fn section<R>(ui: &mut Ui, id: impl egui::AsIdSalt, title: &str, defa
     section_count(ui, id, title, default_open, None::<usize>, add)
 }
 
+/// Method-tagged section. Unsupported controls remain visible and disabled;
+/// the translated reason stays readable above them. Uses shared section tokens.
+pub(crate) fn method_section<R>(
+    ui: &mut Ui,
+    id: impl egui::AsIdSalt,
+    title: &str,
+    method: &str,
+    reason: Option<&str>,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> Option<R> {
+    section_count(ui, id, title, true, Some(method), |ui| {
+        if let Some(reason) = reason {
+            super::text(ui, reason, super::Text::Note("method_section_reason"));
+        }
+        ui.add_enabled_ui(reason.is_none(), add).inner
+    })
+}
+
 /// Section heading with an optional count badge; disclosure state uses the same identity.
 pub(crate) fn section_count<R>(
     ui: &mut Ui,

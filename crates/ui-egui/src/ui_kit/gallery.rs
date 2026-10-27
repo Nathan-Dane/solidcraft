@@ -59,6 +59,14 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("read_only_text", |ui, _| {
+        read_only_text(ui, "{\n  \"samples\": 256\n}");
+    }),
+    element!("method_section", |ui, state| {
+        method_section(ui, "gallery_method", "Path tracing", "GPU", Some("Needs GPU path tracing"), |ui| {
+            checkbox(ui, "Reduce noise", &mut state.checked);
+        });
+    }),
     element!("tree_row_rect", |ui, _| {
         for (index, row) in [
             Row { label: "Objects", ..Default::default() },

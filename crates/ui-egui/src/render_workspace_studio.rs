@@ -375,6 +375,10 @@ pub(super) fn grading_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn regrade_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
+    regrade_action(app, ui);
+    retain_controls(app, ui);
+}
+pub(super) fn regrade_action(app: &mut SolveApp, ui: &mut egui::Ui) {
     let regrade = ui_kit::button(
         ui,
         app.tr("render.regrade_action"),
@@ -388,6 +392,8 @@ pub(super) fn regrade_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         ui.ctx().request_repaint();
     }
     ui_kit::text(ui, app.tr("render.regrade_help"), ui_kit::Text::Note("render.regrade_help"));
+}
+fn retain_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let label = app.tr("render.linear_retain").to_string();
     let r = ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.studio.linear_exr);
     crate::scenario::publish_target("render:retain-exr", r.rect);

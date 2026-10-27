@@ -528,6 +528,16 @@ pub(crate) struct Slider {
     pub integer: bool,
 }
 
+/// Bounded read-only code box for diagnostic payloads. Native selection and copying
+/// remain available; the caller's source cannot be edited. Uses shared form styling.
+pub(crate) fn read_only_text(ui: &mut Ui, text: &str) -> Response {
+    let mut source = text;
+    egui::ScrollArea::vertical()
+        .max_height(160.0)
+        .show(ui, |ui| ui.add(egui::TextEdit::multiline(&mut source).code_editor().desired_width(ui.available_width()).desired_rows(8)))
+        .inner
+}
+
 impl Default for Slider {
     fn default() -> Self {
         Self { step: None, format: |v| format!("{v:.2}"), show_value: true, integer: false }
