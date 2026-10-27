@@ -1,6 +1,6 @@
 //! Selected-light editor and transient visibility. Saved settings are edited only by commands.
 use super::{ImageMethod, RenderSelection, cpu, setups, studio};
-use crate::{SolveApp, theme::Tokens, ui_kit};
+use crate::{SolveApp, ui_kit};
 use serde_json::{Value, json};
 use solidcraft_engine::doc::render_settings::{CpuJob, GpuJob, RenderJob, RenderSetup, SkyEnvironment};
 use solidcraft_engine::render::job::{AreaLights, StudioLighting};
@@ -12,6 +12,17 @@ pub(super) struct View {
     scope: String,
     aim: Option<[f64; 3]>,
     draft: Option<Draft>,
+    review: Option<Review>,
+}
+
+#[derive(Clone, Debug)]
+struct Review {
+    name: String,
+    source: RenderSetup,
+    setup: RenderSetup,
+    revision: u64,
+    document: std::sync::Weak<solidcraft_engine::doc::Document>,
+    consent: bool,
 }
 
 #[derive(Clone, Debug)]
@@ -25,6 +36,15 @@ struct Draft {
     elevation: f64,
     distance: f64,
     size: f64,
+    height: f64,
+    position: [f64; 3],
+    direction: [f64; 3],
+    u: [f64; 3],
+    v: [f64; 3],
+    radiance: [f64; 3],
+    reference: f64,
+    minimum: f64,
+    aim: [f64; 3],
 }
 
 /// Lighting-only read snapshot also works with unsaved HDR paths and temporary bindings.
@@ -312,6 +332,283 @@ pub(super) fn preview(app: &SolveApp) -> Result<Vec<[f32; 16]>, String> {
     Ok(output)
 }
 
+/// The group row and legacy Lighting page share this one editor.
+pub(super) fn lighting(app: &mut SolveApp, ui: &mut egui::Ui) {
+    crate::scenario::publish_target("render:lighting:editor", ui.available_rect_before_wrap());
+    let method = app.render_workspace.view.method;
+    let cpu = method == ImageMethod::CpuRaytrace;
+    let gpu = method == ImageMethod::GpuRaytrace;
+    let raster = method == ImageMethod::Raster;
+    let lights = rows(app).unwrap_or_default();
+    let legacy_gpu = gpu && lights.iter().filter(|l| l.geometry.kind() == "directional").count() > 1;
+    if raster {
+        note(app, ui, "render.method_limit_raster");
+    }
+    ui_kit::scope(ui, |ui| {
+        let title = app.tr("render.lighting_source_section").to_string();
+        ui_kit::section(ui, "render:lighting:source", &title, true, |ui| {
+            let custom = if gpu { app.render_workspace.view.studio.lighting_enabled } else { app.render_workspace.view.raytrace.lights.is_some() };
+            let mut chosen = usize::from(custom);
+            let labels = [app.tr("render.lighting_preset").to_string(), app.tr("render.lighting_custom").to_string()];
+            let reason = app.tr("render.lighting_preset_cpu").to_string();
+            let legacy_reason = app.tr("render.light_backend_limit").to_string();
+            let disabled = [(!cpu).then_some(reason.as_str()), legacy_gpu.then_some(legacy_reason.as_str())];
+            ui.add_enabled_ui(!raster, |ui| {
+                let label = app.tr("render.lighting_source").to_string();
+                ui_kit::row(ui, &label, |ui| {
+                    if ui_kit::segmented(
+                        ui,
+                        &mut chosen,
+                        &labels.iter().map(String::as_str).collect::<Vec<_>>(),
+                        ui_kit::Segments {
+                            compact: true,
+                            disabled: &disabled,
+                            targets: &["render:lighting:preset", "render:lighting:custom"],
+                            ..Default::default()
+                        },
+                    ) && chosen != usize::from(custom)
+                    {
+                        if chosen == 1 {
+                            let result = (|| {
+                                let mut snapshot = setups::snapshot(app)?;
+                                solidcraft_engine::render_lights::write(&mut snapshot, &lights)?;
+                                save_lighting(app, snapshot)
+                            })();
+                            if let Err(error) = result {
+                                app.set_status(error, true);
+                            }
+                        } else {
+                            review_preset(
+                                app,
+                                app.render_workspace.view.raytrace.preset.unwrap_or(solidcraft_engine::render::job::LightingPreset::Neutral),
+                            );
+                        }
+                    }
+                });
+            });
+            let presets = [
+                (solidcraft_engine::render::job::LightingPreset::Neutral, "render.cpu_neutral"),
+                (solidcraft_engine::render::job::LightingPreset::KeyRim, "render.cpu_key_rim"),
+                (solidcraft_engine::render::job::LightingPreset::WarmCool, "render.cpu_warm_cool"),
+            ];
+            let selected = app.render_workspace.view.raytrace.preset.unwrap_or(solidcraft_engine::render::job::LightingPreset::Neutral);
+            let selected_label = presets.iter().find(|(p, _)| *p == selected).map(|(_, key)| *key).unwrap_or("render.cpu_neutral");
+            ui.add_enabled_ui(cpu && !custom, |ui| {
+                let label = app.tr("render.lighting_preset_row").to_string();
+                ui_kit::row(ui, &label, |ui| {
+                    let selected_label = app.tr(selected_label).to_string();
+                    ui_kit::dropdown_menu(ui, "render:lighting:presets", &selected_label, |ui| {
+                        for (preset, key) in presets {
+                            if ui_kit::list_picker(ui, key, app.tr(key), preset == selected).clicked() {
+                                review_preset(app, preset);
+                                ui.close();
+                            }
+                        }
+                    });
+                });
+            });
+            note(app, ui, "render.lighting_custom_help");
+            if !cpu {
+                note(app, ui, "render.lighting_preset_cpu");
+            }
+            if legacy_gpu {
+                note(app, ui, "render.light_backend_limit");
+            }
+            // RenderSetup has no saved rig identity. Do not invent a Rig row.
+        });
+        let title = app.tr("render.lighting_shadows_section").to_string();
+        ui_kit::section(ui, "render:lighting:shadows", &title, true, |ui| {
+            let mut shadows = if cpu { app.render_workspace.view.raytrace.shadows } else { true };
+            ui.add_enabled_ui(cpu, |ui| {
+                if ui_kit::checkbox(ui, app.tr("render.lighting_shadows"), &mut shadows).changed() {
+                    update_cpu(app, |options| options.shadows = shadows);
+                }
+            });
+            if !cpu {
+                note(app, ui, "render.lighting_shadow_cpu");
+            }
+            if cpu {
+                let enabled = app.render_workspace.view.raytrace.area_lights.as_ref().is_some_and(|l| !l.is_empty());
+                let mut samples = app.render_workspace.view.raytrace.area_samples.unwrap_or(16);
+                ui.add_enabled_ui(enabled, |ui| {
+                    let label = app.tr("render.lighting_area_samples").to_string();
+                    ui_kit::row(ui, &label, |ui| {
+                        let response = ui_kit::number_field(ui, &mut samples, 1..=64, 1.0, "");
+                        crate::scenario::publish_target("render:lighting:area-samples", response.rect);
+                        if accepted(&response) {
+                            if [1, 4, 16, 64].contains(&samples) {
+                                update_cpu(app, |options| {
+                                    options.area_samples = Some(samples);
+                                });
+                            } else {
+                                app.set_status(app.tr("render.lighting_samples_reason").to_string(), true);
+                            }
+                        }
+                    });
+                });
+                note(app, ui, if enabled { "render.lighting_samples_reason" } else { "render.lighting_samples_need_area" });
+            } else {
+                note(app, ui, "render.lighting_samples_cpu");
+            }
+        });
+        let title = app.tr("render.lighting_budget").to_string();
+        ui_kit::section(ui, "render:lighting:budget", &title, true, |ui| {
+            for (kind, key, limit) in [
+                ("directional", if gpu { "render.light_type_sun" } else { "render.tree_directional" }, if gpu { 1 } else { 8 }),
+                ("area", "render.light_type_area", 4),
+                ("point", "render.light_type_point", 8),
+            ] {
+                let count = lights
+                    .iter()
+                    .filter(|l| if kind == "point" { matches!(l.geometry.kind(), "point" | "spot") } else { l.geometry.kind() == kind })
+                    .count();
+                let unsupported = raster || (gpu && kind == "point");
+                let label = app.tr(key).to_string();
+                ui.add_enabled_ui(!unsupported, |ui| {
+                    ui_kit::row(ui, &label, |ui| {
+                        ui.columns(2, |columns| {
+                            for (index, column) in columns.iter_mut().enumerate() {
+                                if index == 0 {
+                                    let mut used = count.min(limit) as u32;
+                                    column.add_enabled_ui(false, |ui| {
+                                        ui_kit::slider(
+                                            ui,
+                                            &mut used,
+                                            0..=limit as u32,
+                                            ui_kit::Slider { integer: true, show_value: false, ..Default::default() },
+                                        );
+                                    });
+                                } else {
+                                    let readout = if unsupported {
+                                        app.tr("render.lighting_unsupported").to_string()
+                                    } else {
+                                        crate::i18n::format("render.lighting_used", &[("used", &count.to_string()), ("limit", &limit.to_string())])
+                                    };
+                                    column.add_enabled_ui(!unsupported, |ui| ui_kit::text(ui, &readout, ui_kit::Text::Inline));
+                                }
+                            }
+                        });
+                    })
+                });
+                if gpu && kind == "point" {
+                    note(app, ui, "render.light_gpu_punctual");
+                }
+            }
+            note(app, ui, "render.lighting_budget_help");
+            add_menu(app, ui);
+        });
+    });
+}
+
+pub(super) fn add_menu(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let gpu = app.render_workspace.view.method == ImageMethod::GpuRaytrace;
+    let raster = app.render_workspace.view.method == ImageMethod::Raster;
+    let lights = rows(app).unwrap_or_default();
+    let legacy = gpu && lights.iter().filter(|l| l.geometry.kind() == "directional").count() > 1;
+    let label = app.tr("render.tree_add_light").to_string();
+    ui.add_enabled_ui(!raster && !legacy, |ui| {
+        ui_kit::dropdown_menu(ui, "render:lighting:add", &label, |ui| {
+            for (kind, key, cap) in [
+                ("area", "render.light_type_area", 4),
+                ("point", "render.light_type_point", 8),
+                ("directional", if gpu { "render.light_type_sun" } else { "render.tree_directional" }, if gpu { 1 } else { 8 }),
+            ] {
+                let count = lights
+                    .iter()
+                    .filter(|l| if kind == "point" { matches!(l.geometry.kind(), "point" | "spot") } else { l.geometry.kind() == kind })
+                    .count();
+                let enabled = count < cap && !(gpu && kind == "point");
+                let response = ui.add_enabled_ui(enabled, |ui| ui_kit::list_picker(ui, kind, app.tr(key), false)).inner;
+                if response
+                    .on_hover_text(app.tr(if gpu && kind == "point" { "render.light_gpu_punctual" } else { "render.lighting_budget_help" }))
+                    .clicked()
+                {
+                    dispatch(app, "render.lights.add", None, Some(json!({"kind":kind})));
+                    ui.close();
+                }
+            }
+        });
+    });
+    if legacy {
+        note(app, ui, "render.light_backend_limit");
+    }
+}
+
+fn review_preset(app: &mut SolveApp, preset: solidcraft_engine::render::job::LightingPreset) {
+    match setups::snapshot(app) {
+        Ok(mut setup) => {
+            let source = setup.clone();
+            if let Some(RenderJob::CpuRaytrace { options }) = &mut setup.job {
+                options.lights = None;
+                options.preset = Some(preset);
+                app.render_workspace.view.lights.review = Some(Review {
+                    name: app.render_workspace.view.name.clone(),
+                    source,
+                    setup,
+                    revision: app.session.revision,
+                    document: std::sync::Arc::downgrade(&app.session.doc),
+                    consent: false,
+                });
+            }
+        }
+        Err(error) => app.set_status(error, true),
+    }
+}
+
+fn save_lighting(app: &mut SolveApp, setup: RenderSetup) -> Result<(), String> {
+    let selection = app.render_workspace.view.selection.clone();
+    let visibility = app.render_workspace.view.lights.visibility.clone();
+    app.run("render.settings.set", json!({"name":app.render_workspace.view.name,"set":setup}))?;
+    setups::load(app);
+    app.render_workspace.view.selection = selection;
+    app.render_workspace.view.lights.visibility = visibility;
+    loaded(app);
+    Ok(())
+}
+fn update_cpu(app: &mut SolveApp, update: impl FnOnce(&mut CpuJob)) {
+    let result = (|| {
+        let mut setup = setups::snapshot(app)?;
+        if let Some(RenderJob::CpuRaytrace { options }) = &mut setup.job {
+            update(options);
+        }
+        save_lighting(app, setup)
+    })();
+    if let Err(error) = result {
+        app.set_status(error, true);
+    }
+}
+
+pub(super) fn confirmation(app: &mut SolveApp, ctx: &egui::Context) {
+    let Some(mut review) = app.render_workspace.view.lights.review.take() else { return };
+    if review.revision != app.session.revision
+        || review.name != app.render_workspace.view.name
+        || setups::snapshot(app).ok().as_ref() != Some(&review.source)
+        || !std::sync::Weak::ptr_eq(&review.document, &std::sync::Arc::downgrade(&app.session.doc))
+    {
+        app.set_status(app.tr("render.review_stale").to_string(), true);
+        return;
+    }
+    let title = app.tr("render.lighting_review_title").to_string();
+    let apply = app.tr("render.lighting_apply").to_string();
+    let cancel = app.tr("render.keep_editing").to_string();
+    let (closed, action) = ui_kit::Confirm::new(egui::Id::new("render_lighting_review"), "render_scene", &title)
+        .actions(&apply, &cancel, None)
+        .selected(ui_kit::Action::Cancel)
+        .show(ctx, review.consent, |ui| {
+            note(app, ui, "render.lighting_review_help");
+            ui_kit::checkbox(ui, app.tr("render.lighting_consent"), &mut review.consent);
+        });
+    match action {
+        ui_kit::Action::Ok if review.consent => {
+            if let Err(error) = save_lighting(app, review.setup) {
+                app.set_status(error, true);
+            }
+        }
+        ui_kit::Action::Cancel => {}
+        _ if closed => {}
+        _ => app.render_workspace.view.lights.review = Some(review),
+    }
+}
 pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
     let lights = match rows(app) {
         Ok(lights) => lights,
@@ -321,7 +618,7 @@ pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
         }
     };
     let Some(light) = lights.iter().find(|light| light.id == id) else {
-        ui_kit::text(ui, app.tr("render.light_missing"), ui_kit::Text::Note("render.light_missing"));
+        note(app, ui, "render.light_missing");
         return;
     };
     crate::scenario::publish_target("render:light:editor", ui.available_rect_before_wrap());
@@ -329,68 +626,76 @@ pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
     let gpu = app.render_workspace.view.method == ImageMethod::GpuRaytrace;
     let blocked = app.render_workspace.view.method == ImageMethod::Raster
         || (gpu && lights.iter().filter(|light| light.geometry.kind() == "directional").count() > 1);
+    let maximum_ev = if gpu { if kind == "area" { 1e6_f64.log2() } else { 1e8_f64.log2() } } else { 6.0 };
     let type_key = match kind {
         "area" => "render.light_type_area",
         "spot" => "render.light_type_spot",
         "point" => "render.light_type_point",
         _ => "render.light_type_sun",
     };
+    let aim = app.render_workspace.view.lights.aim.unwrap_or_else(|| product_centre(app));
+    let subject_size = subject_size(app);
+    let (azimuth, elevation, distance) = solidcraft_engine::render_lights::position(light, aim, app.cam.distance);
+    let (position, direction, u, v, reference, minimum) = match light.geometry {
+        Geometry::Directional { direction, .. } => ([0.0; 3], direction, [0.0; 3], [0.0; 3], 1.0, 0.001),
+        Geometry::Area { position_mm, edge_u_mm, edge_v_mm } => (position_mm, [0.0; 3], edge_u_mm, edge_v_mm, 1.0, 0.001),
+        Geometry::Point { position_mm, reference_distance_mm, minimum_distance_mm }
+        | Geometry::Spot { position_mm, reference_distance_mm, minimum_distance_mm, .. } => {
+            (position_mm, [0.0; 3], [0.0; 3], [0.0; 3], reference_distance_mm, minimum_distance_mm)
+        }
+    };
+    let width = length(u);
+    let softness = match light.geometry {
+        Geometry::Directional { angular_radius_rad: Some(radius), .. } => radius.to_degrees(),
+        Geometry::Area { .. } => (width - 0.0002) / 1000.0,
+        _ => 0.0,
+    };
+    let mut draft =
+        app.render_workspace.view.lights.draft.take().filter(|draft| draft.id == id && draft.revision == app.session.revision).unwrap_or(Draft {
+            id: id.into(),
+            revision: app.session.revision,
+            ev: bounded(light.intensity.max(2.0_f64.powi(-20)).log2(), -20.0, maximum_ev),
+            temperature: solidcraft_engine::render_lights::colour_temperature(light.colour),
+            softness: bounded(softness, 0.0, if kind == "directional" { 90.0 } else { 1.0 }),
+            azimuth,
+            elevation,
+            distance: bounded(distance / subject_size, 0.001 / subject_size, 1e6 / subject_size),
+            size: width,
+            height: length(v),
+            position,
+            direction,
+            u,
+            v,
+            radiance: light.colour.map(|c| c * light.intensity),
+            reference,
+            minimum,
+            aim,
+        });
     ui_kit::scope(ui, |ui| {
-        ui.horizontal(|ui| {
-            let [r, g, b] = light.colour.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            ui_kit::sphere_thumbnail(
-                ui,
-                "render:light:sphere",
-                ui_kit::Sphere { color: egui::Color32::from_rgb(r, g, b), kind: ui_kit::FinishKind::Gloss, opacity: None },
-                Tokens::get().control_height * 2.0,
-            );
-            ui.vertical(|ui| {
-                ui_kit::text(ui, &name(app, light), ui_kit::Text::Heading("render.light_heading"));
-                ui.add_enabled_ui(false, |ui| ui_kit::choice_chip(ui, "render:light:type-chip", app.tr(type_key), true));
-                let solo = app.render_workspace.view.lights.visibility.solo.as_deref() == Some(id);
-                if ui_kit::choice_chip(ui, "render:light:solo", app.tr("render.tree_solo"), solo).clicked() {
-                    let _ = app.run("render.lights.solo", json!({"id":id,"solo":!solo}));
-                }
-            });
+        ui_kit::row(ui, &name(app, light), |ui| {
+            ui.add_enabled_ui(false, |ui| ui_kit::choice_chip(ui, "render:light:badge", app.tr(type_key), true));
         });
         if blocked {
-            ui_kit::text(ui, app.tr("render.light_backend_limit"), ui_kit::Text::Note("render.light_backend_limit"));
+            note(app, ui, "render.light_backend_limit");
         }
-        let aim = app.render_workspace.view.lights.aim.unwrap_or_else(|| product_centre(app));
-        let (azimuth, elevation, distance) = solidcraft_engine::render_lights::position(light, aim, app.cam.distance);
-        let size = match light.geometry {
-            Geometry::Area { edge_u_mm: [x, y, z], .. } => (x * x + y * y + z * z).sqrt(),
-            _ => 10.0,
-        };
-        let softness = match light.geometry {
-            Geometry::Directional { angular_radius_rad: Some(radius), .. } => (radius - 0.001) / (std::f64::consts::FRAC_PI_2 - 0.001),
-            Geometry::Area { .. } => (size - 0.0002) / 1000.0,
-            _ => 0.0,
-        };
-        let mut draft =
-            app.render_workspace.view.lights.draft.take().filter(|draft| draft.id == id && draft.revision == app.session.revision).unwrap_or(Draft {
-                id: id.into(),
-                revision: app.session.revision,
-                ev: light.intensity.max(2.0_f64.powi(-20)).log2(),
-                temperature: solidcraft_engine::render_lights::colour_temperature(light.colour),
-                softness,
-                azimuth,
-                elevation,
-                distance,
-                size,
-            });
         ui.add_enabled_ui(!blocked, |ui| {
             let labels = [
                 app.tr("render.light_type_area").to_string(),
-                app.tr("render.light_type_spot").to_string(),
                 app.tr("render.light_type_point").to_string(),
                 app.tr("render.light_type_sun").to_string(),
             ];
-            let kinds = ["area", "spot", "point", "directional"];
-            let mut selected = kinds.iter().position(|value| *value == kind).unwrap_or(0);
+            let kinds = ["area", "point", "directional"];
+            let mut selected = kinds.iter().position(|value| *value == kind).unwrap_or(1);
             let reason = app.tr("render.light_gpu_punctual").to_string();
-            let disabled = [None, gpu.then_some(reason.as_str()), gpu.then_some(reason.as_str()), None];
-            ui_kit::text(ui, app.tr("render.light_type"), ui_kit::Text::Inline);
+            let budget_reason = app.tr("render.lighting_budget_help").to_string();
+            let areas = lights.iter().filter(|l| l.geometry.kind() == "area").count();
+            let points = lights.iter().filter(|l| matches!(l.geometry.kind(), "point" | "spot")).count();
+            let suns = lights.iter().filter(|l| l.geometry.kind() == "directional").count();
+            let disabled = [
+                (kind != "area" && areas >= 4).then_some(budget_reason.as_str()),
+                if gpu { Some(reason.as_str()) } else { (kind != "point" && kind != "spot" && points >= 8).then_some(budget_reason.as_str()) },
+                (kind != "directional" && suns >= if gpu { 1 } else { 8 }).then_some(budget_reason.as_str()),
+            ];
             if ui_kit::segmented(
                 ui,
                 &mut selected,
@@ -398,7 +703,7 @@ pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
                 ui_kit::Segments {
                     compact: true,
                     disabled: &disabled,
-                    targets: &["render:light:type:area", "render:light:type:spot", "render:light:type:point", "render:light:type:directional"],
+                    targets: &["render:light:type:area", "render:light:type:point", "render:light:type:directional"],
                     ..Default::default()
                 },
             ) && let Some(chosen) = kinds.get(selected)
@@ -406,64 +711,284 @@ pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
             {
                 dispatch(app, "render.lights.set", Some(id), Some(json!({"kind":chosen})));
             }
-            field(app, ui, id, "render.light_intensity", "intensity_ev", &mut draft.ev, -20.0..=if gpu { 27.0 } else { 6.0 }, 0.1, " EV", true);
-            field(app, ui, id, "render.light_temperature", "temperature_k", &mut draft.temperature, 1000.0..=40000.0, 50.0, " K", true);
-            ui_kit::text(ui, app.tr("render.light_temperature_help"), ui_kit::Text::Note("render.light_temperature_help"));
+            if gpu {
+                note(app, ui, "render.light_gpu_punctual");
+            }
+            if kind == "spot" {
+                note(app, ui, "render.lighting_spot_preserved");
+            }
+            slider_field(app, ui, id, "render.light_intensity", "intensity_ev", &mut draft.ev, -20.0..=maximum_ev, |v| format!("{v:+.1} EV"), true);
+            slider_field(
+                app,
+                ui,
+                id,
+                "render.lighting_colour",
+                "temperature_k",
+                &mut draft.temperature,
+                1000.0..=40000.0,
+                |v| format!("{v:.0} K"),
+                true,
+            );
+            note(app, ui, "render.light_temperature_help");
             let soft = kind == "area" || (kind == "directional" && gpu);
-            field(app, ui, id, "render.light_softness", "softness", &mut draft.softness, 0.0..=1.0, 0.01, "", soft);
+            let sun = kind == "directional";
+            // A sun displays its actual angular radius; areas display the size adapter.
+            slider_field(
+                app,
+                ui,
+                id,
+                "render.light_softness",
+                if sun { "angular_radius_deg" } else { "softness" },
+                &mut draft.softness,
+                if sun { 0.001_f64.to_degrees()..=90.0 } else { 0.0..=1.0 },
+                if sun { |v| format!("{v:.2}°") } else { |v| format!("{v:.2}") },
+                soft,
+            );
             if !soft {
-                ui_kit::text(ui, app.tr("render.light_hard_shadow"), ui_kit::Text::Note("render.light_hard_shadow"));
+                note(app, ui, "render.light_hard_shadow");
             }
             let title = app.tr("render.light_position").to_string();
             ui_kit::section(ui, "render:light:position", &title, true, |ui| {
                 field(app, ui, id, "render.light_azimuth", "azimuth_deg", &mut draft.azimuth, -360.0..=360.0, 1.0, "°", true);
                 field(app, ui, id, "render.light_elevation", "elevation_deg", &mut draft.elevation, -90.0..=90.0, 1.0, "°", true);
-                field(app, ui, id, "render.light_distance", "distance_mm", &mut draft.distance, 0.001..=1e6, 1.0, " mm", kind != "directional");
-                field(app, ui, id, "render.light_size", "size_mm", &mut draft.size, 0.0002..=if gpu { 2e6 } else { 1e6 }, 1.0, " mm", kind == "area");
-                ui.add_enabled_ui(matches!(kind, "area" | "spot"), |ui| {
+                let distance_unit = app.tr("render.lighting_distance_unit").to_string();
+                field(
+                    app,
+                    ui,
+                    id,
+                    "render.light_distance",
+                    "distance_size",
+                    &mut draft.distance,
+                    0.001 / subject_size..=1e6 / subject_size,
+                    0.1,
+                    &distance_unit,
+                    !sun,
+                );
+                if sun {
+                    note(app, ui, "render.lighting_sun_distance");
+                }
+                ui.add_enabled_ui(!sun, |ui| {
                     let label = app.tr("render.light_aim").to_string();
                     ui_kit::row(ui, &label, |ui| {
-                        let current = if app.render_workspace.view.lights.aim == Some([0.0; 3]) {
-                            "render.light_world_origin"
-                        } else {
-                            "render.light_product_centre"
-                        };
-                        let current = app.tr(current).to_string();
-                        ui_kit::dropdown_menu(ui, "render:light:aim", &current, |ui| {
-                            for (key, target) in [("render.light_product_centre", product_centre(app)), ("render.light_world_origin", [0.0; 3])] {
-                                if ui_kit::list_picker(ui, key, app.tr(key), aim == target).clicked() {
+                        let label =
+                            app.tr(if aim == product_centre(app) { "render.light_product_centre" } else { "render.lighting_point" }).to_string();
+                        ui_kit::dropdown_menu(ui, "render:light:aim", &label, |ui| {
+                            let bounds = solidcraft_engine::view::bounds(&app.session);
+                            let mut targets = vec![
+                                (app.tr("render.light_product_centre").to_string(), product_centre(app)),
+                                (app.tr("render.light_world_origin").to_string(), [0.0; 3]),
+                            ];
+                            if !bounds.is_empty() {
+                                for body in &app.session.world_state().bodies {
+                                    let bounds = body.mesh_bounds();
+                                    let c = bounds.center();
+                                    targets.push((body.name.clone(), [c.x, c.y, c.z]));
+                                }
+                            }
+                            for (label, target) in targets {
+                                if ui_kit::list_picker(ui, &label, &label, aim == target).clicked() {
                                     dispatch(app, "render.lights.set", Some(id), Some(json!({"aim_at":target})));
                                     ui.close();
                                 }
                             }
                         });
                     });
+                    vector_field(app, ui, id, "render.lighting_aim_point", "aim_at", &mut draft.aim, -1e9..=1e9, " mm");
                 });
+                let response = ui_kit::button(ui, app.tr("render.light_place_highlight"), ui_kit::Button::Enabled(false));
+                crate::scenario::publish_target("render:light:place-highlight", response.rect);
+                response.on_hover_text(app.tr("render.light_place_pending"));
+                note(app, ui, "render.light_place_pending");
+                if sun {
+                    note(app, ui, "render.lighting_direction_help");
+                    vector_field(app, ui, id, "render.lighting_direction", "direction", &mut draft.direction, -1e6..=1e6, "");
+                } else {
+                    vector_field(
+                        app,
+                        ui,
+                        id,
+                        "render.lighting_world_position",
+                        "position_mm",
+                        &mut draft.position,
+                        if gpu || matches!(kind, "point" | "spot") { -1e9..=1e9 } else { -1e12..=1e12 },
+                        " mm",
+                    );
+                }
             });
+            if kind == "area" {
+                let title = app.tr("render.lighting_shape").to_string();
+                ui_kit::section(ui, "render:light:shape", &title, true, |ui| {
+                    field(
+                        app,
+                        ui,
+                        id,
+                        "render.lighting_width",
+                        "width_mm",
+                        &mut draft.size,
+                        if gpu { 0.0002..=2e6 } else { 0.000002..=1e6 },
+                        1.0,
+                        " mm",
+                        true,
+                    );
+                    field(
+                        app,
+                        ui,
+                        id,
+                        "render.lighting_height",
+                        "height_mm",
+                        &mut draft.height,
+                        if gpu { 0.0002..=2e6 } else { 0.000002..=1e6 },
+                        1.0,
+                        " mm",
+                        true,
+                    );
+                    vector_field(app, ui, id, "render.lighting_radiance", "radiance", &mut draft.radiance, 0.0..=if gpu { 1e6 } else { 64.0 }, "");
+                    vector_field(app, ui, id, "render.lighting_edge_u", "edge_u_mm", &mut draft.u, if gpu { -2e6..=2e6 } else { -1e6..=1e6 }, " mm");
+                    vector_field(app, ui, id, "render.lighting_edge_v", "edge_v_mm", &mut draft.v, if gpu { -2e6..=2e6 } else { -1e6..=1e6 }, " mm");
+                });
+            }
+            if matches!(kind, "point" | "spot") {
+                let title = app.tr("render.lighting_falloff").to_string();
+                ui_kit::section(ui, "render:light:falloff", &title, true, |ui| {
+                    field(
+                        app,
+                        ui,
+                        id,
+                        "render.lighting_reference",
+                        "reference_distance_mm",
+                        &mut draft.reference,
+                        draft.minimum..=1e6,
+                        1.0,
+                        " mm",
+                        true,
+                    );
+                    field(
+                        app,
+                        ui,
+                        id,
+                        "render.lighting_minimum",
+                        "minimum_distance_mm",
+                        &mut draft.minimum,
+                        0.001..=draft.reference,
+                        1.0,
+                        " mm",
+                        true,
+                    );
+                    note(app, ui, "render.lighting_falloff_help");
+                });
+            }
         });
         app.render_workspace.view.lights.draft = Some(draft);
-        ui_kit::button(ui, app.tr("render.light_place_highlight"), ui_kit::Button::Enabled(false))
-            .on_hover_text(app.tr("render.light_place_pending"));
         let title = app.tr("render.light_behaviour").to_string();
-        ui_kit::section(ui, "render:light:behaviour", &title, false, |ui| {
+        ui_kit::section(ui, "render:light:behaviour", &title, true, |ui| {
+            let mut solo = app.render_workspace.view.lights.visibility.solo.as_deref() == Some(id);
+            if ui_kit::checkbox(ui, app.tr("render.lighting_solo"), &mut solo).changed() {
+                let _ = app.run("render.lights.solo", json!({"id":id,"solo":solo}));
+            }
             let mut muted = app.render_workspace.view.lights.visibility.muted.contains(id);
-            if ui_kit::checkbox(ui, app.tr("render.tree_mute"), &mut muted).changed() {
+            if ui_kit::checkbox(ui, app.tr("render.lighting_mute"), &mut muted).changed() {
                 let _ = app.run("render.lights.mute", json!({"id":id,"mute":muted}));
             }
-            ui_kit::text(ui, app.tr("render.light_view_only"), ui_kit::Text::Note("render.light_view_only"));
+            ui.horizontal(|ui| {
+                let cap = if kind == "area" {
+                    4
+                } else if gpu {
+                    1
+                } else {
+                    8
+                };
+                let count = lights
+                    .iter()
+                    .filter(
+                        |l| if matches!(kind, "point" | "spot") { matches!(l.geometry.kind(), "point" | "spot") } else { l.geometry.kind() == kind },
+                    )
+                    .count();
+                if ui_kit::button(ui, app.tr("render.light_duplicate"), ui_kit::Button::Enabled(!blocked && count < cap))
+                    .on_hover_text(app.tr("render.lighting_budget_help"))
+                    .clicked()
+                {
+                    dispatch(app, "render.lights.duplicate", Some(id), None);
+                }
+                if ui_kit::button(ui, app.tr("render.light_delete"), ui_kit::Button::Enabled(!blocked)).clicked() {
+                    dispatch(app, "render.lights.remove", Some(id), None);
+                }
+            });
+            note(app, ui, "render.light_view_only");
         });
-        ui.horizontal(|ui| {
-            if ui_kit::button(ui, app.tr("render.light_duplicate"), ui_kit::Button::Enabled(!blocked)).clicked() {
-                dispatch(app, "render.lights.duplicate", Some(id), None);
-            }
-            if ui_kit::button(ui, app.tr("render.light_delete"), ui_kit::Button::Enabled(!blocked)).clicked() {
-                dispatch(app, "render.lights.remove", Some(id), None);
-            }
-        });
-        ui_kit::text(ui, app.tr("render.light_preview_help"), ui_kit::Text::Note("render.light_preview_help"));
     });
 }
 
+fn bounded(value: f64, low: f64, high: f64) -> f64 {
+    if value.is_finite() { value.clamp(low, high) } else { low }
+}
+fn length([x, y, z]: [f64; 3]) -> f64 {
+    x.hypot(y).hypot(z)
+}
+fn subject_size(app: &SolveApp) -> f64 {
+    bounded(solidcraft_engine::view::bounds(&app.session).diagonal(), 1.0, 1e6)
+}
+fn note(app: &SolveApp, ui: &mut egui::Ui, key: &'static str) {
+    ui_kit::text(ui, app.tr(key), ui_kit::Text::Note(key));
+}
+
+#[allow(clippy::too_many_arguments)]
+fn slider_field(
+    app: &mut SolveApp,
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    key: &str,
+    value: &mut f64,
+    range: std::ops::RangeInclusive<f64>,
+    format: fn(f64) -> String,
+    enabled: bool,
+) {
+    let label = app.tr(label).to_string();
+    ui.add_enabled_ui(enabled, |ui| {
+        ui_kit::row(ui, &label, |ui| {
+            let response = ui_kit::slider(ui, value, range.clone(), ui_kit::Slider { format, ..Default::default() });
+            crate::scenario::publish_target(&format!("render:light:{key}"), response.rect);
+            if accepted(&response) && value.is_finite() && range.contains(value) {
+                let patch = if key == "angular_radius_deg" {
+                    json!({"softness":(value.to_radians() - 0.001) / (std::f64::consts::FRAC_PI_2 - 0.001)})
+                } else {
+                    json!({(key):*value})
+                };
+                dispatch(app, "render.lights.set", Some(id), Some(patch));
+            }
+        });
+    });
+}
+
+#[allow(clippy::too_many_arguments)]
+fn vector_field(
+    app: &mut SolveApp,
+    ui: &mut egui::Ui,
+    id: &str,
+    label: &str,
+    key: &str,
+    value: &mut [f64; 3],
+    range: std::ops::RangeInclusive<f64>,
+    suffix: &str,
+) {
+    let label = app.tr(label).to_string();
+    ui_kit::row(ui, &label, |ui| {
+        let mut changed = false;
+        ui.horizontal(|ui| {
+            for (index, component) in value.iter_mut().enumerate() {
+                let response = ui_kit::number_field(ui, component, range.clone(), 0.1, suffix);
+                crate::scenario::publish_target(&format!("render:light:{key}:{index}"), response.rect);
+                changed |= accepted(&response);
+            }
+        });
+        if changed && value.iter().all(|v| v.is_finite() && range.contains(v)) {
+            dispatch(app, "render.lights.set", Some(id), Some(json!({(key):*value})));
+        }
+    });
+}
+fn accepted(response: &egui::Response) -> bool {
+    response.drag_stopped() || (response.changed() && (response.has_focus() || response.lost_focus()))
+}
 fn dispatch(app: &mut SolveApp, command: &str, id: Option<&str>, set: Option<Value>) {
     if let Err(error) = edit(app, command, id, set) {
         app.set_status(error, true);
@@ -486,10 +1011,11 @@ fn field(
     let label = app.tr(label).to_string();
     ui.add_enabled_ui(enabled, |ui| {
         ui_kit::row(ui, &label, |ui| {
-            let response = ui_kit::number_field(ui, value, range, speed, suffix);
+            let response = ui_kit::number_field(ui, value, range.clone(), speed, suffix);
             crate::scenario::publish_target(&format!("render:light:{key}"), response.rect);
-            if response.drag_stopped() || (response.changed() && (response.has_focus() || response.lost_focus())) {
-                dispatch(app, "render.lights.set", Some(id), Some(json!({(key):*value})));
+            if accepted(&response) && value.is_finite() && range.contains(value) {
+                let patch = if key == "distance_size" { json!({"distance_mm":*value * subject_size(app)}) } else { json!({(key):*value}) };
+                dispatch(app, "render.lights.set", Some(id), Some(patch));
             }
         })
     });

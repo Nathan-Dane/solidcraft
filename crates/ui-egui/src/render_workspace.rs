@@ -260,10 +260,15 @@ pub enum RenderSelection {
     Nothing,
     Object(Vec<solidcraft_engine::Sel>),
     Environment,
+    Lighting,
     /// Method/type/index identity until named light commands provide persistent IDs.
     Light(String),
     Shot(String),
     Output,
+}
+
+pub(crate) fn select_lighting(app: &mut SolveApp) {
+    app.render_workspace.view.inspector.page = inspector::Page::Lighting;
 }
 
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.

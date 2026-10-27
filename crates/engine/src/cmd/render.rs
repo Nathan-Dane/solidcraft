@@ -34,22 +34,22 @@ pub static COMMANDS: &[CommandSpec] = &[
         .icon("render_scene").doc_only()
         .contract(&crate::schema::TypedContract::<crate::schema::render_lights::EditParams>::new())
         .output(crate::schema::output_schema_for::<crate::schema::render_lights::EditResult>)
-        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
+        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at, width_mm, height_mm, position_mm, direction, edge_u_mm, edge_v_mm, radiance, colour, reference_distance_mm, minimum_distance_mm. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
     CommandSpec::new("render.lights.add", "Add Render Light", crate::checked!("render.lights.add", lights::add))
         .icon("render_scene").doc_only()
         .contract(&crate::schema::TypedContract::<crate::schema::render_lights::EditParams>::new())
         .output(crate::schema::output_schema_for::<crate::schema::render_lights::EditResult>)
-        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
+        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at, width_mm, height_mm, position_mm, direction, edge_u_mm, edge_v_mm, radiance, colour, reference_distance_mm, minimum_distance_mm. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
     CommandSpec::new("render.lights.duplicate", "Duplicate Render Light", crate::checked!("render.lights.duplicate", lights::duplicate))
         .icon("render_scene").doc_only()
         .contract(&crate::schema::TypedContract::<crate::schema::render_lights::EditParams>::new())
         .output(crate::schema::output_schema_for::<crate::schema::render_lights::EditResult>)
-        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
+        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at, width_mm, height_mm, position_mm, direction, edge_u_mm, edge_v_mm, radiance, colour, reference_distance_mm, minimum_distance_mm. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
     CommandSpec::new("render.lights.remove", "Remove Render Light", crate::checked!("render.lights.remove", lights::remove))
         .icon("render_scene").doc_only()
         .contract(&crate::schema::TypedContract::<crate::schema::render_lights::EditParams>::new())
         .output(crate::schema::output_schema_for::<crate::schema::render_lights::EditResult>)
-        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
+        .params("name; id except add; settings?: full unsaved RenderSetup; expected_revision?:u64; set for set/add: kind directional/point/spot/area, intensity_ev, temperature_k, softness, azimuth_deg, elevation_deg, distance_mm, size_mm, aim_at, width_mm, height_mm, position_mm, direction, edge_u_mm, edge_v_mm, radiance, colour, reference_distance_mm, minimum_distance_mm. Validated finite light edit in one undo. Existing family caps and backend support apply; refusal is atomic. Names remain defaults."),
     CommandSpec::new("render.lights.list", "List Render Lights", crate::checked!("render.lights.list", lights::list))
         .icon("list").noundo().doc_only()
         .contract(&crate::schema::TypedContract::<crate::schema::render_lights::ListParams>::new())

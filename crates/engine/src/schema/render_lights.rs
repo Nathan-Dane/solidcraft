@@ -128,6 +128,18 @@ pub struct LightPatch {
     pub distance_mm: Option<f64>,
     pub size_mm: Option<f64>,
     pub aim_at: Option<[f64; 3]>,
+    /// Full side lengths, preserving each existing edge's orientation.
+    pub width_mm: Option<f64>,
+    pub height_mm: Option<f64>,
+    /// World-space fields, lowered to the existing renderer parameters.
+    pub position_mm: Option<[f64; 3]>,
+    pub direction: Option<[f64; 3]>,
+    pub edge_u_mm: Option<[f64; 3]>,
+    pub edge_v_mm: Option<[f64; 3]>,
+    pub radiance: Option<[f64; 3]>,
+    pub colour: Option<[f64; 3]>,
+    pub reference_distance_mm: Option<f64>,
+    pub minimum_distance_mm: Option<f64>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

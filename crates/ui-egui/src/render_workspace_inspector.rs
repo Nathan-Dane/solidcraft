@@ -403,6 +403,7 @@ fn perform_action(app: &mut SolveApp, action: PendingAction) -> Result<(), Strin
 }
 fn confirmation(app: &mut SolveApp, ctx: &egui::Context) {
     super::shots::confirmation(app, ctx);
+    super::light::confirmation(app, ctx);
     let Some(pending) = app.render_workspace.view.inspector.pending.clone() else { return };
     if pending.revision != app.session.revision || !Weak::ptr_eq(&pending.document, &Arc::downgrade(&app.session.doc)) {
         app.render_workspace.view.inspector.pending = None;
@@ -605,18 +606,7 @@ fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         super::light::editor(app, ui, &id);
         return;
     }
-    browse_button(app, ui, "rigs", "render.browse_rigs");
-    library::inspect_kinds(app, ui, &["rigs", "lighting"]);
-    match app.render_workspace.view.method {
-        ImageMethod::GpuRaytrace => studio::lighting_controls(app, ui),
-        ImageMethod::CpuRaytrace => {
-            super::cpu_lighting_controls(app, ui);
-            cpu::light_controls(app, ui);
-        }
-        ImageMethod::Raster => {
-            ui_kit::text(ui, app.tr("render.method_limit_raster"), ui_kit::Text::Note("render.method_limit_raster"));
-        }
-    }
+    super::light::lighting(app, ui);
 }
 fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.label(app.tr("render.background"));

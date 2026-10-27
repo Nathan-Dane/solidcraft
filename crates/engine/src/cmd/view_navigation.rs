@@ -26,9 +26,11 @@ CommandSpec::new("view.navigation_bar", "Navigation bar", navigation_bar)
 CommandSpec::new("view.render_browser", "Render Browser", render_browser)
     .icon("list").noundo().doc_only()
     .params("by_look?: bool; search?: bool; query?: string (up to 1024 bytes) → validated transient Browser controls; never edits the design or opens a dialog"),
-CommandSpec::new("view.render_select", "Render selection", render_select)
+CommandSpec::new("view.render_select", "Render selection", crate::checked!("view.render_select", render_select))
     .icon("select").noundo().doc_only()
-    .params("kind: nothing|environment|light|shot|output; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
+    .contract(&crate::schema::TypedContract::<crate::schema::view_navigation::RenderSelect>::new())
+    .output(crate::schema::output_schema_for::<crate::schema::view_navigation::RenderSelect>)
+    .params("kind: nothing|environment|lighting|light|shot|output; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_stage", "Render Stage", render_stage)
     .icon("render_scene").noundo().doc_only()
     .params("stage: look|light|frame|output → {stage}; per-document UI state, never edits or evaluates the design; headless validation only"),
@@ -217,16 +219,10 @@ fn navigation_bar(_s: &mut Session, p: &Value) -> Result<Value> {
 }
 
 fn render_select(s: &mut Session, p: &Value) -> Result<Value> {
-    #[derive(serde::Deserialize, serde::Serialize)]
-    #[serde(deny_unknown_fields)]
-    struct Request {
-        kind: String,
-        #[serde(skip_serializing_if = "Option::is_none")]
-        id: Option<String>,
-    }
-    let request: Request = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
+    let request: crate::schema::view_navigation::RenderSelect =
+        serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
     let identified = matches!(request.kind.as_str(), "light" | "shot");
-    if !matches!(request.kind.as_str(), "nothing" | "environment" | "light" | "shot" | "output")
+    if !matches!(request.kind.as_str(), "nothing" | "environment" | "lighting" | "light" | "shot" | "output")
         || identified != request.id.is_some()
         || request.id.as_ref().is_some_and(|id| id.trim().is_empty() || id.len() > 1024)
     {
@@ -983,6 +979,7 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
     for request in [
         json!({"kind":"nothing"}),
         json!({"kind":"environment"}),
+        json!({"kind":"lighting"}),
         json!({"kind":"light","id":"sun:0"}),
         json!({"kind":"shot","id":"Hero"}),
         json!({"kind":"output"}),
@@ -999,12 +996,18 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
         json!({"kind":"light","id":" "}),
         json!({"kind":"shot","id":"x".repeat(1025)}),
         json!({"kind":"output","id":"extra"}),
+        json!({"kind":"lighting","id":"extra"}),
         json!({"kind":"environment","extra":true}),
     ] {
         assert!(session.execute("view.render_select", &request).is_err(), "{request}");
     }
     assert!(std::sync::Arc::ptr_eq(&doc, &session.doc));
     assert_eq!(before, (session.undo.len(), session.redo.len(), session.revision, session.evaluations, session.is_dirty()));
+    let description = session.execute("engine.describe", &json!({"command":"view.render_select"})).unwrap();
+    for key in ["input", "output"] {
+        assert!(description[key].is_object());
+        assert!(description[key].to_string().contains("\"lighting\""));
+    }
 }
 
 #[cfg(test)]
