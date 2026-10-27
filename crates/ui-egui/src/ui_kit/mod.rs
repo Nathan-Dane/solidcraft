@@ -79,8 +79,10 @@ pub(crate) use radial::{RADIAL_RADIUS, radial_menu};
 pub(crate) use reports::*;
 pub(crate) use search::{CommandSearch, SearchBadge, SearchFieldGeometry};
 pub(crate) use shortcuts::*;
+#[cfg(test)]
+pub(crate) use sphere::sphere_preview;
 pub use sphere::{FinishKind, Sphere, sphere_thumbnail};
-pub(crate) use sphere::{SphereTile, sphere_grid, sphere_preview};
+pub(crate) use sphere::{SphereTile, sphere_grid, sphere_preview_with_source};
 pub(crate) use stages::{StageAction, StageBar};
 pub(crate) use status::*;
 pub(crate) use table::*;

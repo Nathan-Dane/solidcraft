@@ -1,6 +1,35 @@
 use super::*;
 
 #[test]
+fn interactive_preview_keeps_source_usage_and_replace_inside_the_card() {
+    for dark in [false, true] {
+        crate::theme::set_dark(dark);
+        for width in [280.0, 305.0, 308.0, 356.0] {
+            let ctx = crate::fonts::test_context();
+            crate::test_support::frame(&ctx, egui::RawInput::default(), |ui| {
+                ui.set_width(width);
+                super::super::scope(ui, |ui| {
+                    sphere_preview_with_source(
+                        ui,
+                        "preview",
+                        Sphere { color: Tokens::get().render_accent, kind: FinishKind::Metal, opacity: None },
+                        "Brushed aluminium",
+                        "Used by 4",
+                        |ui| super::super::compact_dropdown_menu(ui, "source", "In Design", |_| {}),
+                        |ui| super::super::searchable_icon_dropdown(ui, "spin", "Replace…", &mut String::new(), &[]),
+                    );
+                });
+            });
+            let card = crate::scenario::rect_of("dialog:list:preview").unwrap();
+            assert!(card.width() <= width + 1.0, "{card:?}");
+            for child in ["preview", "preview:replace", "preview:chip:0", "preview:chip:1"] {
+                assert!(card.contains_rect(crate::scenario::rect_of(child).unwrap()), "{child}");
+            }
+        }
+    }
+}
+
+#[test]
 fn preview_keeps_sample_chips_and_replace_inside_the_shared_card() {
     for dark in [false, true] {
         crate::theme::set_dark(dark);

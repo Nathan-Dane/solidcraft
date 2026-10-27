@@ -733,3 +733,9 @@ band). `color_hex_field` pairs the colour popover with a bounded hex editor;
 `workspace_chip`, `text_button`, `section_heading`, `pending_section`,
 `searchable_icon_dropdown` and `Menu::text` retain
 shared token paint and hit targets. All are exercised in the kit gallery.
+
+| Shared editor component | Behaviour |
+| --- | --- |
+| method_section | Compact, initially collapsed editor section with a method tag; unsupported contents remain inspectable and disabled, with a translated reason visible even when collapsed. Uses editor_section typography and spacing. |
+| vector3_field | Three bounded number fields divide the row's control column evenly, retaining the shared parser, focus and bevels. Used for RGB absorption and world-space origin/repeat vectors. |
+| sphere_preview_with_source | Sample card with an interactive source tag, retaining the sphere, name, usage badge and trailing action. Appearance uses the tag to inspect its inheritance chain. |

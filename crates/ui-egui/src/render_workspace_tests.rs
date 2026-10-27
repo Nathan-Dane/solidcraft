@@ -1751,6 +1751,7 @@ fn clicked_gpu_glass_recipe_stays_temporary_and_blocks_cpu_rendering() {
     h.app.session.mark_saved();
     enter(&mut h.app, true).unwrap();
     h.app.render_workspace.view.inspector.page = inspector::Page::All;
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
     h.frames(3);
     let doc = h.app.session.doc.clone();
     let title = h.app.tr("render.material_title").to_string();
@@ -1762,13 +1763,15 @@ fn clicked_gpu_glass_recipe_stays_temporary_and_blocks_cpu_rendering() {
     h.step(&json!({"click":{"handle":"dialog:list:render:material-body-0"}})).unwrap();
     let add = h.app.tr("render.material_add").to_string();
     h.step(&json!({"widget":add})).unwrap();
-    let glass = h.app.tr("render.material_glass").to_string();
+    let glass = h.app.tr("render.appearance_editor.glass").to_string();
     h.step(&json!({"click":{"handle":format!("dialog:section:{glass}")}})).unwrap();
+    h.step(&json!({"widget":h.app.tr("render.material_custom")})).unwrap();
     h.step(&json!({"click":{"handle":"render:glass:starter.glass.amber-tint"}})).unwrap();
     let binding = &h.app.render_workspace.view.materials.bindings[0];
     assert!(binding.glass_enabled && !binding.coat_enabled && !binding.maps_enabled);
     assert_eq!(binding.glass.recipe, Some("starter.glass.amber-tint"));
     assert_eq!(binding.target.name, "Optics");
+    h.app.render_workspace.view.method = ImageMethod::CpuRaytrace;
     assert!(image_params(&h.app).is_err(), "CPU must not silently ignore active GPU material assignments");
     assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
     assert!(!h.app.session.is_dirty());
@@ -4553,4 +4556,26 @@ fn render_workspace_shots_strip_geometry_and_theme_evidence() {
         }
     }
     crate::theme::set_dark(previous);
+}
+
+#[test]
+fn appearance_editor_hostile_optics_stay_finite_and_never_panic() {
+    let mut h = Harness::new();
+    h.app.run("solid.box", json!({"length":10,"width":10,"height":3,"body_name":"Optics"})).unwrap();
+    let target = materials::read_targets(&mut h.app).unwrap().remove(0);
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
+    h.app.render_workspace.view.materials.enabled = true;
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 1e300] {
+        let mut binding = materials::Binding::new(target.clone(), &h.app);
+        binding.glass_enabled = true;
+        binding.glass.ior = value;
+        h.app.render_workspace.view.materials.bindings = vec![binding];
+        assert!(materials::params(&h.app, &mut json!({})).is_err(), "hostile IOR {value}");
+    }
+    let mut binding = materials::Binding::new(target, &h.app);
+    binding.glass_enabled = true;
+    binding.glass.boundary = materials::Boundary::Box;
+    binding.glass.subsurface = Some(solidcraft_engine::render::transmission::subsurface::Subsurface { scattering_per_mm: 0.1, anisotropy: 0.0 });
+    h.app.render_workspace.view.materials.bindings = vec![binding];
+    assert!(materials::params(&h.app, &mut json!({})).is_ok(), "box boundaries are closed dielectrics too");
 }

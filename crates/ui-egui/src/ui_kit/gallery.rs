@@ -136,6 +136,14 @@ const ELEMENTS: &[Element] = &[
             text(ui, "Colour", Text::Inline);
         });
     }),
+    element!("method_section", |ui, _| {
+        method_section(ui, "gpu_section", "Glass and absorption", "GPU", Some("Needs GPU path tracing"), |ui| {
+            checkbox(ui, "Use physical glass", &mut false);
+        });
+    }),
+    element!("vector3_field", |ui, _| {
+        row(ui, "Origin", |ui| vector3_field(ui, &mut [0.0; 3], -1e6..=1e6, " mm"));
+    }),
     element!("pending_section", |ui, _| {
         pending_section(ui, "upcoming", "Textures", "Soon");
     }),
@@ -226,6 +234,21 @@ const ELEMENTS: &[Element] = &[
             "Satin",
             ["Library", "Used by 2"],
             |ui| searchable_icon_dropdown(ui, "spin", "Replace…", &mut String::new(), &[]),
+        );
+    }),
+    element!("sphere_preview_with_source", |ui, _| {
+        sphere_preview_with_source(
+            ui,
+            "gallery:preview-source",
+            Sphere { color: Tokens::get().render_accent, kind: FinishKind::Satin, opacity: None },
+            "Satin",
+            "Used by 2",
+            |ui| {
+                compact_dropdown_menu(ui, "gallery:source", "In Design", |ui| {
+                    text(ui, "Body look", Text::Inline);
+                })
+            },
+            |ui| text_button(ui, "Replace…", true),
         );
     }),
     element!("mixed_scalar_field", |ui, _| {

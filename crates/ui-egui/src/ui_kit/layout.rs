@@ -262,6 +262,7 @@ pub(crate) fn figure_rows(
 /// Memory belongs to the enclosing dialog ID; animation is avoided so each row keeps its fixed height.
 /// Persisted disclosure with a rule and uppercase title. Tokens: `control_height, space_2, radius_sm, hover, dialog_rule, form_section_icon_size, form_gap_y, font_caption, font_section_tracking, text_dim`.
 /// Static section caption for an Inspector group that stays expanded.
+#[cfg(test)]
 pub(crate) fn section_heading(ui: &mut Ui, title: &str) {
     let t = Tokens::get();
     let (rect, _) = ui.allocate_exact_size(vec2(dimension(ui.available_width()), t.space_16), egui::Sense::hover());
@@ -290,7 +291,27 @@ pub(crate) fn editor_section<R>(ui: &mut Ui, id: impl egui::AsIdSalt, title: &st
     section_with_badge(ui, id, title, default_open, (None, false, true), add)
 }
 
+/// Compact editor disclosure with a method badge. Unsupported content stays
+/// inspectable and disabled; its translated reason remains visible when folded.
+/// Uses the editor section's spacing, typography and semantic theme tokens.
+pub(crate) fn method_section<R>(
+    ui: &mut Ui,
+    id: impl egui::AsIdSalt,
+    title: &str,
+    method: &str,
+    reason: Option<&str>,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> Option<R> {
+    let result =
+        section_with_badge(ui, id, title, false, (Some(method.to_owned()), false, true), |ui| ui.add_enabled_ui(reason.is_none(), add).inner);
+    if let Some(reason) = reason {
+        super::text(ui, reason, super::Text::Note("method_section_reason"));
+    }
+    result
+}
+
 /// A collapsed upcoming group with an inert disclosure and a trailing status chip.
+#[cfg(test)]
 pub(crate) fn pending_section(ui: &mut Ui, id: impl egui::AsIdSalt, title: &str, badge: &str) {
     section_with_badge(ui, id, title, false, (Some(badge.to_owned()), true, true), |_| {});
 }

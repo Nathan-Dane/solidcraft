@@ -770,6 +770,26 @@ pub(crate) fn number_field<T: egui::emath::Numeric>(
     response
 }
 
+/// Three bounded numeric components sharing the available control-column width.
+/// Each field retains the standard parser, bevel and focus behaviour. Tokens:
+/// number_field typography/chrome and the enclosing row's spacing.
+pub(crate) fn vector3_field(ui: &mut Ui, values: &mut [f64; 3], range: std::ops::RangeInclusive<f64>, suffix: &str) -> bool {
+    let mut changed = false;
+    let label = super::layout::label(ui).to_owned();
+    ui.columns(3, |columns| {
+        for (axis, (ui, value)) in columns.iter_mut().zip(values).enumerate() {
+            let width = ui.available_width().max(0.0);
+            ui.spacing_mut().text_edit_width = width;
+            ui.spacing_mut().interact_size.x = width;
+            ui.set_clip_rect(ui.clip_rect().intersect(ui.max_rect()));
+            let response = number_field(ui, value, range.clone(), 0.01, suffix);
+            scenario::publish_target(&format!("dialog:vector:{label}:{axis}"), response.rect);
+            changed |= response.changed();
+        }
+    });
+    changed
+}
+
 /// Growing plain-text message editor; its parent owns scrolling and Enter routing.
 /// Tokens: control_fill, form_inset, font_label. Use text_area for bounded data input.
 #[cfg(any(not(target_arch = "wasm32"), test))]

@@ -220,7 +220,7 @@ impl<'a> TopHeader<'a> {
 #[derive(Clone, Copy)]
 pub(crate) enum InspectorAction {
     Close,
-    Reset,
+    Remove,
 }
 
 pub(crate) fn inspector_header(ui: &mut Ui, icon: &str, title: &str, kind: &str) -> Option<InspectorAction> {
@@ -244,7 +244,7 @@ pub(crate) fn inspector_header(ui: &mut Ui, icon: &str, title: &str, kind: &str)
         let ui = &mut more_ui;
         super::Menu::text(ui, "…", |ui| {
             if super::MenuItem::new("render:appearance:remove", crate::i18n::tr("render.inspector_remove"), "").show(ui).clicked() {
-                action = Some(InspectorAction::Reset);
+                action = Some(InspectorAction::Remove);
                 ui.close();
             }
         });
