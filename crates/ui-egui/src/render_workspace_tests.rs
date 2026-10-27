@@ -83,6 +83,7 @@ fn render_workspace_frame_guides_are_transient_and_overlay_visibility_is_context
 #[test]
 fn render_workspace_frame_exposure_drag_is_one_saved_edit_and_undoes() {
     let mut h = frame_editor_fixture();
+    shot::edit_settings(&mut h.app, "Hero", json!({"job":{"method":"cpu_raytrace"}})).unwrap();
     h.call("ui.resize", json!({"width":1600,"height":1800}));
     h.frames(4);
     let track = crate::scenario::rect_of("dialog:slider_track:Exposure").unwrap();
@@ -103,7 +104,7 @@ fn render_workspace_frame_exposure_drag_is_one_saved_edit_and_undoes() {
 }
 
 #[test]
-fn render_workspace_frame_render_shot_captures_selected_size_and_live_camera_without_saving() {
+fn render_workspace_scene_render_shot_captures_current_size_and_live_camera_without_saving() {
     let mut h = frame_editor_fixture();
     h.app.run("solid.box", json!({"length":10,"width":20,"height":5})).unwrap();
     shot::edit_settings(&mut h.app, "Hero", json!({"width":16,"height":12})).unwrap();
@@ -114,7 +115,9 @@ fn render_workspace_frame_render_shot_captures_selected_size_and_live_camera_wit
     let camera = Camera { distance: 85.0, fov: 35f64.to_radians(), ..h.app.cam };
     inspector::apply_camera_draft(&mut h.app, camera).unwrap();
     h.app.run("view.render_frame", json!({"thirds":true,"safe_area":true,"centre_mark":true})).unwrap();
-    shot::render(&mut h.app, "Hero").unwrap();
+    h.app.render_workspace.view.name = "Hero".into();
+    setups::load(&mut h.app);
+    ribbon::perform_job(&mut h.app, "render.start").unwrap();
     let job = h.app.render_workspace.view.job.unwrap();
     let handle = h.app.session.render_job_handle(job).unwrap();
     assert_eq!(h.app.render_workspace.view.job_shot.as_deref(), Some("Hero"));
@@ -777,12 +780,12 @@ fn clicked_render_workspace_saves_one_setup_and_restores_design_view() {
         h.step(&json!({"click":[at.x,at.y]})).unwrap();
         h.step(&json!({"click":{"handle":"menu:ui.workspace.render"}})).unwrap();
         assert!(active(&h.app));
-        let heading = h.app.tr("render.studio_title").to_string();
+        let heading = h.app.tr("render.page_scene").to_string();
         let perspective = h.app.tr("render.perspective").to_string();
         let save = h.app.tr("render.save_setup").to_string();
         let back = h.app.tr("render.return_design").to_string();
         assert!(h.widget(&heading).is_some(), "{language}");
-        h.step(&json!({"click":{"handle":"render:page:camera"}})).unwrap();
+        h.step(&json!({"click":{"handle":"render:scene:frame"}})).unwrap();
         h.step(&json!({"widget":perspective})).unwrap();
         assert!(!h.app.session.is_dirty(), "preview edits are staged");
         h.step(&json!({"widget":save})).unwrap();
@@ -3021,7 +3024,7 @@ fn render_workspace_stage_commands_keep_registered_actions_without_a_ribbon() {
     assert!(crate::scenario::rect_of("tab:RENDER").is_none());
     assert!(crate::scenario::rect_of("render:hud").is_none());
     assert_eq!(h.app.render_workspace.view.stage, Stage::Look);
-    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Appearance);
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Scene);
 }
 
 #[test]
@@ -3323,7 +3326,7 @@ fn render_workspace_hosts_float_and_shield_input_in_both_ribbon_layouts() {
             } else if key == "render:appearances" {
                 "render:library-search"
             } else {
-                "render:page:output"
+                "render:scene:look"
             })
             .unwrap();
             if key == "render:browser" {
@@ -3778,10 +3781,9 @@ fn render_workspace_browser_focus_covers_each_kind_without_design_edits() {
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Shot("Shot".into()));
     h.step(&json!({"click":{"handle":"render:tree:output"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Output);
-    let page = h.app.render_workspace.view.inspector.page;
     h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Nothing);
-    assert_eq!(h.app.render_workspace.view.inspector.page, page, "focus alone does not dispatch Inspector editors");
+    assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Scene);
     assert_eq!(h.app.session.revision, focused_revision, "semantic selection only refreshes the view when clearing object picks");
     assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
     assert_eq!(before, (h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.is_dirty()));

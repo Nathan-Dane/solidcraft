@@ -221,8 +221,14 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let bounds = crate::shell::panel_bounds(app, ui.available_rect_before_wrap());
     let mut side = app.preferences.render_inspector_side.clone();
     let mut width = app.preferences.render_inspector_width;
-    let title = app.tr("render.studio_title").to_string();
-    let icon = app.render_workspace.view.inspector.page.icon();
+    let page = app.render_workspace.view.inspector.page;
+    let standalone = page == Page::Scene || (page == Page::Camera && super::shot::selected(app).is_some());
+    let title = if standalone {
+        super::shot::selected(app).filter(|_| page == Page::Camera).map(str::to_owned).unwrap_or_else(|| app.tr("render.page_scene").to_string())
+    } else {
+        app.tr("render.studio_title").to_string()
+    };
+    let icon = page.icon();
     let content = ui_kit::Panel::workspace(
         ui,
         ui_kit::WorkspaceOptions { id: "render:inspector", title: &title, icon, bounds, fill_height: true, enabled: true, header_actions: None },
@@ -230,25 +236,31 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         &mut width,
         |ui| {
             ui_kit::scope(ui, |ui| {
-                header(app, ui);
-                pages(app, ui);
-                ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
-                    ui.separator();
-                    super::job_controls(app, ui, true);
-                    if ui_kit::button(ui, app.tr("render.return_design"), ui_kit::Button::Normal).clicked()
-                        && let Err(error) = super::enter(app, false)
-                    {
-                        app.set_status(error, true);
-                    }
-                    crate::scenario::publish_rect("render:job-footer", ui.min_rect());
-                });
+                if !standalone {
+                    header(app, ui);
+                    pages(app, ui);
+                    ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
+                        ui.separator();
+                        super::job_controls(app, ui, true);
+                        if ui_kit::button(ui, app.tr("render.return_design"), ui_kit::Button::Normal).clicked()
+                            && let Err(error) = super::enter(app, false)
+                        {
+                            app.set_status(error, true);
+                        }
+                        crate::scenario::publish_rect("render:job-footer", ui.min_rect());
+                    });
+                }
                 let page = app.render_workspace.view.inspector.page;
                 egui::ScrollArea::vertical().id_salt(("render_inspector", page.handle(), app.docs.active)).auto_shrink([false, false]).show(
                     ui,
                     |ui| {
-                        ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
+                        if !standalone {
+                            ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
+                        }
                         match page {
-                            Page::Scene => scene_controls(app, ui),
+                            Page::Scene => {
+                                scene_controls(app, ui);
+                            }
                             Page::Appearance => appearance_controls(app, ui),
                             Page::Aging => super::effects::aging_controls(app, ui),
                             Page::Effects => super::effects::presentation_controls(app, ui),
@@ -266,6 +278,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                             Page::Diagnostics => diagnostics(app, ui),
                             Page::All => {
                                 ui_kit::text(ui, app.tr("render.all_controls_help"), ui_kit::Text::Note("render.all_controls_help"));
+                                shot_controls(app, ui);
                                 camera_actions(app, ui);
                                 let title = app.tr("render.page_camera").to_string();
                                 ui_kit::section(ui, "render_all_camera", &title, false, |ui| camera_controls(app, ui));
@@ -403,6 +416,9 @@ fn perform_action(app: &mut SolveApp, action: PendingAction) -> Result<(), Strin
                 app.render_workspace.view.name = app.session.doc.render.setups.keys().next().cloned().unwrap_or_else(|| "Studio".into());
                 setups::load(app);
             }
+            if matches!(&app.render_workspace.view.selection, super::RenderSelection::Shot(selected) if selected == &name) {
+                app.run("view.render_select", json!({"kind":"nothing"}))?;
+            }
         }
     }
     Ok(())
@@ -453,23 +469,107 @@ fn browse_button(app: &mut SolveApp, ui: &mut egui::Ui, kind: &str, key: &str) {
     }
 }
 fn scene_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    // After a library selection, primary native-resource actions lead the page.
-    // Shared method/help and catalog navigation remain below, not between the
-    // chosen resource and its explicit review/consent. No state is changed by layout.
-    let selected_native = library::selected_kind(app, "native_scenes");
-    if selected_native {
-        library::inspect_kinds(app, ui, &["native_scenes"]);
-    }
-    ui_kit::text(ui, app.tr("render.scene_preserves_design"), ui_kit::Text::Note("render.scene_preserves_design"));
-    super::method_selector(app, ui);
-    gpu_status(app, ui);
-    browse_button(app, ui, "native_scenes", "render.browse_native_scenes");
-    browse_button(app, ui, "scenes", "render.browse_scene_specs");
-    if !selected_native {
-        library::inspect_kinds(app, ui, &["native_scenes", "scenes", "selene_shots"]);
-    }
-    physical_stage_controls(app, ui);
-    shot_controls(app, ui);
+    let title = app.tr("render.scene_stages").to_string();
+    ui_kit::section(ui, "render_scene_stages", &title, true, |ui| {
+        let view = &app.render_workspace.view;
+        let overrides = app.session.doc.render.setups.get(&view.name).map_or(0, |s| s.optics.len().saturating_add(s.surfaces.len()));
+        let looks = super::scene::groups(app).iter().filter(|g| g.look.is_some()).count();
+        let look = crate::i18n::format("render.scene_look_summary", &[("looks", &looks.to_string()), ("overrides", &overrides.to_string())]);
+        let light = crate::i18n::format(
+            "render.scene_light_summary",
+            &[("environment", &super::scene::environment(app).0), ("lights", &super::scene::light_types(app).len().to_string())],
+        );
+        let lens = if app.cam.fov > 0.0 { format!("{:.0}°", app.cam.fov.to_degrees()) } else { app.tr("render.stage_orthographic").to_string() };
+        let aspect = super::shot::aspect_label(app, &view.draft);
+        let frame = format!("{} · {lens} · {aspect}", view.name);
+        let format = if view.studio.export_exr { "EXR" } else { "PNG" };
+        let output = format!("{} × {} · {format} · {}", view.draft.width, view.draft.height, app.tr(view.method.label()));
+        for (stage, summary, icon) in [
+            (super::Stage::Look, look, "appearance"),
+            (super::Stage::Light, light, "environment_map"),
+            (super::Stage::Frame, frame, "camera"),
+            (super::Stage::Output, output, "export"),
+        ] {
+            let response = ui_kit::tree_row(
+                ui,
+                ui.id().with(("scene_stage", stage.key())),
+                &ui_kit::Row { compact: true, label: app.tr(stage.label()), secondary: &summary, icon, ..Default::default() },
+            );
+            if let Some(rect) = response.rect {
+                crate::scenario::publish_target(&format!("render:scene:{}", stage.key()), rect);
+            }
+            if response.clicked {
+                scene_stage(app, stage);
+            }
+        }
+    });
+    let title = app.tr("render.scene_ready").to_string();
+    ui_kit::section(ui, "render_scene_ready", &title, true, |ui| {
+        let state = match &app.render_workspace.view.inspector.checked {
+            Some(check) if check.current(app) && super::image_params(app).as_ref().ok() == Some(&check.request) => crate::i18n::format(
+                "render.scene_check_passed",
+                &[("notes", &check.reply.get("warnings").and_then(Value::as_array).map_or(0, Vec::len).to_string())],
+            ),
+            Some(_) => app.tr("render.scene_check_stale").to_string(),
+            None => app.tr("render.scene_check_unchecked").to_string(),
+        };
+        ui.horizontal_wrapped(|ui| {
+            ui_kit::text(ui, &state, ui_kit::Text::Inline);
+            let response = ui_kit::button(ui, app.tr("render.scene_open_check"), ui_kit::Button::Normal);
+            crate::scenario::publish_target("render:scene:open-check", response.rect);
+            if response.clicked() {
+                app.start("render.status");
+            }
+        });
+        if app.render_workspace.view.method == ImageMethod::GpuRaytrace && !matches!(app.render_workspace.path_host, super::PathHost::Ready(_)) {
+            gpu_status(app, ui);
+        } else {
+            let state = super::ribbon::action_ready(app, "render.start");
+            let text = state.err().unwrap_or_else(|| {
+                crate::i18n::format("render.scene_renderer_ready", &[("renderer", app.tr(app.render_workspace.view.method.label()))])
+            });
+            ui_kit::text(ui, &text, ui_kit::Text::Note("render:scene:renderer"));
+        }
+        ui.horizontal_wrapped(|ui| {
+            for (id, label, command, primary) in
+                [("check", "render.scene_check_now", "render.preflight", false), ("render", "render.frame_render_shot", "render.start", true)]
+            {
+                let ready = super::ribbon::action_ready(app, command);
+                let response = ui_kit::icon_label_action(ui, app.tr(label), None, ready.is_ok(), primary);
+                crate::scenario::publish_target(&format!("render:scene:{id}"), response.rect);
+                if let Err(reason) = ready {
+                    response.clone().on_disabled_hover_text(reason);
+                }
+                if response.clicked()
+                    && let Err(error) = super::ribbon::perform_job(app, command)
+                {
+                    app.set_status(error, true);
+                }
+            }
+        });
+        let label = crate::i18n::format("render.scene_all_shots", &[("count", &app.session.doc.render.setups.len().to_string())]);
+        let response = ui_kit::button(ui, &label, ui_kit::Button::Enabled(false));
+        crate::scenario::publish_target("render:scene:all-shots", response.rect);
+        ui_kit::text(ui, app.tr("render.scene_batch_reason"), ui_kit::Text::Note("render.scene_batch_reason"));
+    });
+    let title = app.tr("render.scene_reminders").to_string();
+    ui_kit::section(ui, "render_scene_reminders", &title, true, |ui| {
+        ui_kit::text(ui, app.tr("render.scene_reminder"), ui_kit::Text::Note("render.scene_preserves_design"));
+    });
+}
+
+fn scene_stage(app: &mut SolveApp, stage: super::Stage) {
+    let name = app.render_workspace.view.name.clone();
+    let _ = app.run("view.render_stage", json!({"stage":stage.key()}));
+    let params = match stage {
+        super::Stage::Look => json!({"kind":"nothing"}),
+        super::Stage::Light => json!({"kind":"environment"}),
+        super::Stage::Frame if app.session.doc.render.setups.contains_key(&name) => json!({"kind":"shot","id":name}),
+        super::Stage::Frame => json!({"kind":"nothing"}),
+        super::Stage::Output => json!({"kind":"output"}),
+    };
+    let _ = app.run("view.render_select", params);
+    app.render_workspace.view.inspector.page = stage.page();
 }
 fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.passive_stage").to_string();

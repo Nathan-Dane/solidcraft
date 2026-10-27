@@ -465,7 +465,16 @@ pub(super) fn card(app: &mut SolveApp, ui: &mut egui::Ui, bounds: egui::Rect) {
         &mut side,
         &mut width,
         |ui| match stage {
-            super::Stage::Look => ui_kit::catalog_scope(ui, |ui| browse_contents(app, ui, true)),
+            super::Stage::Look => ui_kit::catalog_scope(ui, |ui| {
+                if selected_kind(app, "native_scenes") {
+                    egui::ScrollArea::vertical().id_salt("render_native_resource_review").show(ui, |ui| {
+                        inspect(app, ui);
+                        browse_contents(app, ui, true);
+                    });
+                } else {
+                    browse_contents(app, ui, true);
+                }
+            }),
             super::Stage::Light => light_panel(app, ui),
             super::Stage::Frame => super::shot::presets(app, ui),
             super::Stage::Output => {

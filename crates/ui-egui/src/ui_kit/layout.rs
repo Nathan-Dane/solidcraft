@@ -265,6 +265,19 @@ pub(crate) fn section<R>(ui: &mut Ui, id: impl egui::AsIdSalt, title: &str, defa
     section_count(ui, id, title, default_open, None::<usize>, add)
 }
 
+/// Section with a method tag (for example GPU). Uses the shared count-badge geometry,
+/// typography and disclosure; the tag describes support and never selects a method.
+pub(crate) fn section_method<R>(
+    ui: &mut Ui,
+    id: impl egui::AsIdSalt,
+    title: &str,
+    method: &str,
+    default_open: bool,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> Option<R> {
+    section_count(ui, id, title, default_open, Some(method), add)
+}
+
 /// Section heading with an optional count badge; disclosure state uses the same identity.
 pub(crate) fn section_count<R>(
     ui: &mut Ui,

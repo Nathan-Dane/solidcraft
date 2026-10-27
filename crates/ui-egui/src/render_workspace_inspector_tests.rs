@@ -9,6 +9,223 @@ fn fixture() -> Harness {
     h.frames(3);
     h
 }
+
+fn ordered_sections(keys: &[&str], app: &SolveApp) {
+    let mut bottom = f32::NEG_INFINITY;
+    for key in keys {
+        let rect = crate::scenario::rect_of(&format!("dialog:section:{}", app.tr(key))).unwrap();
+        assert!(rect.top() >= bottom, "{key} must follow the previous section");
+        bottom = rect.bottom();
+    }
+}
+
+#[test]
+fn render_workspace_shot_and_scene_widgets_fit_inspector_content_width() {
+    let mut h = fixture();
+    setups::save(&mut h.app).unwrap();
+    let name = h.app.render_workspace.view.name.clone();
+    super::super::shot::choose_aspect(&mut h.app, &name, 0).unwrap();
+    h.app.cam.target = solidcraft_engine::geom::Vec3::new(-18.0, 125.5, -18.0);
+    let ctx = crate::fonts::test_context();
+    let mut textures = std::collections::HashMap::new();
+    for width in [350.0, 320.0] {
+        for editor in ["scene", "raster", "cpu_raytrace", "gpu_path", "orthographic"] {
+            if editor != "scene" {
+                h.app.cam.fov = if editor == "orthographic" { 0.0 } else { 0.6 };
+                let job = if editor == "orthographic" { "raster" } else { editor };
+                let mut job = json!({"method":job});
+                if editor == "gpu_path" {
+                    job["options"] = json!({"lens":h.app.render_workspace.view.studio.lens});
+                }
+                let patch = json!({"job":job,"camera":h.app.cam});
+                super::super::shot::edit_settings(&mut h.app, &name, patch).unwrap();
+                h.app.cam.yaw += 0.1; // Include the changed-camera banner and enabled Update/Revert.
+            }
+            let before = h.app.session.doc.to_json();
+            let content = egui::Rect::from_min_size(egui::pos2(8.0, 8.0), egui::vec2(width, 1600.0));
+            let mut widgets = Vec::new();
+            for frame in 0..3 {
+                crate::scenario::clear_handles();
+                let mut output = ctx.run_ui(egui::RawInput { screen_rect: Some(content.expand(8.0)), ..Default::default() }, |ui| {
+                    ui.scope_builder(egui::UiBuilder::new().max_rect(content), |ui| {
+                        ui.painter().rect_filled(content, 0.0, crate::theme::Tokens::get().dialog_body);
+                        ui_kit::scope(ui, |ui| {
+                            let preceding: std::collections::HashSet<_> = ctx.viewport(|vp| {
+                                vp.this_pass.widgets.layers().flat_map(|(_, widgets)| widgets.iter().map(|widget| widget.id)).collect()
+                            });
+                            if editor == "scene" {
+                                scene_controls(&mut h.app, ui);
+                            } else {
+                                super::super::shot::editor(&mut h.app, ui, &name);
+                            }
+                            widgets = ctx.viewport(|vp| {
+                                vp.this_pass
+                                    .widgets
+                                    .layers()
+                                    .flat_map(|(_, widgets)| widgets.iter().filter(|widget| !preceding.contains(&widget.id)).copied())
+                                    .collect()
+                            });
+                        });
+                    });
+                });
+                ui_kit::test_textures_update(&mut textures, &output.textures_delta);
+                output.textures_delta.clear();
+                for shape in &output.shapes {
+                    if let egui::Shape::Text(text) = &shape.shape
+                        && [h.app.tr("render.perspective"), h.app.tr("render.stage_orthographic"), h.app.tr("render.shot_distance")]
+                            .contains(&text.galley.text())
+                    {
+                        assert!(!text.galley.elided, "{editor} at {width} pt: {} is truncated", text.galley.text());
+                        let rect = egui::Rect::from_min_size(text.pos, text.galley.size());
+                        assert!(shape.clip_rect.expand(1.0).contains_rect(rect), "{} is clipped: {rect:?}", text.galley.text());
+                    }
+                }
+                if frame == 2
+                    && width == 350.0
+                    && let Some(dir) = std::env::var_os("SOLIDCRAFT_SHOT_LAYOUT_EVIDENCE")
+                {
+                    std::fs::create_dir_all(&dir).unwrap();
+                    ui_kit::test_raster(&ctx, output.shapes, output.pixels_per_point, content, &textures)
+                        .save(std::path::Path::new(&dir).join(format!("{editor}.png")))
+                        .unwrap();
+                }
+            }
+            assert!(widgets.len() > 10, "must inspect actual editor widgets");
+            for widget in widgets {
+                assert!(
+                    widget.rect.left() >= content.left() - 0.5 && widget.rect.right() <= content.right() + 0.5,
+                    "{editor} at {width} pt: widget {:?} extends outside {content:?}: {:?}",
+                    widget.id,
+                    widget.rect
+                );
+            }
+            if editor != "scene" {
+                let cells = crate::scenario::rects(&format!("dialog:widget:{}", h.app.tr("render.shot_target")));
+                assert_eq!(cells.len(), 3);
+                assert!(cells.windows(2).all(|pair| (pair[0].1.width() - pair[1].1.width()).abs() < 0.5));
+            }
+            assert_eq!(h.app.session.doc.to_json(), before, "layout must not edit saved intent");
+        }
+    }
+}
+
+#[test]
+fn render_workspace_scene_overview_selection_order_links_and_readiness_are_read_only() {
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1440,"height":1600}));
+    setups::save(&mut h.app).unwrap();
+    h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
+    let before = h.app.session.doc.to_json();
+    let undo = h.app.session.undo.len();
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Scene);
+    ordered_sections(&["render.scene_stages", "render.scene_ready", "render.scene_reminders"], &h.app);
+    let mut bottom = f32::NEG_INFINITY;
+    for id in ["look", "light", "frame", "output"] {
+        let rect = crate::scenario::rect_of(&format!("render:scene:{id}")).unwrap();
+        assert!(rect.top() >= bottom);
+        bottom = rect.bottom();
+    }
+    for id in ["open-check", "check", "render", "all-shots"] {
+        assert!(crate::scenario::rect_of(&format!("render:scene:{id}")).is_some());
+    }
+    assert!(crate::scenario::rect_of("dialog:note:render.scene_batch_reason").is_some());
+    h.step(&json!({"click":{"handle":"render:scene:frame"}})).unwrap();
+    assert!(matches!(h.app.render_workspace.view.selection, super::super::RenderSelection::Shot(_)));
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Camera);
+    h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
+    h.frames(2);
+    h.step(&json!({"click":{"handle":"render:scene:output"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, super::super::RenderSelection::Output);
+    h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
+    h.frames(2);
+    h.step(&json!({"click":{"handle":"render:scene:open-check"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Diagnostics);
+    assert_eq!(h.app.session.doc.to_json(), before);
+    assert_eq!(h.app.session.undo.len(), undo);
+    assert!(h.app.render_workspace.view.job.is_none());
+}
+
+#[test]
+fn render_workspace_shot_e7_order_disabled_reasons_output_link_and_confirm_remove() {
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1600,"height":1800}));
+    setups::save(&mut h.app).unwrap();
+    let name = h.app.render_workspace.view.name.clone();
+    h.app.run("view.render_select", json!({"kind":"shot","id":name})).unwrap();
+    let before = h.app.session.doc.to_json();
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Camera);
+    ordered_sections(&["render.page_camera", "render.shot_lens", "render.shot_exposure_section", "render.stage_frame"], &h.app);
+    for key in ["render.shot_lens_gpu_reason", "render.shot_exposure_reason", "render.shot_selection_reason"] {
+        assert!(crate::scenario::rect_of(&format!("dialog:note:{key}")).is_some(), "{key}");
+    }
+    for id in ["name", "update", "revert", "duplicate", "remove", "output", "distance", "look-selection"] {
+        assert!(crate::scenario::rect_of(&format!("render:shot:{id}")).is_some(), "{id}");
+    }
+    assert!(crate::scenario::rect_of("render:shot:width").is_none(), "size belongs in Output");
+    assert_eq!(h.app.session.doc.to_json(), before);
+    h.step(&json!({"click":{"handle":"render:shot:remove"}})).unwrap();
+    assert!(confirmation_open(&h.app));
+    assert_eq!(h.app.session.doc.to_json(), before);
+    h.step(&json!({"widget":h.app.tr("render.keep_editing")})).unwrap();
+    assert!(!confirmation_open(&h.app));
+    h.step(&json!({"click":{"handle":"render:shot:output"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, super::super::RenderSelection::Output);
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
+}
+
+#[test]
+fn render_workspace_shot_camera_controls_save_undo_and_refuse_hostile_values() {
+    let mut h = fixture();
+    setups::save(&mut h.app).unwrap();
+    let name = h.app.render_workspace.view.name.clone();
+    let before = h.app.session.doc.to_json();
+    let camera = solidcraft_engine::render::Camera { yaw: 0.7, roll: 0.2, distance: 123.0, ..h.app.cam };
+    super::super::shot::set_camera(&mut h.app, &name, camera).unwrap();
+    assert_eq!(h.app.cam, camera);
+    assert_eq!(h.app.session.doc.render.setups[&name].camera, camera);
+    h.app.run("edit.undo", json!({})).unwrap();
+    assert_eq!(h.app.session.doc.to_json(), before);
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0, f64::MAX] {
+        let camera = solidcraft_engine::render::Camera { distance: value, ..camera };
+        assert!(super::super::shot::set_camera(&mut h.app, &name, camera).is_err());
+        assert_eq!(h.app.session.doc.to_json(), before);
+    }
+}
+
+#[test]
+fn render_workspace_shot_lens_saves_only_lens_and_orthographic_keeps_faded_controls() {
+    use solidcraft_engine::doc::render_settings::RenderJob;
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1600,"height":1800}));
+    let name = "Lens shot";
+    let camera = solidcraft_engine::render::Camera { fov: 0.6, ..h.app.cam };
+    h.app
+        .run("render.settings.set", json!({"name":name,"set":{"camera":camera,"job":{"method":"gpu_path","options":{"samples":128,"seed":42}}}}))
+        .unwrap();
+    h.app.run("render.camera.set", json!({"camera":camera})).unwrap();
+    h.app.follow_view_request(false);
+    h.app.run("view.render_select", json!({"kind":"shot","id":name})).unwrap();
+    let before = h.app.session.doc.render.setups[name].clone();
+    let undo = h.app.session.undo.len();
+    h.frames(3);
+    h.step(&json!({"widget":h.app.tr("render.shot_dof")})).unwrap();
+    let mut expected = before.clone();
+    if let Some(RenderJob::GpuPath { options, .. }) = &mut expected.job {
+        options.lens = Some(h.app.render_workspace.view.studio.lens);
+    }
+    assert_eq!(h.app.session.doc.render.setups[name], expected);
+    assert_eq!(h.app.session.undo.len(), undo + 1);
+    h.app.run("edit.undo", json!({})).unwrap();
+    assert_eq!(h.app.session.doc.render.setups[name], before);
+    h.app.cam.fov = 0.0;
+    h.frames(3);
+    for key in ["render.shot_fov_reason", "render.shot_lens_perspective_reason"] {
+        assert!(crate::scenario::rect_of(&format!("dialog:note:{key}")).is_some(), "{key}");
+    }
+    assert_eq!(h.app.session.doc.render.setups[name], before, "opening must not change saved intent or method");
+}
 #[test]
 fn native_inspector_defaults_to_output_and_keeps_job_actions_on_screen_in_both_shells() {
     for dark in [false, true] {
@@ -25,6 +242,9 @@ fn native_inspector_defaults_to_output_and_keeps_job_actions_on_screen_in_both_s
                 h.app.render_workspace.view.inspector.page = page;
                 h.frames(3);
                 let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+                if page == Page::Scene {
+                    continue;
+                }
                 let footer = crate::scenario::rect_of("render:job-footer").unwrap();
                 assert!(inspector.contains_rect(footer), "footer outside inspector at {page:?}: {inspector:?} {footer:?}");
                 for name in ["render:check", "render:start", "render:cancel", "render:export"] {
@@ -47,6 +267,8 @@ fn icon_page_navigation_is_local_and_never_switches_executor_or_overwrites_draft
     h.app.render_workspace.view.samples = 37;
     h.app.render_workspace.view.draft.width = 777;
     for page in Page::ALL {
+        h.app.render_workspace.view.inspector.page = Page::Output;
+        h.frames(2);
         h.step(&json!({"click":{"handle":format!("render:page:{}",page.handle())}})).unwrap();
         assert_eq!(h.app.render_workspace.view.inspector.page, page);
         assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);
@@ -222,10 +444,9 @@ fn contextual_scope_notes_wrap_with_native_tokens_instead_of_clipping() {
     h.frames(3);
     let rect = crate::scenario::rect_of("dialog:note:render.scene_preserves_design").unwrap();
     let inspector = crate::scenario::rect_of("render:inspector").unwrap();
-    let footer = crate::scenario::rect_of("render:job-footer").unwrap();
     assert!(rect.height() > Tokens::get().font_small + Tokens::get().space_8, "long scope notice must have more than one line");
     assert!(inspector.contains_rect(rect));
-    assert!(rect.bottom() < footer.top());
+    assert!(rect.bottom() < inspector.bottom());
 }
 
 #[test]
@@ -260,14 +481,14 @@ fn native_composition_review_actions_are_visible_before_auxiliary_resource_detai
         library::open_category(&mut h.app, "native_scenes");
         h.frames(3);
         h.step(&json!({"click":{"handle":"render:library:NATIVE-STUDIO-002"}})).unwrap();
-        let footer = crate::scenario::rect_of("render:job-footer").unwrap();
+        let library_bottom = crate::scenario::rect_of("render:inspector").unwrap().bottom();
         let resolve = crate::scenario::rect_of("render:scene-resolve").unwrap();
-        assert!(resolve.bottom() < footer.top(), "the review action must precede supplementary prose");
+        assert!(resolve.bottom() < library_bottom, "the review action must precede supplementary prose");
         h.step(&json!({"click":{"handle":"render:scene-resolve"}})).unwrap();
         h.frames(3);
         for name in ["render:scene-consent", "render:scene-apply"] {
             let rect = crate::scenario::rect_of(name).unwrap();
-            assert!(rect.bottom() < footer.top(), "{name} must remain above the pinned job actions: rect={rect:?}, footer={footer:?}, dark={dark}");
+            assert!(rect.bottom() < library_bottom, "{name} must remain inside the library card: rect={rect:?}, dark={dark}");
         }
     }
 }

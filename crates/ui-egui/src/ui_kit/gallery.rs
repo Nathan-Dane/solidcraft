@@ -59,6 +59,15 @@ const ELEMENTS: &[Element] = &[
     element!("look_chain_empty", |ui, _| {
         look_chain(ui, "gallery:empty-chain", ["Face", "Body", "Component", "Material"], [None; 4], LookStep::Face);
     }),
+    element!("icon_action", |ui, _| {
+        icon_action(ui, "Duplicate", "copy", true, false);
+        icon_action(ui, "Remove", "delete", true, true);
+    }),
+    element!("section_method", |ui, _| {
+        section_method(ui, "gallery_method", "Lens", "GPU", true, |ui| {
+            text(ui, "Needs GPU path tracing", Text::Inline);
+        });
+    }),
     element!("aspect_grid", |ui, _| {
         aspect_grid(
             ui,
@@ -844,6 +853,11 @@ const ELEMENTS: &[Element] = &[
     }),
     element!("number_field", |ui, _| {
         number_field(ui, &mut 3_u32, 1..=200, 1.0, "");
+    }),
+    element!("number_fields", |ui, _| {
+        row(ui, "Target", |ui| {
+            number_fields(ui, &mut [-18.0, 125.5, -18.0], -1e9..=1e9, 0.1, "");
+        });
     }),
     element!("slider_percent", |ui, _| {
         slider(ui, &mut 1.0, 0.5..=2.5, Slider { step: Some(0.05), format: |v| format!("{:.0} %", v * 100.0), ..Default::default() });
