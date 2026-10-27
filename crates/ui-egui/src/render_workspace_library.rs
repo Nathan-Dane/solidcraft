@@ -1252,19 +1252,40 @@ fn resource_controls(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, id:
     }
 }
 
+#[cfg(test)]
 pub(super) fn saved_surface_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.saved_surfaces").to_string();
+    ui_kit::section(ui, "render_saved_surfaces", &title, false, |ui| saved_surface_content(app, ui, None));
+}
+
+pub(super) fn saved_surface_target_controls(
+    app: &mut SolveApp,
+    ui: &mut egui::Ui,
+    target: Option<&solidcraft_engine::doc::render_surface::RenderBodyTarget>,
+) {
+    if let Some(target) = target {
+        saved_surface_content(app, ui, Some(target));
+    }
+}
+
+fn saved_surface_content(app: &mut SolveApp, ui: &mut egui::Ui, target: Option<&solidcraft_engine::doc::render_surface::RenderBodyTarget>) {
     let bindings = app.render_workspace.view.draft.surfaces.clone();
-    if bindings.is_empty() {
+    if !bindings.iter().any(|b| target.is_none_or(|t| t == &b.target)) {
         return;
     }
-    ui_kit::section(ui, "render_saved_surfaces", &title, false, |ui| {
+    {
         ui_kit::text(ui, app.tr("render.saved_surfaces_help"), ui_kit::Text::Note("render.saved_surfaces_help"));
-        for (index, binding) in bindings.iter().enumerate() {
+        if !app.render_workspace.view.materials.bindings.is_empty() {
+            ui_kit::text(ui, app.tr("render.saved_maps_runtime_conflict"), ui_kit::Text::Note("render.saved_maps_runtime_conflict"));
+        }
+        for (index, binding) in bindings.iter().enumerate().filter(|(_, b)| target.is_none_or(|t| t == &b.target)) {
             ui.label(format!(
                 "{} - {} ({}): {:?}",
                 binding.source.id, binding.target.definition, binding.target.feature, binding.target.occurrence_path
             ));
+            if ui_kit::button(ui, app.tr("render.inspector_replace"), ui_kit::Button::Normal).clicked() {
+                open_category(app, "surfaces");
+            }
             let response = ui_kit::button(ui, app.tr("render.saved_surface_remove"), ui_kit::Button::Normal);
             crate::scenario::publish_handle(&format!("render:saved-surface-remove:{index}"), response.rect.center());
             if response.clicked() {
@@ -1277,7 +1298,7 @@ pub(super) fn saved_surface_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
                 }
             }
         }
-    });
+    }
 }
 
 #[cfg(test)]

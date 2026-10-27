@@ -18,6 +18,7 @@ pub(super) struct View {
     revision: Option<u64>,
     document: Option<Weak<Document>>,
     draft: Option<Look>,
+    saved: Option<Vec<Option<Look>>>,
     dirty: bool,
     replace_search: String,
     replacements: Vec<dialogs_appearance::Look>,
@@ -223,8 +224,32 @@ pub(super) fn scope_label(app: &SolveApp) -> &str {
 
 pub(super) fn reset(app: &mut SolveApp) {
     let view = &app.render_workspace.view.inspector.selection_appearance;
+    if view.selection != app.session.selection || view.document.as_ref().is_none_or(|d| !Weak::ptr_eq(d, &Arc::downgrade(&app.session.doc))) {
+        return;
+    }
     let step = view.inspected.unwrap_or(mode_step(view.mode));
     let selected = targets(app, step);
+    if let Some(saved) = view.saved.clone() {
+        let single_targets = selected
+            .items
+            .into_iter()
+            .map(|item| Targets { items: vec![item], components: vec![] })
+            .chain(selected.components.into_iter().map(|id| Targets { items: vec![], components: vec![id] }));
+        for (target, look) in single_targets.zip(saved) {
+            let result =
+                if let Some(look) = look { assign(app, &target, &look, &look, false) } else { clear(app, &target, &Look::custom([0; 3], 1.0)) };
+            if let Err(error) = result {
+                app.set_status(error, true);
+                break;
+            }
+        }
+        app.render_workspace.view.inspector.selection_appearance.revision = None;
+    }
+}
+
+pub(super) fn remove(app: &mut SolveApp) {
+    let view = &app.render_workspace.view.inspector.selection_appearance;
+    let selected = targets(app, view.inspected.unwrap_or(mode_step(view.mode)));
     if let Some(look) = view.draft.clone() {
         if let Err(error) = clear(app, &selected, &look) {
             app.set_status(error, true);
@@ -265,6 +290,7 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
     if view.selection == app.session.selection && view.pick_mode != pick_mode {
         view.mode = pick_mode;
         view.inspected = None;
+        view.saved = None;
         view.revision = None;
         view.all_users = false;
     }
@@ -279,17 +305,29 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
             0
         };
         view.inspected = None;
+        view.saved = None;
         view.revision = None;
         view.all_users = false;
     }
-    let options = [app.tr("render.pick_body"), app.tr("render.pick_face"), app.tr("render.pick_component")].map(str::to_owned);
+    let options = [app.tr("render.pick_face"), app.tr("render.pick_body"), app.tr("render.pick_component")].map(str::to_owned);
+    let mut kind = match view.mode {
+        0 => 1,
+        1 => 0,
+        _ => 2,
+    };
     if ui_kit::segmented(
         ui,
-        &mut view.mode,
+        &mut kind,
         &options.each_ref().map(String::as_str),
-        ui_kit::Segments { compact: true, dense: true, workspace_accent: true, icons: &["body", "surface", "component"], ..Default::default() },
+        ui_kit::Segments { compact: true, dense: true, workspace_accent: true, icons: &["surface", "body", "component"], ..Default::default() },
     ) {
+        view.mode = match kind {
+            0 => 1,
+            1 => 0,
+            _ => 2,
+        };
         view.inspected = None;
+        view.saved = None;
         view.revision = None;
         view.all_users = false;
         let mode = match view.mode {
@@ -305,6 +343,22 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
     let result = ui_kit::settings_form(ui, t.form_label_width + t.space_8, |ui| draw(app, ui, &mut view, &selected_targets));
     if let Err(error) = result {
         ui_kit::text(ui, &error, ui_kit::Text::Error("render:appearance:error"));
+    }
+    let body = if view.inspected.unwrap_or(mode_step(view.mode)) == LookStep::Body && selected_targets.items.len() == 1 {
+        match selected_targets.items.first() {
+            Some(Sel::Body { name }) => Some(name.as_str()),
+            _ => None,
+        }
+    } else {
+        None
+    };
+    ui_kit::settings_form(ui, t.form_label_width + t.space_8, |ui| super::materials::selection_controls(app, ui, body));
+    // Resource forms keep their existing explicit prepare/review/apply flow until
+    // the Surfaces and references editor owns them. They never duplicate optics.
+    let resource_kinds = ["surfaces", "materials", "selene_appearances", "physical_profiles"];
+    if resource_kinds.iter().any(|kind| super::library::selected_kind(app, kind)) {
+        let title = app.tr("render.inspector_advanced").to_owned();
+        ui_kit::editor_section(ui, "render:appearance:resources", &title, true, |ui| super::library::inspect_kinds(app, ui, &resource_kinds));
     }
     app.render_workspace.view.inspector.selection_appearance = view;
     true
@@ -340,6 +394,10 @@ fn draw(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, selected: &Targe
         })
         .collect();
     let Some(from) = looks.first() else { return Ok(()) };
+    if view.saved.is_none() {
+        view.saved =
+            Some(chains.iter().map(|chain| chain.get(step_index(view.inspected.unwrap_or(mode_step(view.mode)))).cloned().flatten()).collect());
+    }
     let is_mixed = mixed(&looks, Clone::clone);
     let distinct: std::collections::BTreeSet<_> = looks.iter().map(|look| look_params(look).to_string()).collect();
     let count =
@@ -359,15 +417,7 @@ fn draw(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, selected: &Targe
     }
     let mut draft = view.draft.clone().unwrap_or_else(|| from.clone());
     let name = if is_mixed { app.tr("render.tree_mixed").to_owned() } else { from.name.clone() };
-    let source = app
-        .tr(if source_step == LookStep::Material {
-            "render.inspector_material"
-        } else if solidcraft_engine::doc::appearance::library(&from.name).as_ref() == Some(from) {
-            "render.browser_library"
-        } else {
-            "render.library_in_design"
-        })
-        .to_owned();
+    let source = app.tr(if source_step == LookStep::Material { "render.inspector_material" } else { "render.library_in_design" }).to_owned();
     let used = crate::i18n::format("render.inspector_used_by", &[("count", &count.to_string())]);
     let replacements = &view.replacements;
     let ids: Vec<_> = (0..replacements.len()).map(|index| index.to_string()).collect();
@@ -378,9 +428,37 @@ fn draw(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, selected: &Targe
         .zip(&handles)
         .map(|((look, id), handle)| ui_kit::SearchOption { value: id, label: &look.name, handle: Some(handle) })
         .collect();
-    let replacement = ui_kit::sphere_preview(ui, "render:appearance:preview", sphere(&draft), &name, [&source, &used], |ui| {
-        ui_kit::searchable_icon_dropdown(ui, "spin", app.tr("render.inspector_replace"), &mut view.replace_search, &options)
-    });
+    let mut inspected = None;
+    let selected_step = view.inspected.unwrap_or(active);
+    let chain_labels = [app.tr("render.pick_face"), app.tr("render.pick_body"), app.tr("render.pick_component"), app.tr("render.inspector_material")];
+    let replacement = ui_kit::sphere_preview_with_source(
+        ui,
+        "render:appearance:preview",
+        sphere(&draft),
+        &name,
+        &used,
+        |ui| {
+            let response = ui_kit::compact_dropdown_menu(ui, "render_appearance_chain", &source, |ui| {
+                ui.set_min_width(crate::theme::Tokens::get().form_label_width * 3.0);
+                if let Some(step) =
+                    ui_kit::look_chain(ui, "render:appearance:chain", chain_labels, chain.each_ref().map(|l| l.as_ref().map(sphere)), selected_step)
+                {
+                    inspected = Some(step);
+                    ui.close();
+                }
+            });
+            crate::scenario::publish_target("render:appearance:chain-menu", response.rect.intersect(ui.clip_rect()));
+            response
+        },
+        |ui| ui_kit::searchable_icon_dropdown(ui, "spin", app.tr("render.inspector_replace"), &mut view.replace_search, &options),
+    );
+    if let Some(step) = inspected {
+        view.inspected = Some(step);
+        view.saved = None;
+        view.revision = None;
+        view.all_users = false;
+        return Ok(());
+    }
     if let Some(to) = replacement.and_then(|id| id.parse::<usize>().ok()).and_then(|index| replacements.get(index)) {
         let to = Look { name: to.name.clone(), color: to.color, opacity: to.opacity, pbr: to.pbr };
         let step = view.inspected.filter(|step| *step != LookStep::Material).unwrap_or(mode_step(view.mode));
@@ -389,45 +467,31 @@ fn draw(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, selected: &Targe
         view.revision = None;
         return Ok(());
     }
-    ui_kit::section_heading(ui, app.tr("render.inspector_chain"));
-    let labels = [app.tr("render.pick_face"), app.tr("render.pick_body"), app.tr("render.pick_component"), app.tr("render.inspector_material")];
-    if let Some(step) =
-        ui_kit::look_chain(ui, "render:appearance:chain", labels, chain.each_ref().map(|l| l.as_ref().map(sphere)), view.inspected.unwrap_or(active))
-    {
-        view.inspected = Some(step);
-        view.revision = None;
-        view.all_users = false;
-        return Ok(());
-    }
     let step = view.inspected.unwrap_or(mode_step(view.mode));
+    let mut scope = usize::from(view.all_users);
+    let all_label = crate::i18n::format("render.inspector_all_users", &[("count", &count.to_string())]);
+    let this_label = app
+        .tr(match step {
+            LookStep::Face => "render.inspector_this_face",
+            LookStep::Component => "render.inspector_this_component",
+            _ => "render.inspector_this_body",
+        })
+        .to_owned();
+    ui_kit::row(ui, app.tr("render.inspector_applies_to"), |ui| {
+        ui.add_enabled_ui(replaceable, |ui| {
+            ui_kit::segmented(
+                ui,
+                &mut scope,
+                &[&this_label, &all_label],
+                ui_kit::Segments { compact: true, small: true, workspace_accent: true, ..Default::default() },
+            )
+        });
+    });
+    view.all_users = scope == 1;
     let edit_targets = targets(app, step);
     let mut commit = false;
     let edit_title = app.tr("render.inspector_edit").to_owned();
     ui_kit::editor_section(ui, "render:appearance:edit", &edit_title, true, |ui| {
-        let mut scope = usize::from(view.all_users);
-        let all_label = if count == 2 {
-            app.tr("render.inspector_both_users").to_owned()
-        } else {
-            crate::i18n::format("render.inspector_all_users", &[("count", &count.to_string())])
-        };
-        let this_label = app
-            .tr(match step {
-                LookStep::Face => "render.inspector_this_face",
-                LookStep::Component => "render.inspector_this_component",
-                _ => "render.inspector_this_body",
-            })
-            .to_owned();
-        ui_kit::row(ui, app.tr("render.inspector_applies_to"), |ui| {
-            ui.add_enabled_ui(replaceable, |ui| {
-                ui_kit::segmented(
-                    ui,
-                    &mut scope,
-                    &[&this_label, &all_label],
-                    ui_kit::Segments { compact: true, small: true, workspace_accent: true, ..Default::default() },
-                )
-            });
-        });
-        view.all_users = scope == 1;
         if is_mixed {
             ui_kit::text(ui, app.tr("render.inspector_set_all"), ui_kit::Text::Note("render.inspector_set_all"));
         }
@@ -482,23 +546,18 @@ fn draw(app: &mut SolveApp, ui: &mut egui::Ui, view: &mut View, selected: &Targe
                     draft.pbr = None;
                 }
             });
-            super::reveal_section(app, ui, "render:appearance:advanced");
-            ui_kit::editor_section(ui, "render:appearance:advanced", app.tr("render.inspector_advanced"), false, |ui| {
-                ui_kit::row(ui, app.tr("appearance.dielectric_ior"), |ui| {
-                    let response = ui_kit::mixed_scalar_field(
-                        ui,
-                        &mut ior,
-                        1.0..=3.0,
-                        mixed(&looks, |l| l.pbr.unwrap_or_default().dielectric_ior()).then(|| app.tr("render.tree_mixed")),
-                    );
-                    view.dirty |= response.changed();
-                    optical_edit |= response.changed();
-                    commit |= ended(&response, ui);
-                });
-                ui_kit::text(ui, app.tr("render.inspector_opaque_help"), ui_kit::Text::Note("render.inspector_opaque_help"));
-                super::advanced_appearance_controls(app, ui);
+            ui_kit::row(ui, app.tr("render.appearance_editor.ior"), |ui| {
+                let response = ui_kit::mixed_scalar_field(
+                    ui,
+                    &mut ior,
+                    1.0..=3.0,
+                    mixed(&looks, |l| l.pbr.unwrap_or_default().dielectric_ior()).then(|| app.tr("render.tree_mixed")),
+                );
+                view.dirty |= response.changed();
+                optical_edit |= response.changed();
+                commit |= ended(&response, ui);
             });
-            ui_kit::pending_section(ui, "render:appearance:textures", app.tr("render.inspector_textures"), app.tr("render.inspector_soon"));
+            ui_kit::text(ui, app.tr("render.inspector_opaque_help"), ui_kit::Text::Note("render.inspector_opaque_help"));
             if optical_edit && let Ok(parameters) = PbrParameters::new(metallic, roughness, ior) {
                 p = parameters;
                 draft.pbr = Some(p);

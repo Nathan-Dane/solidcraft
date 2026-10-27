@@ -323,7 +323,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         Some(ui_kit::InspectorAction::Close) => {
             let _ = app.run("view.render_inspector", json!({"visible":false}));
         }
-        Some(ui_kit::InspectorAction::Reset) => selection_appearance::reset(app),
+        Some(ui_kit::InspectorAction::Remove) => selection_appearance::remove(app),
         None => {}
     }
     app.preferences.render_inspector_width = width;
@@ -431,6 +431,7 @@ fn perform_action(app: &mut SolveApp, action: PendingAction) -> Result<(), Strin
 }
 fn confirmation(app: &mut SolveApp, ctx: &egui::Context) {
     super::shots::confirmation(app, ctx);
+    materials::confirmation(app, ctx);
     let Some(pending) = app.render_workspace.view.inspector.pending.clone() else { return };
     if pending.revision != app.session.revision || !Weak::ptr_eq(&pending.document, &Arc::downgrade(&app.session.doc)) {
         app.render_workspace.view.inspector.pending = None;
@@ -622,6 +623,7 @@ fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
     ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     base_appearance(app, ui);
+    materials::controls(app, ui);
     let title = app.tr("render.inspector_advanced").to_owned();
     reveal_section(app, ui, "render:appearance:advanced");
     ui_kit::section(ui, "render:appearance:advanced", &title, false, |ui| advanced_appearance_controls(app, ui));
@@ -630,11 +632,6 @@ fn advanced_appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     browse_button(app, ui, "surfaces", "render.browse_surfaces");
     browse_button(app, ui, "physical_profiles", "render.browse_physical");
     library::inspect_kinds(app, ui, &["surfaces", "materials", "selene_appearances", "physical_profiles"]);
-    library::saved_surface_controls(app, ui);
-    materials::controls(app, ui);
-    if app.render_workspace.view.method == ImageMethod::CpuRaytrace {
-        cpu::reflection_controls(app, ui);
-    }
     super::effects::aging_controls(app, ui);
 }
 fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
@@ -1175,7 +1172,7 @@ fn camera_actions(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn confirmation_open(app: &SolveApp) -> bool {
-    app.render_workspace.view.inspector.pending.is_some() || app.render_workspace.view.save_shot_name.is_some()
+    app.render_workspace.view.inspector.pending.is_some() || app.render_workspace.view.save_shot_name.is_some() || materials::confirmation_open(app)
 }
 pub(super) fn reveal(app: &mut SolveApp, section: &'static str) {
     app.render_workspace.view.inspector.reveal = Some(section);
