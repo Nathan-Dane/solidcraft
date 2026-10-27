@@ -255,7 +255,10 @@ fn navigate(app: &mut SolveApp, id: &str) -> Result<(), String> {
         "render.settings.apply" => inspector::restore_camera(app)?,
         "render.camera.fit" => inspector::fit_subject(app)?,
         "render.camera.get" | "render.camera.set" => focus(app, Page::Camera, None),
-        "render.quality.prepare" => focus(app, Page::Output, Some("quality")),
+        "render.quality.prepare" => {
+            focus(app, Page::Output, Some("quality"));
+            library::review_selected_quality(app)?;
+        }
         "render.status" | "render.backends" => focus(app, Page::Diagnostics, None),
         _ => return Err(crate::i18n::tr("render.error_interactive_command").into()),
     }

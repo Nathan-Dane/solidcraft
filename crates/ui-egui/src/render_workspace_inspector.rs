@@ -92,16 +92,11 @@ pub(super) struct View {
     reveal: Option<&'static str>,
     pending: Option<Pending>,
     shot_name: String,
-    scene_review: Option<Review>,
-    scene_consent: bool,
-    quality_review: Option<Value>,
-    quality_ack: bool,
     pub checked: Option<Review>,
     scene_info: Option<Review>,
     ground_margin: f64,
     ground_gap: f64,
     ground_color: [f64; 3],
-    replace_ground: bool,
     appearance: Appearance,
     selection_appearance: selection_appearance::View,
     pub(super) resolution: Resolution,
@@ -183,14 +178,6 @@ impl Review {
         self.revision == app.session.revision && Weak::ptr_eq(&self.document, &Arc::downgrade(&app.session.doc))
     }
 }
-impl View {
-    pub(super) fn clear_resource_reviews(&mut self) {
-        self.scene_review = None;
-        self.scene_consent = false;
-        self.quality_review = None;
-        self.quality_ack = false;
-    }
-}
 impl Default for View {
     fn default() -> Self {
         Self {
@@ -200,16 +187,11 @@ impl Default for View {
             reveal: None,
             pending: None,
             shot_name: String::new(),
-            scene_review: None,
-            scene_consent: false,
-            quality_review: None,
-            quality_ack: false,
             checked: None,
             scene_info: None,
             ground_margin: 1.0,
             ground_gap: 0.1,
             ground_color: [0.18; 3],
-            replace_ground: false,
             appearance: Appearance::default(),
             selection_appearance: Default::default(),
             resolution: Resolution::default(),
@@ -348,6 +330,8 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
         crate::scenario::publish_rect("render:inspector", rect);
     }
     confirmation(app, ui.ctx());
+    library::review::dialog(app, ui.ctx());
+    library::review::confirmation(app, ui.ctx());
 }
 fn header(app: &mut SolveApp, ui: &mut egui::Ui) {
     let current = app.render_workspace.view.name.clone();
@@ -448,8 +432,8 @@ fn confirmation(app: &mut SolveApp, ctx: &egui::Context) {
     }
     let removing = matches!(&pending.action, PendingAction::Remove(_));
     let title = app.tr(if removing { "render.shot_remove_title" } else { "render.draft_confirm_title" }).to_string();
-    let keep = app.tr("render.keep_editing").to_string();
-    let primary = app.tr(if removing { "render.shot_remove" } else { "render.save_continue" }).to_string();
+    let keep = app.tr(if removing { "render.stage_panels.keep" } else { "render.keep_editing" }).to_string();
+    let primary = app.tr(if removing { "render.stage_panels.remove_shot" } else { "render.save_continue" }).to_string();
     let discard = app.tr("render.discard_continue").to_string();
     let message = app.tr(if removing { "render.shot_remove_help" } else { "render.draft_confirm_help" }).to_string();
     let (closed, answer) = ui_kit::Confirm::new(egui::Id::new("render_pending_shot"), if removing { "delete" } else { "save" }, &title)
@@ -484,21 +468,9 @@ fn browse_button(app: &mut SolveApp, ui: &mut egui::Ui, kind: &str, key: &str) {
     }
 }
 fn scene_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    // After a library selection, primary native-resource actions lead the page.
-    // Shared method/help and catalog navigation remain below, not between the
-    // chosen resource and its explicit review/consent. No state is changed by layout.
-    let selected_native = library::selected_kind(app, "native_scenes");
-    if selected_native {
-        library::inspect_kinds(app, ui, &["native_scenes"]);
-    }
     ui_kit::text(ui, app.tr("render.scene_preserves_design"), ui_kit::Text::Note("render.scene_preserves_design"));
-    super::method_selector(app, ui);
-    gpu_status(app, ui);
     browse_button(app, ui, "native_scenes", "render.browse_native_scenes");
     browse_button(app, ui, "scenes", "render.browse_scene_specs");
-    if !selected_native {
-        library::inspect_kinds(app, ui, &["native_scenes", "scenes", "selene_shots"]);
-    }
     physical_stage_controls(app, ui);
     shot_controls(app, ui);
 }
@@ -512,9 +484,6 @@ fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         ui_kit::number_field(ui, &mut app.render_workspace.view.inspector.ground_gap, 0.0001..=1000.0, 0.01, " mm");
         let label = app.tr("render.ground_linear_rgb").to_string();
         vector(ui, &label, &mut app.render_workspace.view.inspector.ground_color, 0.0..=1.0, 0.01);
-        let label = app.tr("render.replace_ground").to_string();
-        let replace = ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.inspector.replace_ground);
-        crate::scenario::publish_target("render:stage-replace-consent", replace.rect);
         let saved = setups::snapshot(app);
         if ui_kit::button(
             ui,
@@ -525,11 +494,8 @@ fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             && let Ok(set) = saved
         {
             let v = &app.render_workspace.view.inspector;
-            let request = json!({"name":app.render_workspace.view.name,"set":set,"margin_fraction":v.ground_margin,"gap_mm":v.ground_gap,"reflectance_linear":v.ground_color,"replace_stage":v.replace_ground});
-            match app.run("render.stage.ground", request) {
-                Ok(_) => setups::load(app),
-                Err(e) => app.set_status(e, true),
-            }
+            let request = json!({"name":app.render_workspace.view.name,"set":set,"margin_fraction":v.ground_margin,"gap_mm":v.ground_gap,"reflectance_linear":v.ground_color,"replace_stage":true});
+            library::review::command(app, "render.stage.ground", request);
         }
         ui_kit::text(ui, app.tr("render.physical_background_help"), ui_kit::Text::Note("render.physical_background_help"));
         for (kind, key) in [("floor_wall", "render.physical_floor_wall"), ("cyclorama", "render.physical_cyclorama")] {
@@ -542,11 +508,8 @@ fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
             {
                 let v = &app.render_workspace.view.inspector;
                 let p = json!({"name":app.render_workspace.view.name,"set":set,"kind":kind,"expected_revision":app.session.revision,
-                    "replace_stage":v.replace_ground,"reflectance_linear":v.ground_color});
-                match app.run("render.stage.backdrop", p) {
-                    Ok(_) => setups::load(app),
-                    Err(error) => app.set_status(error, true),
-                }
+                    "replace_stage":true,"reflectance_linear":v.ground_color});
+                library::review::command(app, "render.stage.backdrop", p);
             }
         }
         library::stage_content(app, ui);
@@ -629,6 +592,7 @@ fn appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     if selection_appearance::controls(app, ui) {
         return;
     }
+    library::inspect_appearance(app, ui);
     ui_kit::text(ui, app.tr("render.appearance_physics_separate"), ui_kit::Text::Note("render.appearance_physics_separate"));
     base_appearance(app, ui);
     materials::controls(app, ui);
@@ -644,7 +608,7 @@ fn advanced_appearance_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     browse_button(app, ui, "rigs", "render.browse_rigs");
-    library::inspect_kinds(app, ui, &["rigs", "lighting"]);
+
     match app.render_workspace.view.method {
         ImageMethod::GpuRaytrace => studio::lighting_controls(app, ui),
         ImageMethod::CpuRaytrace => {
@@ -667,7 +631,7 @@ fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         studio::backdrop_controls(app, ui);
     }
     browse_button(app, ui, "hdr", "render.browse_environments");
-    library::inspect_kinds(app, ui, &["hdr", "environments"]);
+
     match app.render_workspace.view.method {
         ImageMethod::GpuRaytrace => studio::environment_controls(app, ui),
         ImageMethod::CpuRaytrace => cpu::environment_controls(app, ui),
@@ -1063,91 +1027,25 @@ fn output_check(app: &SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn scene_resource(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
-    let snapshot = setups::snapshot(app);
-    let resolve = ui_kit::button(
-        ui,
-        app.tr("render.scene_review"),
-        ui_kit::Button::Enabled(snapshot.is_ok() && app.render_workspace.view.method == ImageMethod::GpuRaytrace),
-    );
-    crate::scenario::publish_target("render:scene-resolve", resolve.rect);
-    if resolve.clicked()
-        && let Ok(set) = snapshot
+    if ui_kit::button(ui, app.tr("render.scene_review"), ui_kit::Button::Enabled(app.render_workspace.view.method == ImageMethod::GpuRaytrace))
+        .clicked()
     {
-        let request = json!({"id":id,"name":app.render_workspace.view.name,"set":set,"expected_revision":app.session.revision});
-        match app.run("render.preset.resolve", request.clone()) {
-            Ok(reply) => {
-                app.render_workspace.view.inspector.scene_review =
-                    Some(Review { request, reply, revision: app.session.revision, document: Arc::downgrade(&app.session.doc) });
-                app.render_workspace.view.inspector.scene_consent = false;
-            }
-            Err(error) => app.set_status(error, true),
+        let mut view = library::View::default();
+        if let Err(error) = library::choose(app, &mut view, "native_scenes", id).and_then(|()| library::review::light(app, &view, id)) {
+            app.set_status(error, true);
         }
     }
-    let review = app.render_workspace.view.inspector.scene_review.clone().filter(|r| r.request["id"] == id);
-    if let Some(review) = review {
-        let unchanged =
-            review.current(app) && setups::snapshot(app).ok().and_then(|v| serde_json::to_value(v).ok()).as_ref() == Some(&review.request["set"]);
-        if !unchanged {
-            ui_kit::text(ui, app.tr("render.review_stale"), ui_kit::Text::Error("render.review_stale"));
-        }
-        if let Some(fields) = review.reply["replaces"].as_array() {
-            ui.small(format!("{}: {}", app.tr("render.scene_replaces"), fields.iter().filter_map(Value::as_str).collect::<Vec<_>>().join(", ")));
-        }
-        let label = app.tr("render.scene_consent").to_string();
-        let consent = ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.inspector.scene_consent).on_hover_text(&label);
-        crate::scenario::publish_target("render:scene-consent", consent.rect);
-        let apply =
-            ui_kit::button(ui, app.tr("render.scene_apply"), ui_kit::Button::Enabled(unchanged && app.render_workspace.view.inspector.scene_consent));
-        crate::scenario::publish_target("render:scene-apply", apply.rect);
-        if apply.clicked() {
-            let mut request = review.request;
-            request["replace_lighting_and_environment"] = json!(true);
-            request["replace_stage"] = json!(true);
-            match app.run("render.preset.apply", request) {
-                Ok(_) => {
-                    setups::load(app);
-                    app.render_workspace.view.inspector.scene_review = None;
-                    app.set_status(app.tr("render.library_applied").to_string(), false);
-                }
-                Err(error) => app.set_status(error, true),
-            }
-        }
-    }
-    let title = app.tr("render.scene_scope_details").to_string();
-    ui_kit::section(ui, ("render_native_composition_scope", id), &title, false, |ui| {
-        for key in ["render.scene_review_help", "render.scene_preserved_fields", "render.library_authored_help"] {
-            ui_kit::text(ui, app.tr(key), ui_kit::Text::Note(key));
-        }
-    });
 }
 pub(super) fn quality_resource(app: &mut SolveApp, ui: &mut egui::Ui, id: &str) {
     ui_kit::text(ui, app.tr("render.quality_projection_help"), ui_kit::Text::Note("render.quality_projection_help"));
-    let label = app.tr("render.quality_ack").to_string();
-    ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.inspector.quality_ack);
-    let enabled = app.render_workspace.view.inspector.quality_ack && app.render_workspace.view.method == ImageMethod::GpuRaytrace;
-    if ui_kit::button(ui, app.tr("render.quality_review"), ui_kit::Button::Enabled(enabled)).clicked() {
-        match app.run("render.quality.prepare", json!({"id":id,"variant":"fixed_samples_png","acknowledge_omissions":true})) {
-            Ok(reply) => app.render_workspace.view.inspector.quality_review = Some(reply),
-            Err(error) => {
-                app.render_workspace.view.inspector.quality_review = None;
-                app.set_status(error, true);
-            }
-        }
-    }
-    if let Some(plan) = app.render_workspace.view.inspector.quality_review.clone().filter(|p| p["id"] == id) {
-        ui.label(format!(
-            "{} x {} px / {} spp / {}",
-            plan["settings"]["width"], plan["settings"]["height"], plan["gpu_options"]["samples"], plan["gpu_options"]["max_depth"]
-        ));
-        if ui_kit::button(ui, app.tr("render.quality_apply"), ui_kit::Button::Enabled(enabled)).clicked() {
-            let result = apply_quality(app, &plan);
-            if let Err(error) = result {
-                app.set_status(error, true);
-            }
-        }
+    if ui_kit::button(ui, app.tr("render.quality_review"), ui_kit::Button::Enabled(app.render_workspace.view.method == ImageMethod::GpuRaytrace))
+        .clicked()
+        && let Err(error) = library::review::quality(app, id)
+    {
+        app.set_status(error, true);
     }
 }
-fn apply_quality(app: &mut SolveApp, plan: &Value) -> Result<(), String> {
+pub(super) fn apply_quality(app: &mut SolveApp, plan: &Value) -> Result<(), String> {
     if app.render_workspace.view.method != ImageMethod::GpuRaytrace || plan["variant"] != "fixed_samples_png" {
         return Err(crate::i18n::tr("render.error_quality_method").into());
     }
@@ -1396,7 +1294,10 @@ fn camera_actions(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn confirmation_open(app: &SolveApp) -> bool {
-    app.render_workspace.view.inspector.pending.is_some() || app.render_workspace.view.save_shot_name.is_some() || materials::confirmation_open(app)
+    app.render_workspace.view.inspector.pending.is_some()
+        || app.render_workspace.view.save_shot_name.is_some()
+        || materials::confirmation_open(app)
+        || library::review_open(app)
 }
 pub(super) fn reveal(app: &mut SolveApp, section: &'static str) {
     app.render_workspace.view.inspector.reveal = Some(section);

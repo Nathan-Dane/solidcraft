@@ -57,22 +57,90 @@ pub(super) fn in_catalog(ui: &Ui) -> bool {
     ui.stack().iter().any(|node| node.tags().contains("sc_catalog"))
 }
 
-/// Quiet full-width library footer with the shared information glyph.
-pub(crate) fn catalog_footer(ui: &mut Ui, text: &str) {
+/// One-line library footer with the shared information glyph.
+pub(crate) fn catalog_footer_height(ui: &Ui) -> f32 {
     let t = Tokens::get();
-    let (rect, _) = ui.allocate_exact_size(vec2(ui.available_width(), t.control_height), egui::Sense::hover());
+    let line = ui.fonts_mut(|fonts| fonts.row_height(&egui::FontId::proportional(t.font_small)));
+    (line + t.space_16).max(t.control_height)
+}
+
+/// Single-line catalog note. Attach further guidance to the returned response.
+pub(crate) fn catalog_footer(ui: &mut Ui, text: &str) -> Response {
+    let t = Tokens::get();
+    let (rect, response) = ui.allocate_exact_size(vec2(ui.available_width(), catalog_footer_height(ui)), egui::Sense::hover());
     t.secondary_hline(ui.painter(), rect.x_range(), rect.top(), t.dialog_rule);
-    let icon = egui::Rect::from_center_size(egui::pos2(rect.left() + t.space_6, rect.center().y), vec2(t.space_12, t.space_12));
+    let icon =
+        egui::Rect::from_center_size(egui::pos2(rect.left() + t.space_6, rect.top() + t.space_8 + t.font_small * 0.5), vec2(t.space_12, t.space_12));
     ui.painter().circle_stroke(icon.center(), t.space_4, t.control_border_stroke(t.form_dim));
     ui.painter().text(icon.center(), egui::Align2::CENTER_CENTER, "i", crate::fonts::semibold(t.font_badge), t.form_dim);
-    paint_text(
-        ui,
-        egui::Rect::from_min_max(egui::pos2(icon.right() + t.space_6, rect.top()), rect.max),
-        text,
-        egui::FontId::proportional(t.font_small),
-        t.form_dim,
-        false,
-    );
+    let mut job =
+        egui::text::LayoutJob::simple(text.to_owned(), egui::FontId::proportional(t.font_small), t.form_dim, (rect.width() - t.space_24).max(1.0));
+    job.wrap.max_rows = 1;
+    let galley = ui.painter().layout_job(job);
+    ui.painter().galley(rect.left_top() + vec2(t.space_24, t.space_8), galley, t.form_dim);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Label, ui.is_enabled(), text));
+    crate::scenario::publish_rect("catalog:footer", rect);
+    response
+}
+
+/// A short note with further guidance on its information icon and text.
+pub(crate) fn catalog_footer_with_tip(ui: &mut Ui, text: &str, tip: &str) {
+    catalog_footer(ui, text).on_hover_text(tip);
+}
+
+/// A filling catalog body above a measured, bottom-anchored footer. Long detail
+/// cards scroll independently so the body retains its requested minimum height.
+pub(crate) struct CatalogLayout {
+    id: egui::Id,
+    key: String,
+    bounds: egui::Rect,
+    footer_height: f32,
+    min_body_height: f32,
+}
+
+impl CatalogLayout {
+    pub(crate) fn new(ui: &Ui, id: &str, min_rows: usize) -> Self {
+        let key = id.to_owned();
+        let id = ui.make_persistent_id(id);
+        let t = Tokens::get();
+        let min_body_height = min_rows as f32 * (t.control_height + t.space_10) + min_rows.saturating_sub(1) as f32 * ui.spacing().item_spacing.y;
+        Self {
+            id,
+            key,
+            bounds: ui.available_rect_before_wrap(),
+            footer_height: ui.data(|data| data.get_temp::<f32>(id)).unwrap_or(0.0),
+            min_body_height,
+        }
+    }
+
+    pub(crate) fn body<R>(&self, ui: &mut Ui, add: impl FnOnce(&mut Ui) -> R) -> R {
+        let gap = ui.spacing().item_spacing.y;
+        let height = (ui.available_height() - self.footer_height - gap).max(self.min_body_height).min(ui.available_height()).max(0.0);
+        let scroll = egui::ScrollArea::vertical()
+            .id_salt(self.id.with("body"))
+            .max_height(height)
+            .min_scrolled_height(0.0)
+            .auto_shrink([false, false])
+            .show(ui, add);
+        scenario::publish_rect(&format!("{}:body", self.key), scroll.inner_rect);
+        scroll.inner
+    }
+
+    pub(crate) fn footer(&self, ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
+        let scroll = egui::ScrollArea::vertical()
+            .id_salt(self.id.with("footer"))
+            .max_height(ui.available_height().max(0.0))
+            .min_scrolled_height(0.0)
+            .auto_shrink([false, true])
+            .show(ui, add);
+        let height = scroll.content_size.y;
+        ui.data_mut(|data| data.insert_temp(self.id, height));
+        if (height - self.footer_height).abs() > 0.5 {
+            ui.ctx().request_discard("catalog footer measurement changed");
+        }
+        scenario::publish_rect(&format!("{}:content", self.key), self.bounds);
+        scenario::publish_rect(&format!("{}:footer", self.key), scroll.inner_rect);
+    }
 }
 
 /// Read the enclosing row accessibility label. Tokens: `none`.

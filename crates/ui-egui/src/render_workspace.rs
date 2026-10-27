@@ -655,6 +655,15 @@ pub fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     inspector::panel(app, ui);
 }
 
+/// Interactive stage-panel review. Direct engine JSON calls remain dialog-free.
+/// S5 supplies its selected specification id without owning another consent form.
+pub(crate) fn review_resource(app: &mut SolveApp, command: &str, id: &str) -> Result<(), String> {
+    match command {
+        "render.quality.prepare" => library::review::quality(app, id),
+        _ => Err("this command has no stage-panel review adapter".into()),
+    }
+}
+
 pub(crate) fn apply_browser_controls(app: &mut SolveApp, value: &serde_json::Value) {
     let view = &mut app.render_workspace.view;
     if let Some(by_look) = value.get("by_look").and_then(serde_json::Value::as_bool) {

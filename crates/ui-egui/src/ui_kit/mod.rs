@@ -32,6 +32,7 @@ mod preferences_navigation;
 mod preferences_small;
 mod radial;
 mod reports;
+mod review;
 mod search;
 mod shortcuts;
 mod sphere;
@@ -77,6 +78,7 @@ pub(crate) use preferences_navigation::*;
 pub(crate) use preferences_small::*;
 pub(crate) use radial::{RADIAL_RADIUS, radial_menu};
 pub(crate) use reports::*;
+pub(crate) use review::ReviewAndApply;
 pub(crate) use search::{CommandSearch, SearchBadge, SearchFieldGeometry};
 pub(crate) use shortcuts::*;
 #[cfg(test)]

@@ -47,14 +47,37 @@ sphere grid or list. Resources used in the design or matching a selected look's
 finish family or category appear first. Clicking a look applies through
 `appearance.assign` to selected bodies, faces or components; with no target it
 only inspects. Favorites and recent history live in user preferences. Explicit
-catalog navigation from the Inspector retains the read-only resource browser.
+catalog navigation opens the corresponding stage library.
 
-Light hosts the existing native studios and HDR environments in the same tile grid.
-A click runs `render.preset.apply` or `render.library.environment.apply`, preserving
-those commands' validation and undo behavior. Studios require an explicitly selected
-GPU path setup; environments require CPU or GPU ray tracing. Frame shows a faded
-Frame presets placeholder with its Shot editor reason. Output hosts the Size presets
-card described below. Stage navigation itself never applies a resource.
+Look also offers **Surfaces and references**. Surfaces/References segments and search
+lead to authored surface rows with availability badges. Selecting a surface loads
+its bounded source-map preview; Target, Plane and Repeat precede Use uniform,
+Use GPU maps and Save maps. GPU actions remain faded with a reason on other methods.
+Physical profiles retain their properties and sources; Prepare creation plan opens
+a read-only review with acknowledgement and Copy plan. It creates no material.
+
+Light hosts **Studios and environments**: a Scope dropdown, search and three-column
+tiles for Studios, Rigs, Environments and read-only Specifications. Mine remains
+visible with the reason that personal studio saving is unavailable. Clicking selects;
+Apply prepares a review without changing the method or saved settings.
+
+The shared `ui_kit::ReviewAndApply` dialog presents a resource card, Replaces/Kept,
+variant controls and explicit acknowledgement before applying. Studio, rig fit,
+environment, ground/stage, physical plan, fixed quality budget and uniform/spatial
+maps use this composition. A captured review expires when the document, revision,
+shot, method or settings change. Rig fitting offers centre, extent, captured bounds
+and emitters-only projection. Quality review reports projected dimensions, samples,
+depth and omissions; `render.quality.prepare` remains reachable through command
+activation. S5 can call `render_workspace::review_resource(app,
+"render.quality.prepare", id)` for its selected specification.
+Programmatic commands continue to execute without opening dialogs.
+
+Remove shot uses the existing shared `Confirm`; remove stage and saved optics now
+also use it. Resource removal confirmations expire after a document revision change.
+
+Confirmed reviews run `render.preset.apply`, `render.library.studio.apply` or
+`render.library.environment.apply`, preserving validation and undo. Studios require an explicitly selected
+GPU path setup; environments require CPU or GPU ray tracing. Frame shows a faded Frame presets placeholder with its Shot editor reason. Output hosts the Size presets card described below. Stage navigation itself never applies a resource.
 
 The 110 pt compass uses the free canvas beside the Inspector; the navigation bar
 keeps its shared handler. The Shots strip's independent `view.shots_strip`

@@ -28,6 +28,13 @@ rules. Its compass is 110 pt; the 48 pt Shots strip clears the docks by 8 pt.
 
 ## Composition and rules
 
+| Component | Contract |
+| --- | --- |
+| `ReviewAndApply` | Shared resource card, wrapping Replaces/Kept rows, variant content, acknowledgement, Cancel and a gated apply action. Physical plans offer Copy plan. Composes `Confirm`. Gallery: `review_and_apply`. |
+| `SphereTile::badge` | Optional availability text on a three-column library tile, alongside the user-count badge. Uses theme tokens. |
+| `catalog_footer`, `catalog_footer_with_tip`, `catalog_footer_height` | One-line information note with ellipsis and full guidance on hover; optional separate tooltip text. |
+| `CatalogLayout` | Fills the remaining panel height with a scroll body above a measured bottom footer. Optional minimum search-row count keeps lists usable while a long detail card scrolls independently. |
+
 - Every outer host uses `ui_kit::Container` with a semantic `Surface`. The shell
   publishes the layout once per frame; `Container::floating()` and `frame()` own
   adaptive placement policy and chrome. `Panel`, `Window`, `Confirm` and `Menu`
@@ -160,7 +167,7 @@ table. Panel/Window/Confirm compositions also have dedicated geometry and intera
 | `list_picker` | Selectable row with caller identity and native checked state | `control_height`, form selection tokens |
 | `thumbnail_choice`, `ThumbnailChoice`, `add_choice` | Shared selection-chip variant with 52 × 30 preview, selected tab accent, modified dot, progress ring and dashed add action for bottom strips; `Panel::strip_contents` reserves right actions and scrolls choices | `control_height`, spacing, radii, `TabAccent`, control/semantic tokens |
 | `popup_list`, `PopupOption` | Focus-neutral suggestions; owner retains keyboard routing | `space_2`, `form_label_width`, `control_height`, form tokens |
-| sphere: `sphere_thumbnail`, `SphereTile`, `sphere_grid`, `sphere_preview` | Deterministic lit material samples; matte/satin/gloss/metal/glass finishes. Catalog tiles centre a 48 pt sphere in a 56 pt rounded cell with a two-line name, active-tab selection ring, user-count badge and shared Container tooltip. The grid owns three columns and token gaps. The Inspector preview composes a sphere, name, informational chips and replacement action in the shared list card. | `control_height`, `radius_xl`, `space_2/3/4/8/16`, `font_small/badge`, `control_fill`, `dialog_rule`, active-tab accent, `on_accent` |
+| sphere: `sphere_thumbnail`, `SphereTile`, `sphere_grid`, `sphere_preview`, `sphere_preview_with_source` | Deterministic lit material samples; matte/satin/gloss/metal/glass finishes. Catalog tiles centre a token-sized sphere above two full lines of text with an optional source badge, active-tab selection ring, user-count badge and shared Container tooltip. The grid owns three columns and token gaps. The Inspector preview composes a sphere, name, informational chips and replacement action in the shared list card; the source variant supports an interactive inheritance menu. | `control_height`, `radius_xl`, `space_2/3/4/6/8/16`, `font_small/badge`, `control_fill`, `dialog_rule`, active-tab accent, `on_accent` |
 | `color_swatch`, `swatch_grid`, `color_thumbnail` | 30 pt draggable samples, 6 pt grid step gap, selected outer ring and checker pattern under transparent colours; caller payloads retained; local-library thumbnails use 16 pt | `control_height/radius`, `border`, `form_primary`, `control_fill`, `space_2/6/8` |
 | `assistant_entry`, `AssistantEntryState` | Application-bar chat icon with quiet, ready, busy, auth, stopped and approval count marks; caller owns state and target | `app_bar`, `agent_ok/busy`, `warning/error`, `font_badge` |
 | actions: `button`, `Button` | Secondary action: `Normal`, `Small`, or `Enabled(bool)` | native sizing, form font/control tokens |
@@ -721,6 +728,15 @@ For CPU-rendered review images, run
 
 `catalog_scope` supplies compact catalog metrics to the shared search field, segments,
 icon segments and category chips. `catalog_footer` draws the quiet information hint.
+`CatalogLayout::new(ui, id, min_rows)` reserves the measured footer height and gives
+`body` all remaining space without shrinking to its items. Call `footer` after
+`body`; changes to the footer's natural height request another layout pass.
+Use `min_rows = 3` for a search list with selected-item details below it; the
+detail card scrolls when necessary. The kit publishes `{id}:content`, `:body`
+and `:footer` rectangles for layout checks.
+`SphereTile` reserves two full font rows below the sphere. Names wrap at word
+boundaries with an ellipsis after the second line; `{id}:label` and `:galley`
+expose the caption allocation and laid-out text bounds.
 Catalog title marks use the active workspace accent; tile captions, usage badges and
 selection outlines share the sphere widgets. Feature code supplies data and commands,
 while the kit owns every dimension, colour and inset.
