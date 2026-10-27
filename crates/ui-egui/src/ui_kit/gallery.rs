@@ -145,6 +145,14 @@ const ELEMENTS: &[Element] = &[
             Segments { enabled: &[false, true, false, true], compact: true, ..Default::default() },
         );
     }),
+    element!("read_only_text", |ui, _| {
+        read_only_text(ui, "{\n  \"samples\": 256\n}");
+    }),
+    element!("method_section_sampling", |ui, state| {
+        method_section(ui, "gallery_method", "Path tracing", "GPU", Some("Needs GPU path tracing"), |ui| {
+            checkbox(ui, "Reduce noise", &mut state.checked);
+        });
+    }),
     element!("tree_row_rect", |ui, _| {
         for (index, row) in [
             Row { label: "Objects", ..Default::default() },

@@ -269,6 +269,9 @@ pub enum RenderSelection {
     Light(String),
     Shot(String),
     Output,
+    Sampling,
+    Effects,
+    Check,
 }
 
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.
@@ -645,6 +648,30 @@ pub(crate) fn output_summary(app: &SolveApp) -> (String, &'static str) {
     (format!("{} × {}", view.draft.width, view.draft.height), if view.studio.export_exr { "EXR" } else { "PNG" })
 }
 
+pub(crate) fn output_child_summary(app: &SolveApp, kind: &str) -> String {
+    let view = &app.render_workspace.view;
+    match kind {
+        "sampling" => format!(
+            "{} · {} spp",
+            app.tr("render.quality_custom"),
+            if view.method == ImageMethod::GpuRaytrace {
+                view.samples
+            } else {
+                view.raytrace.progressive.map_or(u32::from(view.raytrace.primary_samples), |p| p.samples_per_pixel)
+            }
+        ),
+        "effects" => crate::i18n::format(
+            "render.children.look_summary",
+            &[
+                ("tone", if view.studio.tone_map == solidcraft_engine::render::job::ToneMap::AcesFitted { "ACES" } else { "Reinhard" }),
+                ("count", &view.studio.finishing.looks.len().to_string()),
+            ],
+        ),
+        "check" => inspector::check_summary(app),
+        _ => String::new(),
+    }
+}
+
 pub(crate) fn job_busy(app: &SolveApp) -> bool {
     ribbon::busy(app)
 }
@@ -785,6 +812,17 @@ fn select_image_method(app: &mut SolveApp, method: ImageMethod) {
 
 fn method_selector(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.label(app.tr("render.image_method"));
+    method_dropdown(app, ui);
+    if image_host(app, app.render_workspace.view.method).is_err() {
+        crate::ui_kit::text(ui, app.tr("render.setup_offline_help"), crate::ui_kit::Text::Note("render.setup_offline_help"));
+    }
+    if app.render_workspace.view.method != ImageMethod::Raster {
+        crate::ui_kit::text(ui, app.tr("render.preview_image_settings_help"), crate::ui_kit::Text::Note("render.preview_image_settings_help"));
+    }
+}
+
+/// The same method authority in an aligned editor row or the legacy master form.
+fn method_dropdown(app: &mut SolveApp, ui: &mut egui::Ui) -> egui::Response {
     let current = app.render_workspace.view.method;
     let label = app.tr(current.label()).to_string();
     let response = crate::ui_kit::dropdown_menu(ui, "render_image_method", &label, |ui| {
@@ -807,18 +845,16 @@ fn method_selector(app: &mut SolveApp, ui: &mut egui::Ui) {
         }
     });
     crate::scenario::publish_handle("render:method", response.rect.center());
-    if image_host(app, app.render_workspace.view.method).is_err() {
-        crate::ui_kit::text(ui, app.tr("render.setup_offline_help"), crate::ui_kit::Text::Note("render.setup_offline_help"));
-    }
-    if app.render_workspace.view.method != ImageMethod::Raster {
-        crate::ui_kit::text(ui, app.tr("render.preview_image_settings_help"), crate::ui_kit::Text::Note("render.preview_image_settings_help"));
-    }
+    response
 }
 
 fn cpu_sampling_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let progressive = cpu::progressive_controls(app, ui);
-    if !progressive {
-        ui.label(app.tr("render.cpu_primary_samples"));
+    if progressive {
+        crate::ui_kit::text(ui, app.tr("render.cpu_progressive_help"), crate::ui_kit::Text::Note("render.cpu_progressive_help"));
+    }
+    ui.add_enabled_ui(!progressive, |ui| {
+        crate::ui_kit::text(ui, app.tr("render.children.edge_samples"), crate::ui_kit::Text::Inline);
         let samples = app.render_workspace.view.raytrace.primary_samples;
         let aa = crate::ui_kit::dropdown_menu(ui, "render_cpu_samples", &format!("{samples}×"), |ui| {
             for count in [1, 4, 16] {
@@ -833,7 +869,7 @@ fn cpu_sampling_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
         });
         crate::scenario::publish_handle("render:aa", aa.rect.center());
         ui.small(app.tr("render.cpu_aa_help"));
-    }
+    });
 }
 
 fn cpu_lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {

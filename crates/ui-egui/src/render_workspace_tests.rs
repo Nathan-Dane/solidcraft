@@ -2576,9 +2576,11 @@ fn clicked_setup_save_reload_and_switch_keep_gpu_numeric_intent_without_a_host()
         }
         h.step(&json!({"click":{"handle":handle}})).unwrap();
     };
-    for key in ["render.output_advanced", "render.output_effects"] {
-        open_section(&mut h, format!("dialog:section:{}", crate::i18n::tr(key)));
-    }
+    h.app.run("view.render_select", json!({"kind":"sampling"})).unwrap();
+    h.frames(3);
+    h.app.run("view.render_select", json!({"kind":"effects"})).unwrap();
+    h.frames(3);
+    h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
     h.app.run("view.render_stage", json!({"stage":"light"})).unwrap();
     h.frames(3);
     open_section(&mut h, format!("dialog:section:{} 1", crate::i18n::tr("render.studio_area")));
@@ -3057,7 +3059,7 @@ fn cpu_resource_profile_edits_preserve_resolution_samples_and_saved_intent() {
     setups::save(&mut h.app).unwrap();
     setups::load(&mut h.app);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
-    h.step(&json!({"click":{"handle":"render:cpu-budget"}})).unwrap();
+
     h.step(&json!({"click":{"handle":"render.cpu_budget_compact"}})).unwrap();
     h.frames(3);
     assert_eq!((h.app.render_workspace.view.draft.width, h.app.render_workspace.view.draft.height), (3840, 2160));
@@ -3293,18 +3295,17 @@ fn finishing_backdrop_and_raw_retention_save_reload_without_a_gpu_or_hidden_tran
     h.app.render_workspace.view.transparent = false;
     let before = h.app.session.doc.to_json();
     h.frames(3);
-    let effects = h.app.tr("render.output_effects").to_string();
-    h.step(&json!({"click":{"handle":format!("dialog:section:{effects}")}})).unwrap();
-    let title = h.app.tr("render.post_title").to_string();
-    h.step(&json!({"click":{"handle":format!("dialog:section:{title}")}})).unwrap();
+    h.app.run("view.render_select", json!({"kind":"effects"})).unwrap();
+    h.frames(3);
     h.step(&json!({"click":{"handle":"render:post-reset"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.studio.finishing, Finishing::default());
     assert!(h.app.render_workspace.view.studio.linear_exr);
     assert!(h.app.render_workspace.view.studio.backdrop_enabled);
     assert!(h.app.render_workspace.view.dirty);
-    assert_eq!(h.app.session.doc.to_json(), before, "reset only edits the render draft");
+    assert_ne!(h.app.session.doc.to_json(), before, "Effects saves its job patch through the shared editor");
+    let reset = setups::snapshot(&h.app).unwrap();
     setups::load(&mut h.app);
-    assert_eq!(setups::snapshot(&h.app).unwrap(), expected);
+    assert_eq!(setups::snapshot(&h.app).unwrap(), reset);
 }
 
 #[test]
@@ -3365,11 +3366,11 @@ fn render_workspace_stage_chips_dispatch_without_mutations_and_remember_each_doc
         assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
         assert!(h.app.render_workspace.view.job.is_none());
         assert!(h.app.render_workspace.view.completed.is_none());
-        // Stage selection preserves access to the other command-driven editors.
+        // Registered editor navigation remains available independently of the stage.
         for command in ["render.status", "render.backends"] {
             h.app.start(command);
             h.frames(2);
-            assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Output);
+            assert_eq!(h.app.render_workspace.view.inspector.page, inspector::Page::Diagnostics);
         }
     }
     h.app.run("view.render_stage", json!({"stage":"frame"})).unwrap();
@@ -4354,7 +4355,7 @@ fn render_workspace_browser_sections_and_lights_describe_only_current_job_entrie
 #[test]
 fn render_workspace_browser_look_lens_counts_distinct_objects_and_selects_them() {
     let mut h = Harness::new();
-    h.call("ui.resize", json!({"width":1440,"height":1100}));
+    h.call("ui.resize", json!({"width":1440,"height":1400}));
     for (name, x) in [("A", 0), ("B", 20), ("C", 40)] {
         h.app.run("solid.box", json!({"corner":[x,0,0],"length":10,"width":10,"height":10,"body_name":name})).unwrap();
     }
@@ -5149,7 +5150,7 @@ fn output_viewer_size_chips_obey_limits_and_largest_upscales_at_the_current_aspe
     let document = h.app.session.doc.clone();
     let undo = h.app.session.undo.len();
     for (key, expected) in [("720", (1280, 720)), ("1080", (1920, 1080))] {
-        h.step(&json!({"click":{"handle":format!("render:size:{key}")}})).unwrap();
+        h.step(&json!({"click":{"handle":format!("render:preset:{key}")}})).unwrap();
         let draft = &h.app.render_workspace.view.draft;
         assert_eq!((draft.width, draft.height), expected);
     }
@@ -5174,6 +5175,8 @@ fn output_viewer_check_lists_preflight_results_without_starting_and_marks_edits_
     let document = h.app.session.doc.clone();
     let undo = h.app.session.undo.len();
     h.step(&json!({"click":{"handle":"render:stage:check"}})).unwrap();
+    assert!(h.app.render_workspace.view.inspector.checked.is_none());
+    h.step(&json!({"click":{"handle":"render:check"}})).unwrap();
     assert!(h.app.render_workspace.view.job.is_none());
     assert_eq!(host.admitted_bytes(), 0);
     assert!(Arc::ptr_eq(&document, &h.app.session.doc));
@@ -5288,7 +5291,7 @@ fn output_viewer_evidence() {
         let mut textures = std::collections::HashMap::new();
         for (index, state) in ["settings", "check", "effects", "running", "completed"].into_iter().enumerate() {
             if state == "check" {
-                inspector::reveal(&mut h.app, "render_output_check");
+                h.app.run("view.render_select", json!({"kind":"check"})).unwrap();
                 h.app.cancel_view_animation();
                 ribbon::perform_job(&mut h.app, "render.preflight").unwrap();
             }
@@ -5298,7 +5301,7 @@ fn output_viewer_evidence() {
             }
             if state == "running" {
                 select_image_method(&mut h.app, ImageMethod::Raster);
-                inspector::reveal(&mut h.app, "render_output_image");
+                h.app.run("view.render_select", json!({"kind":"output"})).unwrap();
                 // Retain a real first image while the next job makes bounded progress.
                 ribbon::perform_job(&mut h.app, "render.start").unwrap();
                 let host = h.app.session.render_job_host().unwrap().clone();
@@ -5413,7 +5416,7 @@ fn output_viewer_has_sections_without_pages_or_footer_and_selected_row_routes_to
         h.app.ui.dark = dark;
         h.call("ui.resize", json!({"width":1440,"height":900}));
         h.frames(3);
-        for key in ["render.output_image", "render.output_effects", "render.output_check"] {
+        for key in ["render.children.renderer", "render.output_image", "render.output_destination", "render.children.render"] {
             assert!(crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr(key))).is_some(), "{key}");
         }
         assert!(crate::scenario::rect_of("render:job-footer").is_none());

@@ -7,6 +7,11 @@ The row keeps supplied order and anchors to the top centre of the free viewport.
 Its presentation state only remembers which key card is open. The `ui.status_fixture`
 control method provides named specimens for UI scenarios and live visual review.
 
+| Component | Use |
+| --- | --- |
+| `method_section` | Section with a GPU/CPU tag; unsupported contents stay faded with a readable reason. |
+| `read_only_text` | Bounded, selectable code box for read-only diagnostic JSON. |
+
 `crates/ui-egui/src/ui_kit/` contains the tokenised controls used by feature dialogs,
 preferences, manager cards, prompts, context menus and the sketch palette. Import through
 `crate::ui_kit::{...}`. Most controls are crate-visible; the container API is public so platform apps use the same hosts.

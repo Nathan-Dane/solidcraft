@@ -38,5 +38,29 @@
     "render.output_grading": "调色",
     "render.output_run_check": "运行检查",
     "render.output_size_limit": "{method}：每边最多 {dimension} px，总计 {pixels} 像素。可用的最大尺寸：{width} × {height}。"
+  },
+  "ar": {
+    "cmd.render_preflight_copy": "نسخ تقرير فحص التصيير",
+    "render.output_check_failed": "الفحص · خطأ",
+    "render.output_copy_report": "نسخ التقرير",
+    "render.output_grading": "تدرّج الألوان",
+    "render.output_run_check": "تشغيل الفحص",
+    "render.output_size_limit": "{method}: حتى {dimension} بكسل لكل ضلع و{pixels} بكسل. أكبر حجم مناسب: {width} × {height}."
+  },
+  "he": {
+    "cmd.render_preflight_copy": "העתק דוח בדיקת רינדור",
+    "render.output_check_failed": "בדיקה · שגיאה",
+    "render.output_copy_report": "העתק דוח",
+    "render.output_grading": "גריידינג",
+    "render.output_run_check": "הפעל בדיקה",
+    "render.output_size_limit": "{method}: עד {dimension} פיקסלים לצלע ו-{pixels} פיקסלים. הגודל הגדול ביותר שמתאים: {width} × {height}."
+  },
+  "vi": {
+    "cmd.render_preflight_copy": "Sao chép báo cáo kiểm tra kết xuất",
+    "render.output_check_failed": "Kiểm tra · lỗi",
+    "render.output_copy_report": "Sao chép báo cáo",
+    "render.output_grading": "Chỉnh màu",
+    "render.output_run_check": "Chạy kiểm tra",
+    "render.output_size_limit": "{method}: tối đa {dimension} px mỗi cạnh và {pixels} điểm ảnh. Kích thước lớn nhất vừa khít: {width} × {height}."
   }
 }

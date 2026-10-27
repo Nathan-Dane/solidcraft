@@ -192,12 +192,14 @@ pub(super) fn presentation(app: &SolveApp) -> solidcraft_engine::render::job::pr
 
 fn focus(app: &mut SolveApp, page: inspector::Page, category: Option<&str>) {
     app.render_workspace.view.inspector.hidden = false;
-    let page = if matches!(page, inspector::Page::Effects | inspector::Page::Diagnostics) {
-        inspector::reveal(app, if page == inspector::Page::Effects { "render_output_effects" } else { "render_output_check" });
-        inspector::Page::Output
-    } else {
-        page
+    let kind = match page {
+        inspector::Page::Sampling => "sampling",
+        inspector::Page::Effects => "effects",
+        inspector::Page::Diagnostics => "check",
+        inspector::Page::Output => "output",
+        _ => "nothing",
     };
+    let _ = app.run("view.render_select", json!({"kind":kind}));
     app.render_workspace.view.inspector.page = page;
     if let Some(category) = category {
         library::open_category(app, category);

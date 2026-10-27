@@ -320,6 +320,31 @@ pub(crate) fn output(app: &mut SolveApp, ui: &mut egui::Ui) {
     if row.clicked {
         select(app, "output", None);
     }
+    for (kind, key, selection) in [
+        ("sampling", "render.children.sampling", RenderSelection::Sampling),
+        ("effects", "render.output_effects", RenderSelection::Effects),
+        ("check", "render.children.check", RenderSelection::Check),
+    ] {
+        let subtitle = crate::render_workspace::output_child_summary(app, kind);
+        let row = browser::draw_row(
+            ui,
+            ui.id().with(("render_output_child", kind)),
+            &Row {
+                depth: 1,
+                label: app.tr(key),
+                name: true,
+                subtitle: &subtitle,
+                selected: app.render_workspace.view.selection == selection,
+                ..Default::default()
+            },
+        );
+        if let Some(rect) = row.rect {
+            crate::scenario::publish_target(&format!("render:tree:output:{kind}"), rect);
+        }
+        if row.clicked {
+            select(app, kind, None);
+        }
+    }
 }
 
 #[derive(Debug)]

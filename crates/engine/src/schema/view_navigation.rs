@@ -104,7 +104,7 @@ impl<'de> Deserialize<'de> for RenderSelect {
         }
         let request = Request::deserialize(d)?;
         let identified = matches!(request.kind.as_str(), "light" | "shot");
-        if !matches!(request.kind.as_str(), "nothing" | "environment" | "light" | "shot" | "output" | "wear")
+        if !matches!(request.kind.as_str(), "nothing" | "environment" | "light" | "shot" | "output" | "wear" | "sampling" | "effects" | "check")
             || identified != request.id.is_some()
             || request.id.as_ref().is_some_and(|id| id.trim().is_empty() || id.len() > 1024)
         {
@@ -124,7 +124,7 @@ impl JsonSchema for RenderSelect {
                 {
                     "type": "object",
                     "properties": {
-                        "kind": {"type": "string", "enum": ["nothing", "environment", "output", "wear"]},
+                        "kind": {"type": "string", "enum": ["nothing", "environment", "output", "wear", "sampling", "effects", "check"]},
                         "id": {"type": "null"}
                     },
                     "required": ["kind"],

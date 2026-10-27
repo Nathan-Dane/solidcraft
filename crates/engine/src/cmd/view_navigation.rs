@@ -4,7 +4,7 @@ use solidcraft_render::{Camera, StandardView};
 
 use super::CommandSpec;
 use crate::params::{bad, num, req_vec2, req_vec3, vec3};
-use crate::schema::view_navigation::{RenderBrowser, RenderFocus, TabStep, TabStepParams};
+use crate::schema::view_navigation::{RenderBrowser, RenderFocus, RenderSelect, TabStep, TabStepParams};
 use crate::schema::{TypedContract, output_schema_for};
 use crate::{Result, Sel, Session};
 
@@ -30,6 +30,8 @@ struct RenderBrowserControls {
     #[serde(skip_serializing_if = "Option::is_none")]
     query: Option<String>,
 }
+
+const RENDER_SELECT: TypedContract<RenderSelect> = TypedContract::new();
 
 pub static COMMANDS: &[CommandSpec] = &[
 CommandSpec::new("view.fit", "Fit", fit)
@@ -60,10 +62,9 @@ CommandSpec::new("view.render_inspector", "Render Inspector", render_inspector)
     .icon("inspect").noundo().doc_only()
     .params("visible: bool → {visible}; per-document Inspector visibility; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_select", "Render selection", crate::checked!("view.render_select", render_select))
-    .contract(&RENDER_SELECT_CONTRACT)
-    .output(crate::schema::output_schema_for::<crate::schema::view_navigation::RenderSelect>)
+    .contract(&RENDER_SELECT).output(output_schema_for::<RenderSelect>)
     .icon("select").noundo().doc_only()
-    .params("kind: nothing|environment|light|shot|output|wear; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
+    .params("kind: nothing|environment|light|shot|output|wear|sampling|effects|check; id?: bounded nonempty string for light/shot → validated transient Browser focus; never edits the design or opens a dialog"),
 CommandSpec::new("view.render_stage", "Render Stage", render_stage)
     .icon("render_scene").noundo().doc_only()
     .params("stage: look|light|frame|output → {stage}; per-document UI state, never edits or evaluates the design; headless validation only"),
@@ -269,11 +270,8 @@ fn render_focus(_s: &mut Session, p: &Value) -> Result<Value> {
     Ok(json!(request))
 }
 
-const RENDER_SELECT_CONTRACT: crate::schema::TypedContract<crate::schema::view_navigation::RenderSelect> = crate::schema::TypedContract::new();
-
 fn render_select(s: &mut Session, p: &Value) -> Result<Value> {
-    let request: crate::schema::view_navigation::RenderSelect =
-        serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
+    let request: RenderSelect = serde_json::from_value(p.clone()).map_err(|e| bad("view.render_select", e.to_string()))?;
     let result = serde_json::to_value(request).map_err(|e| bad("view.render_select", e.to_string()))?;
     if !s.selection.is_empty() {
         s.selection.clear();
@@ -1143,6 +1141,9 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
         json!({"kind":"light","id":"sun:0"}),
         json!({"kind":"shot","id":"Hero"}),
         json!({"kind":"output"}),
+        json!({"kind":"sampling"}),
+        json!({"kind":"effects"}),
+        json!({"kind":"check"}),
     ] {
         assert_eq!(session.execute("view.render_select", &request).unwrap(), request);
     }
@@ -1159,6 +1160,9 @@ fn render_browser_focus_validates_without_document_changes_or_evaluation() {
         json!({"kind":"light","id":" "}),
         json!({"kind":"shot","id":"x".repeat(1025)}),
         json!({"kind":"output","id":"extra"}),
+        json!({"kind":"sampling","id":"extra"}),
+        json!({"kind":"effects","id":"extra"}),
+        json!({"kind":"check","id":"extra"}),
         json!({"kind":"environment","extra":true}),
     ] {
         assert!(session.execute("view.render_select", &request).is_err(), "{request}");
