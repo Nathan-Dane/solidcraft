@@ -96,9 +96,6 @@ Each step is its own PR. Steps that edit the shared Render files are taken one a
 20. Focus view, compact and dark layouts, localisation pass. New.
 21. A lighting rig shared across shots (needs an owner decision and one `format/pending` file). New.
 
-The draft that split the master panel into ten panels with a switcher (#6530) is superseded; its
-control routing is the starting point for steps 15, 17 and 18.
-
 ## Rules for every PR
 
 - Panels float and use `ui_kit::Container`, `Panel`, `Menu`, `Confirm` and the shared fields;
