@@ -1,5 +1,5 @@
 //! Standalone Environment inspector body. Drawing and source browsing never save a setup.
-use super::{ImageMethod, Stage, cpu, setups, studio};
+use super::{ImageMethod, Stage, cpu, hdr, setups, studio};
 use crate::{SolveApp, theme::Tokens, ui_kit};
 use serde_json::{Value, json};
 use solidcraft_engine::doc::render_settings::{RenderJob, RenderSetup};
@@ -214,88 +214,57 @@ pub(super) fn ring_overlay(app: &mut SolveApp, ui: &mut egui::Ui, viewport: egui
 
 pub(super) fn editor(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::scope(ui, |ui| {
-        let name = source_name(app, ui.ctx());
-        ui.horizontal(|ui| {
-            let t = Tokens::get();
-            ui_kit::sphere_thumbnail(
-                ui,
-                "render:environment:preview",
-                ui_kit::Sphere { color: t.body, kind: ui_kit::FinishKind::Metal, opacity: None },
-                t.control_height * 2.0,
-            )
-            .on_hover_text(app.tr("render.env_preview_help"));
-            ui.vertical(|ui| {
-                ui_kit::text(ui, app.tr("render.page_environment"), ui_kit::Text::Inline);
-                ui_kit::text(ui, &name, ui_kit::Text::NameCell(true));
-            });
-        });
-        let source_label = app.tr("render.env_source").to_string();
-        ui_kit::row(ui, &source_label, |ui| {
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                let change = ui_kit::button(ui, app.tr("render.env_change"), ui_kit::Button::Normal);
-                crate::scenario::publish_target("render:environment:change", change.rect);
-                if change.clicked() {
-                    open_sources(app);
-                }
-                ui_kit::text(ui, &name, ui_kit::Text::Cell).on_hover_text(&name);
-            });
-        });
-        let snapshot = setups::snapshot(app);
-        let controls = environment_values(app);
-        let valid = snapshot.is_ok() && controls.is_some();
-        let (rotation, intensity, maximum, rotates) = controls.unwrap_or((0.0, 1.0, 100.0, false));
-        ui.add_enabled_ui(valid, |ui| {
-            let mut request = None;
-            ui_kit::row(ui, app.tr("render.env_rotate"), |ui| {
-                ui.add_enabled_ui(rotates, |ui| {
-                    if let Some(value) = edit(app, ui, "rotation", rotation, |ui, value| {
-                        let field = ui_kit::number_field(ui, value, -1e6..=1e6, 1.0, "°");
-                        crate::scenario::publish_target("render:environment:rotation", field.rect);
-                        field
+        source(app, ui);
+        let title = app.tr("render.environment.orientation").to_string();
+        ui_kit::section(ui, "render_environment_orientation", &title, true, |ui| {
+            let snapshot = setups::snapshot(app);
+            let controls = environment_values(app);
+            let valid = snapshot.is_ok() && controls.is_some();
+            let (rotation, intensity, maximum, rotates) = controls.unwrap_or((0.0, 1.0, 100.0, false));
+            ui.add_enabled_ui(valid, |ui| {
+                let mut request = None;
+                ui_kit::row(ui, app.tr("render.env_rotate"), |ui| {
+                    ui.add_enabled_ui(rotates, |ui| {
+                        if let Some(value) = edit(app, ui, "rotation-slider", rotation, |ui, value| {
+                            let response =
+                                ui_kit::slider(ui, value, -180.0..=180.0, ui_kit::Slider { format: |v| format!("{v:.0}°"), ..Default::default() });
+                            crate::scenario::publish_target("render:environment:rotation-slider", response.rect);
+                            crate::scenario::publish_target("render:environment:rotation", response.rect);
+                            response
+                        }) {
+                            request = Some(json!({"rotation_deg":value}));
+                        }
+                    });
+                });
+                ui_kit::row(ui, app.tr("render.env_intensity"), |ui| {
+                    if let Some(value) = edit(app, ui, "intensity", intensity, |ui, value| {
+                        let response =
+                            ui_kit::slider(ui, value, 0.0..=maximum, ui_kit::Slider { format: |v| format!("{v:.2}"), ..Default::default() });
+                        crate::scenario::publish_target("render:environment:intensity", response.rect);
+                        response
                     }) {
-                        request = Some(json!({"rotation_deg":value}));
+                        request = Some(json!({"intensity":value}));
                     }
                 });
-            });
-            ui.add_enabled_ui(rotates, |ui| {
-                if let Some(value) = edit(app, ui, "rotation-slider", rotation, |ui, value| {
-                    let response = ui_kit::slider(ui, value, -180.0..=180.0, ui_kit::Slider { show_value: false, ..Default::default() });
-                    crate::scenario::publish_target("render:environment:rotation-slider", response.rect);
-                    response
-                }) {
-                    request = Some(json!({"rotation_deg":value}));
+                if let Some(request) = request
+                    && let Err(error) = commit_environment(app, request)
+                {
+                    app.set_status(error, true);
                 }
             });
-            ui_kit::row(ui, app.tr("render.env_intensity"), |ui| {
-                if let Some(value) = edit(app, ui, "intensity", intensity, |ui, value| {
-                    let response = ui_kit::number_field(ui, value, 0.0..=maximum, 0.05, "×");
-                    crate::scenario::publish_target("render:environment:intensity", response.rect);
-                    response
-                }) {
-                    request = Some(json!({"intensity":value}));
-                }
-            });
-            if let Some(value) = edit(app, ui, "intensity-ev", intensity.max(1.0 / 1024.0).log2(), |ui, value| {
-                let response =
-                    ui_kit::slider(ui, value, -10.0..=maximum.log2(), ui_kit::Slider { format: |v| format!("{v:+.1} EV"), ..Default::default() });
-                crate::scenario::publish_target("render:environment:intensity-ev", response.rect);
-                response
-            }) {
-                request = Some(json!({"intensity":value.exp2().min(maximum)}));
+            if valid && !rotates {
+                note(app, ui, "render.environment.rotation_hdr");
             }
-            if let Some(request) = request
-                && let Err(error) = commit_environment(app, request)
-            {
-                app.set_status(error, true);
+            if !valid {
+                let reason = snapshot.err().unwrap_or_else(|| app.tr("render.env_choose_source").into());
+                ui_kit::text(ui, &reason, ui_kit::Text::Note("render:environment:unavailable"));
             }
         });
-        if !valid {
-            let reason = snapshot.err().unwrap_or_else(|| app.tr("render.env_choose_source").into());
-            ui_kit::text(ui, &reason, ui_kit::Text::Note("render:environment:unavailable"));
-        }
         backdrop(app, ui);
         ground(app, ui);
+        atmosphere(app, ui);
     });
+    stage_confirmation(app, ui.ctx());
 }
 
 pub(super) fn open_sources(app: &mut SolveApp) {
@@ -305,6 +274,181 @@ pub(super) fn open_sources(app: &mut SolveApp) {
         app.set_status(error, true);
     }
     app.render_workspace.view.inspector.page = page;
+}
+
+fn note(app: &SolveApp, ui: &mut egui::Ui, key: &str) {
+    ui_kit::text(ui, app.tr(key), ui_kit::Text::Note(key));
+}
+
+pub(super) fn persist(app: &mut SolveApp) {
+    let file = hdr::active(app).and_then(|target| match hdr::input(app, target) {
+        input @ hdr::Input::FileCaptured { .. } => Some((target, input.clone())),
+        _ => None,
+    });
+    app.render_workspace.view.dirty = true;
+    if let Err(error) = setups::save(app) {
+        app.set_status(error, true);
+    }
+    // Keep the checked path available for rechecking; the engine has captured its bytes.
+    if let Some((target, input)) = file {
+        match target {
+            hdr::Target::Gpu => app.render_workspace.view.studio.hdr = input,
+            hdr::Target::Cpu => app.render_workspace.view.cpu.hdr = input,
+        }
+    }
+}
+
+fn source(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let title = app.tr("render.env_source").to_string();
+    ui_kit::section(ui, "render_environment_source", &title, true, |ui| {
+        let method = app.render_workspace.view.method;
+        let gpu = method == ImageMethod::GpuRaytrace;
+        let target = if gpu { hdr::Target::Gpu } else { hdr::Target::Cpu };
+        let selected = match method {
+            ImageMethod::GpuRaytrace => match app.render_workspace.view.studio.environment {
+                studio::Environment::None => 0,
+                studio::Environment::Sky => 1,
+                studio::Environment::Hdr => {
+                    if hdr::input(app, target).embedded() {
+                        3
+                    } else {
+                        2
+                    }
+                }
+            },
+            ImageMethod::CpuRaytrace => match app.render_workspace.view.cpu.environment {
+                cpu::Environment::None => 0,
+                cpu::Environment::Constant => 1,
+                cpu::Environment::Hdr => 2,
+            },
+            ImageMethod::Raster => 0,
+        };
+        let keys = if gpu {
+            ["render.environment.none", "render.studio_sky", "render.environment.hdr_file", "render.environment.builtin"]
+        } else {
+            ["render.environment.none", "render.environment.constant", "render.environment.hdr", "render.environment.builtin"]
+        };
+        if selected >= 2 && hdr::input(app, target).embedded() {
+            let name = source_name(app, ui.ctx());
+            ui_kit::banner(ui, ui_kit::AssistantTone::Neutral, |ui| {
+                ui_kit::text(ui, &name, ui_kit::Text::NameCell(true));
+                let kind = app.tr(if gpu { "render.environment.builtin" } else { "render.environment.hdr_file" });
+                let detail = hdr::metadata(app, target).map_or_else(|| kind.to_string(), |info| format!("{kind} · {} × {}", info.width, info.height));
+                ui_kit::text(ui, &detail, ui_kit::Text::Inline);
+                note(app, ui, "render.environment.embedded");
+            });
+        }
+        let mut changed = false;
+        ui_kit::row(ui, app.tr("render.env_source"), |ui| {
+            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                let change = ui_kit::button(ui, app.tr("render.env_change"), ui_kit::Button::Normal);
+                crate::scenario::publish_target("render:environment:change", change.rect);
+                if change.clicked() {
+                    open_sources(app);
+                }
+
+                ui.add_enabled_ui(method != ImageMethod::Raster, |ui| {
+                    ui_kit::dropdown_menu(ui, "render_environment_source_kind", app.tr(keys.get(selected).copied().unwrap_or(keys[0])), |ui| {
+                        for (index, key) in keys.iter().enumerate().take(if gpu { 4 } else { 3 }) {
+                            if ui_kit::list_picker(ui, key, app.tr(key), index == selected).clicked() {
+                                if index == 3 {
+                                    open_sources(app);
+                                } else if index != selected {
+                                    if gpu {
+                                        app.render_workspace.view.studio.environment = match index {
+                                            1 => studio::Environment::Sky,
+                                            2 => studio::Environment::Hdr,
+                                            _ => studio::Environment::None,
+                                        };
+                                        if index == 2 {
+                                            app.render_workspace.view.studio.hdr = hdr::Input::Empty;
+                                        }
+                                    } else {
+                                        app.render_workspace.view.cpu.environment = match index {
+                                            1 => cpu::Environment::Constant,
+                                            2 => cpu::Environment::Hdr,
+                                            _ => cpu::Environment::None,
+                                        };
+                                        if index == 0 {
+                                            app.render_workspace.view.raytrace.environment = None;
+                                        }
+                                    }
+                                    changed = true;
+                                }
+                                ui.close();
+                            }
+                        }
+                    });
+                });
+            });
+        });
+        if method == ImageMethod::Raster {
+            note(app, ui, "render.environment.source_raytrace");
+        }
+        if selected == 1 && gpu {
+            for (key, index) in [("render.environment.zenith", 0), ("render.environment.horizon", 1), ("render.environment.sky_ground", 2)] {
+                let gradient = app.render_workspace.view.studio.gradient;
+                let mut value = match index {
+                    0 => gradient.zenith,
+                    1 => gradient.horizon,
+                    _ => gradient.ground,
+                }
+                .map(f64::from);
+                if ui_kit::row(ui, app.tr(key), |ui| ui_kit::linear_color_field(ui, &mut value, 1e6)).changed() {
+                    let gradient = &mut app.render_workspace.view.studio.gradient;
+                    let field = match index {
+                        0 => &mut gradient.zenith,
+                        1 => &mut gradient.horizon,
+                        _ => &mut gradient.ground,
+                    };
+                    *field = value.map(|v| v as f32);
+                    changed = true;
+                }
+            }
+            note(app, ui, "render.environment.sky_note");
+        } else if selected == 1 {
+            let mut color = app.render_workspace.view.cpu.color;
+            if ui_kit::row(ui, app.tr("render.env_colour"), |ui| ui_kit::linear_color_field(ui, &mut color, 1.0)).changed() {
+                app.render_workspace.view.cpu.color = color;
+                changed = true;
+            }
+        } else if selected >= 2 {
+            let before = hdr::input(app, target).clone();
+            hdr::controls(app, ui, target);
+            changed |= &before != hdr::input(app, target);
+            let label = app.tr("render.environment.primaries").to_string();
+            ui.add_enabled_ui(gpu, |ui| {
+                changed |= ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.studio.assume_linear_srgb).changed();
+            });
+            if !gpu {
+                note(app, ui, "render.environment.primaries_gpu");
+            }
+            ui.add_enabled_ui(!gpu, |ui| {
+                let samples = app.render_workspace.view.cpu.samples;
+                ui_kit::row(ui, app.tr("render.environment.lighting_samples"), |ui| {
+                    ui_kit::dropdown_menu(ui, "render_environment_lighting_samples", &samples.to_string(), |ui| {
+                        for count in [1, 4, 16, 64] {
+                            if ui_kit::list_picker(ui, &count.to_string(), &count.to_string(), count == samples).clicked() {
+                                app.render_workspace.view.cpu.samples = count;
+                                changed = true;
+                                ui.close();
+                            }
+                        }
+                    });
+                });
+            });
+            if gpu {
+                note(app, ui, "render.environment.samples_cpu");
+            }
+        }
+        if changed {
+            app.render_workspace.view.dirty = true;
+            // An unchecked path stays in the existing draft until the user checks it.
+            if hdr::active(app).is_none_or(|target| hdr::input(app, target).resource().is_some()) {
+                persist(app);
+            }
+        }
+    });
 }
 
 fn source_name(app: &mut SolveApp, ctx: &egui::Context) -> String {
@@ -420,45 +564,138 @@ fn edit<T: Clone + PartialEq + Send + Sync + 'static>(
 }
 
 fn backdrop(app: &mut SolveApp, ui: &mut egui::Ui) {
+    use solidcraft_engine::render::job::finishing::BackdropMode;
     let title = app.tr("render.env_backdrop").to_string();
     ui_kit::section(ui, "render_environment_backdrop", &title, true, |ui| {
-        ui.add_enabled_ui(false, |ui| {
-            let mut visible = false;
-            ui_kit::checkbox(ui, app.tr("render.env_show_environment"), &mut visible);
-        })
-        .response
-        .on_disabled_hover_text(app.tr("render.env_backdrop_pending"));
-        let snapshot = setups::snapshot(app);
-        ui.add_enabled_ui(snapshot.is_ok(), |ui| {
-            let Ok(setup) = snapshot else { return };
-            let mut mode = usize::from(app.render_workspace.view.transparent);
-            let mode_changed = ui_kit::segmented(
-                ui,
-                &mut mode,
-                &[app.tr("render.env_colour"), app.tr("render.env_clear")],
-                ui_kit::Segments { targets: &["render:environment:colour", "render:environment:clear"], ..Default::default() },
-            );
-            let color = edit(app, ui, "backdrop-colour", setup.background, |ui, value| {
+        let gpu = app.render_workspace.view.method == ImageMethod::GpuRaytrace;
+        let mut mode = if app.render_workspace.view.transparent {
+            3
+        } else if app.render_workspace.view.studio.backdrop_enabled && gpu {
+            2
+        } else {
+            1
+        };
+        let before_mode = mode;
+        ui_kit::segmented(
+            ui,
+            &mut mode,
+            &[app.tr("render.environment.world"), app.tr("render.env_colour"), app.tr("render.environment.gradient"), app.tr("render.env_clear")],
+            ui_kit::Segments {
+                enabled: &[false, true, gpu && !app.render_workspace.view.transparent, app.render_workspace.view.method != ImageMethod::CpuRaytrace],
+                targets: &["render:environment:world", "render:environment:colour", "render:environment:gradient", "render:environment:clear"],
+                ..Default::default()
+            },
+        );
+        if mode == 2 && !gpu {
+            app.set_status(app.tr("render.environment.needs_gpu").to_string(), true);
+            mode = before_mode;
+        }
+        if mode != before_mode {
+            let result = if mode == 2 {
+                commit_gradient(app, true, app.render_workspace.view.studio.backdrop)
+            } else {
+                commit_backdrop(app, app.render_workspace.view.draft.background, mode == 3)
+            };
+            if let Err(error) = result {
+                app.set_status(error, true);
+            }
+        }
+        if mode == 1 {
+            let color = edit(app, ui, "backdrop-colour", app.render_workspace.view.draft.background, |ui, value| {
                 ui_kit::row(ui, app.tr("render.env_colour"), |ui| {
                     let response = ui_kit::color_field(ui, value);
                     crate::scenario::publish_target("render:environment:backdrop-colour", response.rect);
                     response
                 })
             });
-            if (mode_changed || color.is_some())
-                && let Err(error) = commit_backdrop(app, color.unwrap_or(setup.background), mode == 1)
+            if let Some(color) = color
+                && let Err(error) = commit_backdrop(app, color, false)
             {
                 app.set_status(error, true);
             }
-        });
+        }
+        if mode == 2 || !gpu {
+            let mut gradient = app.render_workspace.view.studio.backdrop;
+            let mut changed = false;
+            ui.add_enabled_ui(gpu && !app.render_workspace.view.transparent, |ui| {
+                let mut mode = match gradient.mode {
+                    BackdropMode::Vertical => 0,
+                    BackdropMode::Horizontal => 1,
+                    BackdropMode::Radial => 2,
+                };
+                changed |= ui_kit::row(ui, app.tr("render.environment.mode"), |ui| {
+                    ui_kit::segmented(
+                        ui,
+                        &mut mode,
+                        &[app.tr("render.environment.vertical"), app.tr("render.environment.horizontal"), app.tr("render.environment.radial")],
+                        Default::default(),
+                    )
+                });
+                gradient.mode = match mode {
+                    1 => BackdropMode::Horizontal,
+                    2 => BackdropMode::Radial,
+                    _ => BackdropMode::Vertical,
+                };
+                for (key, value) in [("render.environment.start", &mut gradient.first_srgb), ("render.environment.end", &mut gradient.second_srgb)] {
+                    if let Some(color) = edit(app, ui, key, *value, |ui, value| ui_kit::row(ui, app.tr(key), |ui| ui_kit::color_field(ui, value))) {
+                        *value = color;
+                        changed = true;
+                    }
+                }
+                ui.add_enabled_ui(gradient.mode == BackdropMode::Radial, |ui| {
+                    for (index, key) in [(0, "render.backdrop_x"), (1, "render.backdrop_y")] {
+                        if let Some(value) = gradient.center.get_mut(index)
+                            && let Some(number) = edit(app, ui, key, *value, |ui, value| {
+                                ui_kit::row(ui, app.tr(key), |ui| ui_kit::number_field(ui, value, 0.0..=1.0, 0.01, ""))
+                            })
+                        {
+                            *value = number;
+                            changed = true;
+                        }
+                    }
+                    if let Some(number) = edit(app, ui, "gradient-radius", gradient.radius, |ui, value| {
+                        ui_kit::row(ui, app.tr("render.backdrop_radius"), |ui| ui_kit::number_field(ui, value, 0.05..=4.0, 0.01, ""))
+                    }) {
+                        gradient.radius = number;
+                        changed = true;
+                    }
+                });
+                if gradient.mode != BackdropMode::Radial {
+                    note(app, ui, "render.environment.radial_only");
+                }
+            });
+            if changed && let Err(error) = commit_gradient(app, true, gradient) {
+                app.set_status(error, true);
+            }
+        }
         ui.add_enabled_ui(false, |ui| {
             ui_kit::row(ui, app.tr("render.env_blur"), |ui| {
-                ui_kit::slider(ui, &mut 0.0, 0.0..=100.0, ui_kit::Slider { format: |v| format!("{v:.0} %"), ..Default::default() });
+                ui_kit::slider(ui, &mut 0.0, 0.0..=100.0, ui_kit::Slider { format: |v| format!("{v:.0} %"), ..Default::default() })
             });
-        })
-        .response
-        .on_disabled_hover_text(app.tr("render.env_backdrop_pending"));
+        });
+        note(app, ui, "render.environment.blur_pending");
+        note(app, ui, "render.environment.backdrop_note");
+        note(app, ui, "render.environment.world_pending");
+        if !gpu {
+            note(app, ui, "render.environment.gradient_gpu");
+        }
+        if app.render_workspace.view.method == ImageMethod::CpuRaytrace {
+            note(app, ui, "render.cpu_opaque_required");
+        }
     });
+}
+
+pub(super) fn commit_gradient(
+    app: &mut SolveApp,
+    enabled: bool,
+    gradient: solidcraft_engine::render::job::finishing::Backdrop,
+) -> Result<(), String> {
+    let mut setup = setups::snapshot(app)?;
+    match &mut setup.job {
+        Some(RenderJob::GpuPath { options, .. }) => options.backdrop = enabled.then_some(gradient),
+        _ => return Err(app.tr("render.environment.needs_gpu").into()),
+    }
+    save(app, setup)
 }
 
 #[derive(Clone)]
@@ -497,67 +734,195 @@ pub(super) fn commit_ground(app: &mut SolveApp, enabled: bool, value: Ground) ->
     Ok(())
 }
 
+#[derive(Clone)]
+struct GroundForm {
+    value: Ground,
+    replace: bool,
+}
+
+#[derive(Clone)]
+struct StageRemoval {
+    document: Weak<solidcraft_engine::doc::Document>,
+    revision: u64,
+    name: String,
+    set: RenderSetup,
+}
+
+pub(super) fn request_stage_removal(app: &SolveApp, ctx: &egui::Context) {
+    if let Ok(set) = setups::snapshot(app) {
+        ctx.data_mut(|data| {
+            data.insert_temp(
+                egui::Id::new("render_remove_stage"),
+                StageRemoval {
+                    document: Arc::downgrade(&app.session.doc),
+                    revision: app.session.revision,
+                    name: app.render_workspace.view.name.clone(),
+                    set,
+                },
+            )
+        });
+    }
+}
+
+pub(super) fn stage_confirmation(app: &mut SolveApp, ctx: &egui::Context) {
+    let id = egui::Id::new("render_remove_stage");
+    let Some(pending) = ctx.data_mut(|data| data.get_temp::<StageRemoval>(id)) else { return };
+    if pending.revision != app.session.revision
+        || pending.name != app.render_workspace.view.name
+        || !Weak::ptr_eq(&pending.document, &Arc::downgrade(&app.session.doc))
+        || setups::snapshot(app).as_ref() != Ok(&pending.set)
+    {
+        ctx.data_mut(|data| data.remove::<StageRemoval>(id));
+        return;
+    }
+    let title = app.tr("render.environment.remove_confirm").to_string();
+    let remove = app.tr("render.environment.remove").to_string();
+    let cancel = app.tr("render.environment.keep").to_string();
+    let detail = crate::i18n::Locale::for_language(&app.preferences.language)
+        .format("render.environment.remove_note", &[("count", &pending.set.stage.len().to_string())]);
+    let (closed, action) =
+        ui_kit::Confirm::new(id, "delete", &title).tone(ui_kit::Tone::Danger).actions(&remove, &cancel, None).show(ctx, true, |ui| {
+            ui_kit::text(ui, &detail, ui_kit::Text::Note("render.environment.remove_note"));
+        });
+    if closed || matches!(action, ui_kit::Action::Cancel | ui_kit::Action::Ok) {
+        ctx.data_mut(|data| data.remove::<StageRemoval>(id));
+    }
+    if !closed && action == ui_kit::Action::Ok {
+        match app.run("render.stage.clear", json!({"name":pending.name,"set":pending.set})) {
+            Ok(_) => setups::load(app),
+            Err(error) => app.set_status(error, true),
+        }
+    }
+}
+
 fn ground(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let title = app.tr("render.env_ground").to_string();
+    let title = app.tr("render.environment.ground").to_string();
     ui_kit::section(ui, "render_environment_ground", &title, true, |ui| {
-        ui.add_enabled_ui(false, |ui| {
-            ui_kit::checkbox(ui, app.tr("render.env_shadow_catcher"), &mut false);
-            ui_kit::checkbox(ui, app.tr("render.env_reflection"), &mut false);
-        })
-        .response
-        .on_disabled_hover_text(app.tr("render.env_ground_pending"));
         let snapshot = setups::snapshot(app);
-        let supported = app.render_workspace.view.method != ImageMethod::Raster
-            && snapshot.as_ref().is_ok_and(|setup| {
-                setup.stage.iter().count() <= 1 && setup.stage.iter().all(|panel| matches!(panel.id.as_str(), "ground" | "studio_ground"))
-            });
-        ui.add_enabled_ui(snapshot.is_ok() && supported, |ui| {
-            let Ok(setup) = snapshot else { return };
-            let mut enabled = !setup.stage.is_empty();
-            let mut value = ground_values(app, &setup);
-            let toggle = ui_kit::checkbox(ui, app.tr("render.env_physical_ground"), &mut enabled);
-            crate::scenario::publish_target("render:environment:ground", toggle.rect);
-            let mut changed = toggle.changed();
-            let title = app.tr("render.env_advanced").to_string();
-            ui_kit::section(ui, "render_environment_ground_advanced", &title, false, |ui| {
-                ui.add_enabled_ui(enabled, |ui| {
-                    for (key, label, field, range, speed, suffix) in [
-                        ("margin", "render.ground_margin", &mut value.margin, 0.0..=10.0, 0.05, "×"),
-                        ("gap", "render.ground_gap", &mut value.gap, 0.0001..=1000.0, 0.01, " mm"),
-                    ] {
-                        ui_kit::row(ui, app.tr(label), |ui| {
-                            if let Some(edited) = edit(app, ui, key, *field, |ui, value| {
-                                let response = ui_kit::number_field(ui, value, range, speed, suffix);
-                                crate::scenario::publish_target(&format!("render:environment:ground-{key}"), response.rect);
-                                response
-                            }) {
-                                *field = edited;
-                                changed = true;
-                            }
-                        });
-                    }
-                    for (index, field) in value.color.iter_mut().enumerate() {
-                        ui_kit::row(
-                            ui,
-                            &format!("{} {}", app.tr("render.ground_linear_rgb"), ["R", "G", "B"].get(index).copied().unwrap_or("")),
-                            |ui| {
-                                if let Some(edited) = edit(app, ui, &format!("ground-colour-{index}"), *field, |ui, value| {
-                                    ui_kit::number_field(ui, value, 0.0..=1.0, 0.01, "")
-                                }) {
-                                    *field = edited;
-                                    changed = true;
-                                }
-                            },
-                        );
-                    }
-                });
-            });
-            if changed && let Err(error) = commit_ground(app, enabled, value) {
+        let id = ui.id().with(("ground-form", Arc::as_ptr(&app.session.doc), app.session.revision, &app.render_workspace.view.name));
+        let mut form = ui.data_mut(|data| data.get_temp::<GroundForm>(id)).unwrap_or_else(|| GroundForm {
+            value: snapshot.as_ref().map(|set| ground_values(app, set)).unwrap_or(Ground { margin: 1.0, gap: 0.1, color: [0.18; 3] }),
+            replace: false,
+        });
+        let supported = app.render_workspace.view.method != ImageMethod::Raster;
+        ui.add_enabled_ui(supported, |ui| {
+            for (key, value, range, speed, unit) in [
+                ("render.environment.margin", &mut form.value.margin, 0.0..=10.0, 0.05, "×"),
+                ("render.environment.gap", &mut form.value.gap, 0.0001..=1000.0, 0.01, " mm"),
+            ] {
+                ui_kit::row(ui, app.tr(key), |ui| ui_kit::number_field(ui, value, range, speed, unit));
+            }
+            vector_row(ui, app.tr("render.environment.reflectance"), &mut form.value.color, 0.0..=1.0, 0.01, "");
+            ui_kit::checkbox(ui, app.tr("render.environment.replace"), &mut form.replace);
+            let ready = snapshot.as_ref().is_ok_and(|set| set.stage.is_empty() || form.replace);
+            let fit = ui
+                .add_enabled_ui(ready, |ui| {
+                    ui.with_layout(egui::Layout::top_down_justified(egui::Align::Min), |ui| {
+                        ui_kit::button(ui, app.tr("render.environment.fit"), ui_kit::Button::Primary)
+                    })
+                    .inner
+                })
+                .inner;
+            crate::scenario::publish_target("render:environment:fit-ground", fit.rect);
+            if fit.clicked()
+                && let Err(error) = commit_ground(app, true, form.value.clone())
+            {
                 app.set_status(error, true);
             }
+            ui.horizontal(|ui| {
+                for (kind, key) in [("floor_wall", "render.environment.floor_wall"), ("cyclorama", "render.environment.cyclorama")] {
+                    if ui_kit::button(ui, app.tr(key), ui_kit::Button::Enabled(ready)).clicked()
+                        && let Ok(set) = &snapshot
+                    {
+                        let request = json!({"name":app.render_workspace.view.name,"set":set,"kind":kind,"expected_revision":app.session.revision,
+                            "replace_stage":form.replace,"reflectance_linear":form.value.color});
+                        match app.run("render.stage.backdrop", request) {
+                            Ok(_) => setups::load(app),
+                            Err(error) => app.set_status(error, true),
+                        }
+                    }
+                }
+            });
+        });
+        if !supported {
+            note(app, ui, "render.environment.stage_raytrace");
+        }
+        ui.horizontal(|ui| {
+            let count = app.render_workspace.view.draft.stage.len();
+            ui_kit::text(
+                ui,
+                &crate::i18n::Locale::for_language(&app.preferences.language)
+                    .format("render.environment.saved_panels", &[("count", &count.to_string())]),
+                ui_kit::Text::Inline,
+            );
+            let remove = ui_kit::icon_label_button(ui, app.tr("render.environment.remove"), "delete", count > 0 && snapshot.is_ok(), true);
+            crate::scenario::publish_target("render:stage-clear", remove.rect);
+            if remove.clicked() {
+                request_stage_removal(app, ui.ctx());
+            }
+        });
+        ui.data_mut(|data| data.insert_temp(id, form));
+        if let Err(error) = snapshot {
+            ui_kit::text(ui, &error, ui_kit::Text::Note("render:environment:ground-unavailable"));
+        }
+    });
+}
+
+/// Compact vector row; the shared row and number fields own spacing and interaction.
+fn vector_row(ui: &mut egui::Ui, label: &str, value: &mut [f64; 3], range: std::ops::RangeInclusive<f64>, speed: f64, unit: &str) -> bool {
+    ui_kit::row(ui, label, |ui| {
+        ui.horizontal(|ui| {
+            let mut changed = false;
+            let width = ((ui.available_width() - Tokens::get().space_8) / 3.0).max(Tokens::get().space_16);
+            for (index, component) in value.iter_mut().enumerate() {
+                ui.push_id(index, |ui| {
+                    ui.set_width(width);
+                    changed |= ui_kit::number_field(ui, component, range.clone(), speed, unit).changed();
+                });
+            }
+            changed
         })
-        .response
-        .on_disabled_hover_text(app.tr("render.env_stage_details"));
-        ui_kit::text(ui, app.tr("render.env_ground_pending"), ui_kit::Text::Note("render:environment:ground-help"));
+        .inner
+    })
+}
+
+/// One home for airborne controls, also used by the transitional Aging page.
+pub(super) fn atmosphere(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let title = app.tr("render.environment.atmosphere").to_string();
+    ui_kit::section_method(ui, "render_environment_atmosphere", &title, true, "GPU", |ui| {
+        let gpu = app.render_workspace.view.method == ImageMethod::GpuRaytrace;
+        let before = app.render_workspace.view.studio.volume;
+        let mut volume = before.unwrap_or_default();
+        let mut enabled = before.is_some();
+        let mut changed = false;
+        ui.add_enabled_ui(gpu, |ui| {
+            let toggle = ui_kit::checkbox(ui, app.tr("render.environment.medium"), &mut enabled);
+            crate::scenario::publish_target("render:volume-enable", toggle.rect);
+            changed |= toggle.changed();
+            ui.add_enabled_ui(enabled, |ui| {
+                changed |= vector_row(ui, app.tr("render.environment.min"), &mut volume.min_mm, -1e9..=1e9, 1.0, "");
+                changed |= vector_row(ui, app.tr("render.environment.max"), &mut volume.max_mm, -1e9..=1e9, 1.0, "");
+                changed |= ui_kit::row(ui, app.tr("render.environment.extinction"), |ui| {
+                    ui_kit::number_field(ui, &mut volume.extinction_per_mm, 0.0..=1000.0, 0.0001, " /mm")
+                })
+                .changed();
+                changed |= vector_row(ui, app.tr("render.environment.albedo"), &mut volume.scattering_albedo, 0.0..=1.0, 0.01, "");
+                changed |= ui_kit::row(ui, app.tr("render.environment.phase"), |ui| {
+                    ui_kit::slider(ui, &mut volume.anisotropy, -0.95..=0.95, Default::default())
+                })
+                .changed();
+            });
+        });
+        if !gpu {
+            note(app, ui, "render.environment.needs_gpu");
+        }
+        if changed {
+            app.render_workspace.view.studio.volume = enabled.then_some(volume);
+            app.render_workspace.view.dirty = true;
+            if let Err(error) = setups::save(app) {
+                app.render_workspace.view.studio.volume = before;
+                app.set_status(error, true);
+            }
+        }
     });
 }

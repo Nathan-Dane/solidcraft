@@ -933,9 +933,9 @@ fn backgrounds_ribbon_exposes_camera_and_physical_options_without_mutating_draft
     assert_eq!(setups::snapshot(&h.app).unwrap(), draft);
     assert_eq!(h.app.session.doc.to_json(), doc);
     assert_eq!(h.app.session.revision, revision);
-    assert!(crate::scenario::rect_of("render:background-color").is_some());
-    assert!(crate::scenario::rect_of("render:backdrop-enabled").is_some());
-    assert!(crate::scenario::rect_of("render:background-regrade").is_some());
+    assert!(crate::scenario::rect_of("dialog:section:Backdrop").is_some());
+    assert!(crate::scenario::rect_of("dialog:section:Ground and stage").is_some());
+    assert!(crate::scenario::rect_of("dialog:section:Atmosphere").is_some());
     assert!(h.app.render_workspace.view.job.is_none());
     assert!(
         super::super::ribbon::action_ready(&h.app, "render.result.regrade").is_err(),
@@ -970,7 +970,7 @@ fn clearing_physical_stage_preserves_unsaved_camera_background_and_output_intent
     assert_eq!(h.app.render_workspace.view.inspector.page, Page::Background);
     h.step(&json!({"click":{"handle":"render:stage-clear"}})).unwrap();
     h.frames(3);
-    assert_eq!(h.app.render_workspace.view.draft.stage.len(), 1);
+    assert_eq!(h.app.render_workspace.view.draft.stage.len(), 1, "removal needs consent");
     h.step(&json!({"click":{"handle":"dialog:ok"}})).unwrap();
     h.frames(3);
     assert_eq!(setups::snapshot(&h.app).unwrap(), expected, "clearing stage must keep the unsaved numerical draft, not reload an older one");

@@ -118,6 +118,22 @@ const ELEMENTS: &[Element] = &[
             button(ui, "Reset to default", Button::Normal);
         });
     }),
+    element!("linear_color_field", |ui, _| {
+        row(ui, "Zenith", |ui| linear_color_field(ui, &mut [0.5, 0.64, 0.81], 1e6));
+    }),
+    element!("section_method", |ui, _| {
+        section_method(ui, "gallery_method", "Atmosphere", true, "GPU", |ui| {
+            text(ui, "Participating medium", Text::Inline);
+        });
+    }),
+    element!("segments_availability", |ui, state| {
+        segmented(
+            ui,
+            &mut state.selected,
+            &["World", "Colour", "Gradient", "Clear"],
+            Segments { enabled: &[false, true, false, true], compact: true, ..Default::default() },
+        );
+    }),
     element!("tree_row_rect", |ui, _| {
         for (index, row) in [
             Row { label: "Objects", ..Default::default() },

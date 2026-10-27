@@ -5,6 +5,29 @@ use crate::scenario;
 use egui::Ui;
 
 #[test]
+fn segmented_availability_keeps_unsupported_options_visible_and_inert() {
+    let ctx = crate::fonts::test_context();
+    let mut selected = 1;
+    let mut draw = |ui: &mut Ui| {
+        row(ui, "Backdrop availability", |ui| {
+            segmented(
+                ui,
+                &mut selected,
+                &["World", "Colour", "Gradient", "Clear"],
+                Segments { enabled: &[false, true, false, true], ..Default::default() },
+            );
+        });
+    };
+    frame(&ctx, vec![], &mut draw);
+    for option in ["World", "Gradient"] {
+        let pos = scenario::handle_at(&format!("dialog:Backdrop availability:{option}")).unwrap();
+        frame(&ctx, pointer(pos, true), &mut draw);
+        frame(&ctx, pointer(pos, false), &mut draw);
+    }
+    assert_eq!(selected, 1);
+}
+
+#[test]
 fn segmented_click_changes_selection_and_keeps_all_choices_visible() {
     let ctx = crate::fonts::test_context();
     let mut selected = 0;

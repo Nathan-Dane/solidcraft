@@ -185,7 +185,7 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    super::transport::volume_controls(app, ui);
+    super::environment::atmosphere(app, ui);
     let variants =
         [(Environment::None, "render.studio_environment_none"), (Environment::Sky, "render.studio_sky"), (Environment::Hdr, "render.studio_hdr")];
     let selected = app.render_workspace.view.studio.environment;
