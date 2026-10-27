@@ -96,6 +96,7 @@ pub(super) struct View {
     pub page: Page,
     reveal: Option<&'static str>,
     pending: Option<Pending>,
+    #[cfg(test)]
     shot_name: String,
     pub checked: Option<Review>,
     scene_info: Option<Review>,
@@ -191,6 +192,7 @@ impl Default for View {
             page: Page::Scene,
             reveal: None,
             pending: None,
+            #[cfg(test)]
             shot_name: String::new(),
             checked: None,
             scene_info: None,
@@ -224,6 +226,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let page = selected_page(app);
     let output = !wear && matches!(page, Page::Output | Page::Sampling | Page::Effects | Page::Diagnostics);
     let appearance_editor = !wear && page == Page::Appearance;
+    let standalone = !wear && (page == Page::Scene || (page == Page::Camera && super::shot::selected(app).is_some()));
     let selection_appearance = appearance_editor && !app.session.selection.is_empty();
     let title = if wear {
         app.tr("render.wear_title").to_string()
@@ -237,6 +240,8 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                 _ => None,
             })
             .unwrap_or_else(|| app.tr("render.inspector").to_owned())
+    } else if standalone {
+        super::shot::selected(app).filter(|_| page == Page::Camera).map(str::to_owned).unwrap_or_else(|| app.tr("render.page_scene").to_string())
     } else {
         app.tr(if page == Page::Diagnostics {
             "render.children.check"
@@ -280,7 +285,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
         },
         |ui| {
-            if !appearance_editor && !output {
+            if !appearance_editor && !output && !standalone {
                 header(app, ui);
                 ui_kit::Panel::pinned_footer(ui, "render_job_footer", 4, |ui| {
                     ui.separator();
@@ -306,7 +311,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                         setups::refresh_dirty(app);
                         return;
                     }
-                    if !appearance_editor && !output {
+                    if !appearance_editor && !output && !standalone {
                         ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
                     }
                     match page {
@@ -328,6 +333,7 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
                         #[cfg(test)]
                         Page::All => {
                             ui_kit::text(ui, app.tr("render.all_controls_help"), ui_kit::Text::Note("render.all_controls_help"));
+                            shot_controls(app, ui);
                             camera_actions(app, ui);
                             let title = app.tr("render.page_camera").to_string();
                             ui_kit::section(ui, "render_all_camera", &title, false, |ui| camera_controls(app, ui));
@@ -449,6 +455,9 @@ fn perform_action(app: &mut SolveApp, action: PendingAction) -> Result<(), Strin
                 app.render_workspace.view.name = app.session.doc.render.setups.keys().next().cloned().unwrap_or_else(|| "Studio".into());
                 setups::load(app);
             }
+            if matches!(&app.render_workspace.view.selection, super::RenderSelection::Shot(selected) if selected == &name) {
+                app.run("view.render_select", json!({"kind":"nothing"}))?;
+            }
         }
     }
     Ok(())
@@ -504,10 +513,107 @@ fn scene_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let label = app.tr("render.children.method").to_string();
     ui_kit::row(ui, &label, |ui| super::method_dropdown(app, ui));
     gpu_status(app, ui);
-    browse_button(app, ui, "native_scenes", "render.browse_native_scenes");
-    browse_button(app, ui, "scenes", "render.browse_scene_specs");
-    physical_stage_controls(app, ui);
-    shot_controls(app, ui);
+    let title = app.tr("render.scene_stages").to_string();
+    ui_kit::section(ui, "render_scene_stages", &title, true, |ui| {
+        let view = &app.render_workspace.view;
+        let overrides = app.session.doc.render.setups.get(&view.name).map_or(0, |s| s.optics.len().saturating_add(s.surfaces.len()));
+        let looks = super::scene::groups(app).iter().filter(|g| g.look.is_some()).count();
+        let look = crate::i18n::format("render.scene_look_summary", &[("looks", &looks.to_string()), ("overrides", &overrides.to_string())]);
+        let light = crate::i18n::format(
+            "render.scene_light_summary",
+            &[("environment", &super::scene::environment(app).0), ("lights", &super::scene::light_types(app).len().to_string())],
+        );
+        let lens = if app.cam.fov > 0.0 { format!("{:.0}°", app.cam.fov.to_degrees()) } else { app.tr("render.stage_orthographic").to_string() };
+        let aspect = super::shot::aspect_label(app, &view.draft);
+        let frame = format!("{} · {lens} · {aspect}", view.name);
+        let format = if view.studio.export_exr { "EXR" } else { "PNG" };
+        let output = format!("{} × {} · {format} · {}", view.draft.width, view.draft.height, app.tr(view.method.label()));
+        for (stage, summary, icon) in [
+            (super::Stage::Look, look, "appearance"),
+            (super::Stage::Light, light, "environment_map"),
+            (super::Stage::Frame, frame, "camera"),
+            (super::Stage::Output, output, "export"),
+        ] {
+            let response = ui_kit::tree_row(
+                ui,
+                ui.id().with(("scene_stage", stage.key())),
+                &ui_kit::Row { compact: true, label: app.tr(stage.label()), secondary: &summary, icon, ..Default::default() },
+            );
+            if let Some(rect) = response.rect {
+                crate::scenario::publish_target(&format!("render:scene:{}", stage.key()), rect);
+            }
+            if response.clicked {
+                scene_stage(app, stage);
+            }
+        }
+    });
+    let title = app.tr("render.scene_ready").to_string();
+    ui_kit::section(ui, "render_scene_ready", &title, true, |ui| {
+        let state = match &app.render_workspace.view.inspector.checked {
+            Some(check) if check.current(app) && super::image_params(app).as_ref().ok() == Some(&check.request) => crate::i18n::format(
+                "render.scene_check_passed",
+                &[("notes", &check.reply.get("warnings").and_then(Value::as_array).map_or(0, Vec::len).to_string())],
+            ),
+            Some(_) => app.tr("render.scene_check_stale").to_string(),
+            None => app.tr("render.scene_check_unchecked").to_string(),
+        };
+        ui.horizontal_wrapped(|ui| {
+            ui_kit::text(ui, &state, ui_kit::Text::Inline);
+            let response = ui_kit::button(ui, app.tr("render.scene_open_check"), ui_kit::Button::Normal);
+            crate::scenario::publish_target("render:scene:open-check", response.rect);
+            if response.clicked() {
+                app.start("render.status");
+            }
+        });
+        if app.render_workspace.view.method == ImageMethod::GpuRaytrace && !matches!(app.render_workspace.path_host, super::PathHost::Ready(_)) {
+            gpu_status(app, ui);
+        } else {
+            let state = super::ribbon::action_ready(app, "render.start");
+            let text = state.err().unwrap_or_else(|| {
+                crate::i18n::format("render.scene_renderer_ready", &[("renderer", app.tr(app.render_workspace.view.method.label()))])
+            });
+            ui_kit::text(ui, &text, ui_kit::Text::Note("render:scene:renderer"));
+        }
+        ui.horizontal_wrapped(|ui| {
+            for (id, label, command, primary) in
+                [("check", "render.scene_check_now", "render.preflight", false), ("render", "render.frame_render_shot", "render.start", true)]
+            {
+                let ready = super::ribbon::action_ready(app, command);
+                let response = ui_kit::icon_label_action(ui, app.tr(label), None, ready.is_ok(), primary);
+                crate::scenario::publish_target(&format!("render:scene:{id}"), response.rect);
+                if let Err(reason) = ready {
+                    response.clone().on_disabled_hover_text(reason);
+                }
+                if response.clicked()
+                    && let Err(error) = super::ribbon::perform_job(app, command)
+                {
+                    app.set_status(error, true);
+                }
+            }
+        });
+        let label = crate::i18n::format("render.scene_all_shots", &[("count", &app.session.doc.render.setups.len().to_string())]);
+        let response = ui_kit::button(ui, &label, ui_kit::Button::Enabled(false));
+        crate::scenario::publish_target("render:scene:all-shots", response.rect);
+        ui_kit::text(ui, app.tr("render.scene_batch_reason"), ui_kit::Text::Note("render.scene_batch_reason"));
+    });
+    let title = app.tr("render.scene_reminders").to_string();
+    ui_kit::section(ui, "render_scene_reminders", &title, true, |ui| {
+        ui_kit::text(ui, app.tr("render.scene_reminder"), ui_kit::Text::Note("render.scene_preserves_design"));
+    });
+}
+
+fn scene_stage(app: &mut SolveApp, stage: super::Stage) {
+    let name = app.render_workspace.view.name.clone();
+    let _ = app.run("view.render_stage", json!({"stage":stage.key()}));
+    let params = match stage {
+        super::Stage::Look => json!({"kind":"nothing"}),
+        super::Stage::Light => json!({"kind":"environment"}),
+        super::Stage::Frame if app.session.doc.render.setups.contains_key(&name) => json!({"kind":"shot","id":name}),
+        super::Stage::Frame => json!({"kind":"nothing"}),
+        super::Stage::Output => json!({"kind":"output"}),
+    };
+    let _ = app.run("view.render_select", params);
+    app.render_workspace.view.inspector.page = stage.page();
 }
 fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.passive_stage").to_string();
@@ -551,6 +657,7 @@ fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 
+#[cfg(test)]
 fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.shot_manager").to_string();
     reveal_section(app, ui, "render_shot_manager");

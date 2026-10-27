@@ -153,6 +153,10 @@ const ELEMENTS: &[Element] = &[
             checkbox(ui, "Reduce noise", &mut state.checked);
         });
     }),
+    element!("icon_action", |ui, _| {
+        icon_action(ui, "Duplicate", "copy", true, false);
+        icon_action(ui, "Remove", "delete", true, true);
+    }),
     element!("aspect_grid", |ui, _| {
         aspect_grid(
             ui,
@@ -1071,6 +1075,11 @@ const ELEMENTS: &[Element] = &[
     }),
     element!("number_field", |ui, _| {
         number_field(ui, &mut 3_u32, 1..=200, 1.0, "");
+    }),
+    element!("number_fields", |ui, _| {
+        row(ui, "Target", |ui| {
+            number_fields(ui, &mut [-18.0, 125.5, -18.0], -1e9..=1e9, 0.1, "");
+        });
     }),
     element!("slider_percent", |ui, _| {
         slider(ui, &mut 1.0, 0.5..=2.5, Slider { step: Some(0.05), format: |v| format!("{:.0} %", v * 100.0), ..Default::default() });

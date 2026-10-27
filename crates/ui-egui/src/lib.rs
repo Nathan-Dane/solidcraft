@@ -1057,6 +1057,9 @@ impl SolveApp {
             && !matches!(id, "view.render_select" | "view.next_tab" | "view.previous_tab")
             && (self.session.selection != selected_before || matches!(id, "select.set" | "select.clear" | "select.same_look"))
         {
+            if self.session.selection.is_empty() && render_workspace::active(self) {
+                render_workspace::selection_editor(self, &render_workspace::RenderSelection::Nothing);
+            }
             self.render_workspace.view.selection = if self.session.selection.is_empty() {
                 render_workspace::RenderSelection::Nothing
             } else {
@@ -1128,6 +1131,7 @@ impl SolveApp {
                     Some("shot") => RenderSelection::Shot(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
                     _ => RenderSelection::Nothing,
                 };
+                render_workspace::selection_editor(self, &selected);
                 self.render_workspace.view.selection = selected;
             }
             if id == "view.layout" {

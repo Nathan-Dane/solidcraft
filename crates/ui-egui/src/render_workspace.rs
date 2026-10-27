@@ -280,6 +280,16 @@ pub enum RenderSelection {
     Check,
 }
 
+/// Selection-driven homes introduced by E1/E7; remaining editors retain their adapters.
+pub(crate) fn selection_editor(app: &mut SolveApp, selection: &RenderSelection) {
+    app.render_workspace.view.inspector.page = match selection {
+        RenderSelection::Nothing => inspector::Page::Scene,
+        RenderSelection::Shot(_) => inspector::Page::Camera,
+        RenderSelection::Output => inspector::Page::Output,
+        _ => return,
+    };
+}
+
 /// Small per-document editor state; GPU uploads and host capabilities stay outside tabs.
 #[derive(Clone, Debug)]
 pub struct ViewState {
@@ -589,6 +599,9 @@ pub fn enter(app: &mut SolveApp, render: bool) -> Result<(), String> {
             app.render_workspace.design_camera = Some((app.cam, app.ui.perspective));
             app.ui.tab = "RENDER".into();
             select_stage(app, app.render_workspace.view.stage.key());
+            if app.render_workspace.view.selection == RenderSelection::Nothing {
+                selection_editor(app, &RenderSelection::Nothing);
+            }
             let scene = solidcraft_engine::product_scene::extract(&app.session).map_err(|e| e.to_string())?;
             if !scene.bounds.is_empty() {
                 app.fit_bounds(scene.bounds);
