@@ -4144,6 +4144,47 @@ fn render_workspace_browser_focus_is_per_document_and_invalid_selection_is_atomi
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Output);
 }
 
+#[test]
+fn render_workspace_wear_tree_selects_the_scene_stack_and_counts_layers_in_both_lenses() {
+    use solidcraft_engine::render::job::aging::{AgingKind, AgingLayer};
+    fn has_text(shape: &egui::Shape, needle: &str) -> bool {
+        match shape {
+            egui::Shape::Text(text) => text.galley.text().contains(needle),
+            egui::Shape::Vec(shapes) => shapes.iter().any(|shape| has_text(shape, needle)),
+            _ => false,
+        }
+    }
+    let mut h = Harness::new();
+    h.call("ui.resize", json!({"width":1440,"height":1400}));
+    h.app.run("solid.box", json!({"length":20,"width":15,"height":10,"body_name":"Subject"})).unwrap();
+    enter(&mut h.app, true).unwrap();
+    h.app.run("select.set", json!({"items":[solidcraft_engine::Sel::Body { name: "Subject".into() }]})).unwrap();
+    let document = h.app.session.doc.clone();
+    assert_eq!(scene::wear_subtitle(&h.app), h.app.tr("render.wear_no_layers"));
+    h.frames(3);
+    assert!(h.shapes.iter().any(|s| has_text(&s.shape, h.app.tr("render.wear_no_layers"))));
+    h.step(&json!({"click":{"handle":"render:tree:wear"}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Wear);
+    assert!(h.app.session.selection.is_empty());
+    assert!(crate::scenario::rect_of("render:wear:controls").is_some());
+    assert!(!crate::icon_svg::resolve("appearance").placeholder);
+    for count in 1..=2 {
+        h.app.render_workspace.view.studio.aging.push(AgingLayer::preset(AgingKind::Dust)).unwrap();
+        h.app.render_workspace.view.dirty = true;
+        let label =
+            crate::i18n::format(if count == 1 { "render.wear_layer_one" } else { "render.wear_layer_count" }, &[("count", &count.to_string())]);
+        assert_eq!(scene::wear_subtitle(&h.app), label);
+        for by_look in [false, true] {
+            h.app.run("view.render_browser", json!({"by_look":by_look})).unwrap();
+            h.frames(3);
+            assert!(crate::scenario::rect_of("render:tree:wear").is_some());
+            assert!(h.shapes.iter().any(|s| has_text(&s.shape, &label)));
+        }
+    }
+    assert!(Arc::ptr_eq(&document, &h.app.session.doc));
+    assert!(h.app.dialog.is_none() && h.app.tool.is_none());
+}
+
 /// Actual application tree at the approved card width, in both themes and both task states.
 #[test]
 fn render_workspace_browser_compact_geometry_search_and_theme_evidence() {

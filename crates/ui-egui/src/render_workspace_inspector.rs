@@ -215,11 +215,15 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     let bounds = crate::shell::panel_bounds(app, ui.available_rect_before_wrap());
     let mut side = app.preferences.render_inspector_side.clone();
     let mut width = app.preferences.render_inspector_width;
-    let output = app.render_workspace.view.inspector.page == Page::Output || app.render_workspace.view.selection == super::RenderSelection::Output;
+    let wear = app.render_workspace.view.selection == super::RenderSelection::Wear;
+    let output =
+        !wear && (app.render_workspace.view.inspector.page == Page::Output || app.render_workspace.view.selection == super::RenderSelection::Output);
     let page = if output { Page::Output } else { app.render_workspace.view.inspector.page };
-    let appearance_editor = page == Page::Appearance;
+    let appearance_editor = !wear && page == Page::Appearance;
     let selection_appearance = appearance_editor && !app.session.selection.is_empty();
-    let title = if selection_appearance {
+    let title = if wear {
+        app.tr("render.wear_title").to_string()
+    } else if selection_appearance {
         app.session
             .selection
             .last()
@@ -232,7 +236,13 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     } else {
         app.tr(if output { "render.page_output" } else { "render.studio_title" }).to_string()
     };
-    let icon = if selection_appearance { "body" } else { page.icon() };
+    let icon = if wear {
+        "appearance"
+    } else if selection_appearance {
+        "body"
+    } else {
+        page.icon()
+    };
     let scope = selection_appearance::scope_label(app).to_owned();
     let header_action = std::cell::Cell::new(None);
     let content = ui_kit::Panel::workspace_with_header(
@@ -277,9 +287,14 @@ pub(super) fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
             }
             egui::ScrollArea::vertical()
                 .max_width(ui.available_width())
-                .id_salt(("render_inspector", page.handle(), app.docs.active))
+                .id_salt(("render_inspector", wear, page.handle(), app.docs.active))
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
+                    if wear {
+                        super::wear::controls(app, ui);
+                        setups::refresh_dirty(app);
+                        return;
+                    }
                     if !appearance_editor && !output {
                         ui_kit::text(ui, app.tr(page.key()), ui_kit::Text::Heading(page.key()));
                     }

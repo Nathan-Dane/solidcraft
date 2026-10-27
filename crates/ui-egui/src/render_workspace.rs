@@ -56,6 +56,8 @@ mod transport;
 
 #[path = "render_workspace_thumbnails.rs"]
 mod thumbnails;
+#[path = "render_ui/wear.rs"]
+mod wear;
 
 #[cfg(test)]
 #[path = "render_workspace_tests.rs"]
@@ -259,6 +261,7 @@ pub enum RenderSelection {
     Nothing,
     Object(Vec<solidcraft_engine::Sel>),
     Environment,
+    Wear,
     /// Method/type/index identity until named light commands provide persistent IDs.
     Light(String),
     Shot(String),
@@ -1986,5 +1989,14 @@ pub(crate) fn interactive_command_info(app: &SolveApp, command: &solidcraft_engi
     info
 }
 pub(crate) fn start_interactive(app: &mut SolveApp, id: &str) -> bool {
-    ribbon::start(app, id)
+    let handled = ribbon::start(app, id);
+    // Opening Appearance Advanced must still reach its atmosphere controls after leaving Wear.
+    if handled
+        && id == "render.aging.describe"
+        && app.render_workspace.view.inspector.page == inspector::Page::Appearance
+        && app.render_workspace.view.selection == RenderSelection::Wear
+    {
+        let _ = app.run("view.render_select", json!({"kind":"nothing"}));
+    }
+    handled
 }

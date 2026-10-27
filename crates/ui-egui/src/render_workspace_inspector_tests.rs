@@ -36,8 +36,10 @@ fn native_inspector_keeps_stage_actions_on_screen_and_output_has_no_pinned_foote
                 }
                 if page == Page::Output {
                     assert!(crate::scenario::rect_of("render:job-footer").is_none());
+                    let bar = crate::scenario::rect_of("render:stage_bar").unwrap();
                     for name in ["render:stage:render.start", "render:stage:render.cancel"] {
-                        assert!(crate::scenario::rect_of(name).is_some());
+                        let action = crate::scenario::rect_of(name).unwrap();
+                        assert!(bar.contains_rect(action), "{name} outside stage bar");
                     }
                     continue;
                 }
@@ -880,6 +882,149 @@ fn aging_tab_adds_reorders_disables_and_persists_layers_without_engineering_edit
     h.step(&json!({"click":{"handle":"render:aging-remove"}})).unwrap();
     h.frames(2);
     assert_eq!(h.app.render_workspace.view.studio.aging.len(), 1);
+}
+
+#[test]
+fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
+    fn assert_header(h: &Harness, title: &str) {
+        let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+        let header = crate::scenario::rect_of("render:inspector:header").unwrap();
+        assert!(inspector.contains_rect(header));
+        let tree = h.output.accesskit_update.as_ref().unwrap();
+        assert!(
+            tree.nodes.iter().any(|(_, node)| {
+                node.label() == Some(title)
+                    && node.bounds().is_some_and(|bounds| {
+                        bounds.x1 > bounds.x0
+                            && bounds.y1 > bounds.y0
+                            && header.contains_rect(egui::Rect::from_min_max(
+                                egui::pos2(bounds.x0 as f32, bounds.y0 as f32),
+                                egui::pos2(bounds.x1 as f32, bounds.y1 as f32),
+                            ))
+                    })
+            }),
+            "{title} outside inspector header"
+        );
+    }
+    for layout in [crate::shell::LayoutMode::Docked, crate::shell::LayoutMode::Floating] {
+        let mut h = fixture();
+        h.app.ui.layout = layout;
+        h.app.session.selection = vec![solidcraft_engine::Sel::Body { name: "Subject".into() }];
+        let before = h.app.session.doc.to_json();
+        let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
+        h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+        for page in [Page::Output, Page::Appearance] {
+            h.app.render_workspace.view.inspector.page = page;
+            h.frames(3);
+            assert_header(&h, h.app.tr("render.wear_title"));
+            assert!(crate::scenario::rect_of("render:wear:controls").is_some());
+            assert!(crate::scenario::rect_of("render:appearance:close").is_none());
+            assert!(crate::scenario::rect_of("dialog:editor_footer").is_none());
+            assert!(crate::scenario::rect_of("render:page:aging").is_none());
+            let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+            let footer = crate::scenario::rect_of("render:job-footer").unwrap();
+            assert!(inspector.contains_rect(footer));
+            for name in ["render:check", "render:start", "render:cancel", "render:export"] {
+                assert!(footer.contains_rect(crate::scenario::rect_of(name).unwrap()), "{name} outside Wear footer");
+            }
+        }
+        h.app.run("view.render_select", json!({"kind":"output"})).unwrap();
+        h.app.render_workspace.view.inspector.page = Page::Appearance;
+        h.frames(3);
+        assert_header(&h, h.app.tr("render.page_output"));
+        assert!(crate::scenario::rect_of("render:wear:controls").is_none());
+        assert!(crate::scenario::rect_of("render:job-footer").is_none());
+        assert!(crate::scenario::rect_of("render:appearance:close").is_none());
+        h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
+        h.frames(3);
+        assert_header(&h, "Subject");
+        let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+        let header = crate::scenario::rect_of("render:inspector:header").unwrap();
+        assert!(header.contains_rect(crate::scenario::rect_of("render:appearance:close").unwrap()));
+        assert!(inspector.contains_rect(crate::scenario::rect_of("dialog:editor_footer").unwrap()));
+        assert_eq!(h.app.session.doc.to_json(), before);
+        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
+    }
+}
+
+#[test]
+fn wear_selection_shows_disabled_controls_with_reason_and_never_changes_method() {
+    use solidcraft_engine::render::job::aging::{AgingKind, AgingLayer};
+    fn text_color(shape: &egui::Shape, label: &str) -> Option<egui::Color32> {
+        match shape {
+            egui::Shape::Text(text) if text.galley.text().to_lowercase().contains(&label.to_lowercase()) => Some(text.fallback_color),
+            egui::Shape::Vec(shapes) => shapes.iter().find_map(|shape| text_color(shape, label)),
+            _ => None,
+        }
+    }
+    let mut h = fixture();
+    h.call("ui.resize", json!({"width":1440,"height":1800}));
+    h.app.render_workspace.view.studio.aging.push(AgingLayer::preset(AgingKind::Rust)).unwrap();
+    h.app.render_workspace.view.dirty = true;
+    let document = h.app.session.doc.to_json();
+    let stack = h.app.render_workspace.view.studio.aging.clone();
+    h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+    let mut colours = Vec::new();
+    for method in [ImageMethod::Raster, ImageMethod::CpuRaytrace, ImageMethod::GpuRaytrace] {
+        h.app.render_workspace.view.method = method;
+        h.frames(3);
+        assert_eq!(h.app.render_workspace.view.method, method);
+        assert!(crate::scenario::rect_of("render:wear:controls").is_some());
+        assert!(crate::scenario::rect_of("render:aging-enabled").is_some());
+        assert!(crate::scenario::rect_of("render:aging-target").is_some());
+        assert!(crate::scenario::rect_of("render:page:aging").is_none(), "Wear has no master page switcher");
+        assert!(h.shapes.iter().any(|s| text_color(&s.shape, h.app.tr("render.effects_gpu_only")).is_some()));
+        colours.push(h.shapes.iter().find_map(|s| text_color(&s.shape, h.app.tr("render.wear_layers"))).unwrap());
+        if method != ImageMethod::GpuRaytrace {
+            for handle in ["render:aging-add", "render:aging-enabled", "render:aging-layer:0:enabled", "render:aging-remove"] {
+                h.step(&json!({"click":{"handle":handle}})).unwrap();
+                assert_eq!(h.app.render_workspace.view.studio.aging, stack);
+            }
+        }
+        assert_eq!(h.app.session.doc.to_json(), document);
+    }
+    for colour in &colours[..2] {
+        assert!(colour.a() < colours[2].a(), "unsupported methods fade the editor");
+    }
+    h.step(&json!({"click":{"handle":"render:aging-layer:0:enabled"}})).unwrap();
+    assert!(!h.app.render_workspace.view.studio.aging.get(0).unwrap().enabled);
+    h.app.start("render.aging.describe");
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.selection, super::super::RenderSelection::Nothing);
+    assert_eq!(h.app.render_workspace.view.inspector.page, Page::Appearance);
+    assert!(crate::scenario::rect_of("render:wear:controls").is_some(), "Appearance Advanced mounts the same editor");
+    assert!(h.shapes.iter().any(|s| text_color(&s.shape, h.app.tr("render.aging_airborne")).is_some()));
+}
+
+#[test]
+fn wear_editor_bounds_stale_selection_and_hostile_layer_values_never_panic() {
+    use solidcraft_engine::render::job::aging::{AgingKind, AgingLayer};
+    let mut h = fixture();
+    h.app.render_workspace.view.method = ImageMethod::GpuRaytrace;
+    h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+    h.app.render_workspace.view.inspector.effects.selected_aging = usize::MAX;
+    h.frames(3);
+    assert_eq!(h.app.render_workspace.view.inspector.effects.selected_aging, 0);
+    h.app.render_workspace.view.studio.aging.push(AgingLayer::preset(AgingKind::Dust)).unwrap();
+    h.app.render_workspace.view.dirty = true;
+    for value in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1e300, 1e300] {
+        let layer = h.app.render_workspace.view.studio.aging.get_mut(0).unwrap();
+        layer.strength = value;
+        layer.coverage = value;
+        layer.scale_mm = value;
+        layer.roughness = value;
+        layer.metallic = value;
+        layer.upward_bias = value;
+        layer.origin_mm = [value; 3];
+        layer.seed = u32::MAX;
+        h.app.render_workspace.view.inspector.effects.selected_aging = usize::MAX;
+        h.frames(3);
+        assert_eq!(h.app.render_workspace.view.inspector.effects.selected_aging, 0);
+    }
+    h.step(&json!({"click":{"handle":"render:aging-remove"}})).unwrap();
+    assert!(h.app.render_workspace.view.studio.aging.is_empty());
+    h.frames(3);
+    assert!(crate::scenario::rect_of("render:aging-enabled").is_none());
 }
 
 #[test]
