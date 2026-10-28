@@ -57,11 +57,7 @@ pub(crate) fn segmented(ui: &mut Ui, selected: &mut usize, options: &[&str], con
         .fold(0.0, f32::max);
     // Judged on the whole row, which is what a scrollbar narrows, not on one segment.
     let need = if intrinsic { total } else { (widest + 2.0 * t.space_8) * options.len() as f32 };
-    if disabled_reasons.is_empty()
-        && !proportional
-        && !compact
-        && !super::fits_steadily(ui, label(ui), need, segment_width * options.len() as f32)
-    {
+    if disabled_reasons.is_empty() && !proportional && !compact && !super::fits_steadily(ui, label(ui), need, segment_width * options.len() as f32) {
         let before = *selected;
         let id = format!("segments_fallback_{}", label(ui));
         dropdown(ui, &id, selected, options);
