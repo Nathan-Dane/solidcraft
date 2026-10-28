@@ -12,8 +12,12 @@ fn window_widths(h: &Harness) -> Vec<(egui::Id, f32)> {
         m.areas()
             .visible_layer_ids()
             .into_iter()
-            // Workspace hosts are not command windows; the Shots strip intentionally spans the canvas.
-            .filter(|l| l.order == egui::Order::Middle && ![egui::Id::new("sc_browser_card"), egui::Id::new("sc_render_shots_strip")].contains(&l.id))
+            // Workspace hosts are not command windows; Shots has wide expanded and small collapsed forms.
+            .filter(|l| {
+                l.order == egui::Order::Middle
+                    && ![egui::Id::new("sc_browser_card"), egui::Id::new("sc_render_shots_strip"), egui::Id::new("sc_render_shots_pill")]
+                        .contains(&l.id)
+            })
             .filter_map(|l| m.area_rect(l.id).map(|r| (l.id, r.width())))
             .collect()
     })
@@ -56,6 +60,14 @@ fn render_strip_is_excluded_while_real_windows_are_still_measured() {
     let windows = window_widths(&h);
     assert!(!windows.iter().any(|(id, _)| *id == strip));
     assert!(windows.iter().any(|(id, _)| *id == egui::Id::new("sc_about")), "real About window is still measured: {windows:?}");
+    assert_eq!(h.call("engine.execute", json!({"command":"view.shots_strip","params":{"visible":false}}))["ok"], true);
+    h.frames(6);
+    let pill = egui::Id::new("sc_render_shots_pill");
+    let width = h.ctx.memory(|m| m.area_rect(pill)).expect("visible Shots restore control").width();
+    assert!(width < DIALOG_MIN_W, "the restore control is intentionally smaller than a dialog: {width}");
+    let windows = window_widths(&h);
+    assert!(!windows.iter().any(|(id, _)| *id == pill));
+    assert!(windows.iter().any(|(id, _)| *id == egui::Id::new("sc_about")), "real window remains measured with Shots collapsed: {windows:?}");
 }
 
 #[test]
@@ -80,9 +92,9 @@ fn command_dialogs_shrink_to_their_content_within_limits() {
         }
         // The docked dialog shrinks to its content: most dialogs stay well under the maximum.
         if h.app.dialog.is_some() {
-            for (_, w) in window_widths(&h) {
+            for (layer, w) in window_widths(&h) {
                 if w < DIALOG_MIN_W - slack {
-                    bad.push(format!("{}: {w} px is narrower than {DIALOG_MIN_W}", spec.id));
+                    bad.push(format!("{} ({layer:?}): {w} px is narrower than {DIALOG_MIN_W}", spec.id));
                 }
             }
         }
