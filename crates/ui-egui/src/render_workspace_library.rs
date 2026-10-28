@@ -1701,6 +1701,10 @@ mod studio_browser_tests {
         // available under Advanced when no model target is selected.
         h.app.run("select.clear", json!({})).unwrap();
         h.frames(3);
+        // Clearing model selection opens Scene overview; inspect the resource again.
+        h.step(&json!({"click":{"handle":format!("render:library:{id}")}})).unwrap();
+        h.frames(3);
+        assert_eq!(h.app.render_workspace.view.inspector.page, super::super::inspector::Page::Appearance);
         h.step(&json!({"click":{"handle":format!("dialog:section:{}", h.app.tr("render.inspector_advanced"))}})).unwrap();
         h.frames(3);
         h.step(&json!({"widget":h.app.tr("render.library_favorite")})).unwrap();
