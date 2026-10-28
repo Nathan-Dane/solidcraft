@@ -68,6 +68,10 @@ fn render_strip_is_excluded_while_real_windows_are_still_measured() {
     let windows = window_widths(&h);
     assert!(!windows.iter().any(|(id, _)| *id == pill));
     assert!(windows.iter().any(|(id, _)| *id == egui::Id::new("sc_about")), "real window remains measured with Shots collapsed: {windows:?}");
+    assert_eq!(h.call("ui.start", json!({"command":"file.export_view_dxf"}))["ok"], true);
+    h.frames(6);
+    let dialog = solidcraft_ui_egui::scenario::rect_of("dialog:outer").expect("DXF dialog has an outer rectangle");
+    assert!(dialog.width() >= DIALOG_MIN_W - 4.0, "actual DXF dialog remains at least the dialog minimum: {dialog:?}");
 }
 
 #[test]
@@ -91,11 +95,10 @@ fn command_dialogs_shrink_to_their_content_within_limits() {
             }
         }
         // The docked dialog shrinks to its content: most dialogs stay well under the maximum.
-        if h.app.dialog.is_some() {
-            for (layer, w) in window_widths(&h) {
-                if w < DIALOG_MIN_W - slack {
-                    bad.push(format!("{} ({layer:?}): {w} px is narrower than {DIALOG_MIN_W}", spec.id));
-                }
+        if let Some(rect) = solidcraft_ui_egui::scenario::rect_of("dialog:outer").filter(|_| h.app.dialog.is_some()) {
+            let w = rect.width();
+            if w < DIALOG_MIN_W - slack {
+                bad.push(format!("{}: active dialog {w} px is narrower than {DIALOG_MIN_W}", spec.id));
             }
         }
         h.app.dialog = None;
