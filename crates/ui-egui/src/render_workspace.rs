@@ -810,6 +810,7 @@ fn select_image_method(app: &mut SolveApp, method: ImageMethod) {
     app.render_workspace.view.dirty = true;
 }
 
+#[cfg(test)]
 fn method_selector(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.label(app.tr("render.image_method"));
     method_dropdown(app, ui);

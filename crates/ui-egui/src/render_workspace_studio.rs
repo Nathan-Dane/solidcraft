@@ -138,6 +138,7 @@ pub(super) fn finishing_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     post_controls(app, ui);
     tone_controls(app, ui);
 }
+#[cfg(test)]
 pub(super) fn tone_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::text(ui, app.tr("render.studio_tone_map"), ui_kit::Text::Inline);
     let selected = app.render_workspace.view.studio.tone_map;
@@ -312,6 +313,7 @@ pub(super) fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 /// Presentation is opt-in; raw radiance and engineering appearance stay untouched.
+#[cfg(test)]
 pub(super) fn post_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let before = app.render_workspace.view.studio.finishing;
     bloom_controls(app, ui);
@@ -320,6 +322,7 @@ pub(super) fn post_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     app.render_workspace.view.dirty |= before != app.render_workspace.view.studio.finishing;
 }
 
+#[cfg(test)]
 pub(super) fn bloom_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let mut enabled = app.render_workspace.view.studio.finishing.bloom.is_some();
     let label = app.tr("render.bloom_enable").to_string();
@@ -348,6 +351,7 @@ pub(super) fn bloom_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 
+#[cfg(test)]
 pub(super) fn grading_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.output_grading").to_string();
     ui_kit::section(ui, "render_post_filters", &title, false, |ui| {
@@ -379,6 +383,7 @@ pub(super) fn grading_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 
+#[cfg(test)]
 pub(super) fn regrade_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     regrade_action(app, ui);
     retain_controls(app, ui);
@@ -398,6 +403,7 @@ pub(super) fn regrade_action(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
     ui_kit::text(ui, app.tr("render.regrade_help"), ui_kit::Text::Note("render.regrade_help"));
 }
+#[cfg(test)]
 fn retain_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let label = app.tr("render.linear_retain").to_string();
     let r = ui_kit::checkbox(ui, &label, &mut app.render_workspace.view.studio.linear_exr);

@@ -2,6 +2,7 @@
 use crate::{SolveApp, ui_kit};
 
 /// Pilot allocation and conditional transmission sampling share portable intent.
+#[cfg(test)]
 pub(super) fn sampling_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     adaptive_controls(app, ui);
     glass_controls(app, ui);
