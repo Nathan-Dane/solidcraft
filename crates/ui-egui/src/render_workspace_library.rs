@@ -1274,6 +1274,11 @@ fn browse_contents(app: &mut SolveApp, ui: &mut egui::Ui, stage_card: bool) {
     restore_view(app, view);
 }
 
+pub(super) fn selected_kind(app: &SolveApp, kind: &str) -> bool {
+    let view = &app.render_workspace.view.library;
+    view.kind == kind && view.selected.is_some()
+}
+
 pub(super) fn inspect_kinds(app: &mut SolveApp, ui: &mut egui::Ui, kinds: &[&str]) {
     if kinds.contains(&app.render_workspace.view.library.kind.as_str())
         || (kinds.contains(&"surfaces") && app.render_workspace.view.library.kind == "appearances")
