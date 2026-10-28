@@ -132,6 +132,7 @@ pub(super) fn vector(ui: &mut egui::Ui, label: &str, value: &mut [f64; 3], range
     });
 }
 
+#[cfg(test)]
 pub(super) fn finishing_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     super::transport::sampling_controls(app, ui);
     post_controls(app, ui);
