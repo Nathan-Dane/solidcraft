@@ -683,30 +683,44 @@ fn gpu_brdf_matches_f64_surface_oracle() {
     }
 }
 
-/// The viewport embeds a separate WGSL translation. Exercise its actual function
-/// on the same native device as the path-tracer oracle, not a copied Rust formula.
-#[test]
-fn viewport_brdf_matches_f64_surface_oracle_at_index_match() {
-    let Some(executor) = executor() else { return };
-    let context = &executor.context;
-    let source = format!(
+/// Assemble the same viewport declarations, lighting helpers and PBR implementation
+/// as production, plus a compute entry point that calls the actual BRDF.
+fn viewport_brdf_probe_source() -> String {
+    format!(
         "{}\n{}\n{}",
-        r#"
-struct ViewUniform { vp: mat4x4<f32>, back: vec4<f32>, eye: vec4<f32>, };
-@group(1) @binding(0) var<uniform> u: ViewUniform;
-struct Probe { base: vec4<f32>, parameters: vec4<f32>, view: vec4<f32>, light: vec4<f32>, };
-@group(0) @binding(0) var<uniform> probe: Probe;
-@group(0) @binding(1) var<storage, read_write> result: array<vec4<f32>>;
-"#,
+        crate::view::SHADER,
         crate::pbr::SOURCE,
         r#"
+struct Probe { base: vec4<f32>, parameters: vec4<f32>, view: vec4<f32>, light: vec4<f32>, };
+// Bindings 0 and 1 belong to the production viewport uniform and palette.
+@group(0) @binding(2) var<uniform> probe: Probe;
+@group(0) @binding(3) var<storage, read_write> result: array<vec4<f32>>;
 @compute @workgroup_size(1)
 fn probe_pbr() {
     result[0] = vec4<f32>(pbr_brdf(probe.base.xyz, probe.parameters.xyz,
         vec3<f32>(0.0,0.0,1.0),probe.view.xyz,probe.light.xyz),1.0);
 }
 "#
-    );
+    )
+}
+
+#[test]
+fn viewport_brdf_probe_shader_is_valid() {
+    let source = viewport_brdf_probe_source();
+    let module = naga::front::wgsl::parse_str(&source).unwrap_or_else(|error| panic!("{}", error.emit_to_string(&source)));
+    naga::valid::Validator::new(naga::valid::ValidationFlags::all(), naga::valid::Capabilities::empty())
+        .validate(&module)
+        .unwrap_or_else(|error| panic!("{}", error.emit_to_string(&source)));
+}
+
+/// The viewport embeds a separate WGSL translation. Exercise its actual function
+/// on the same native device as the path-tracer oracle, not a copied Rust formula.
+#[test]
+fn viewport_brdf_matches_f64_surface_oracle_at_index_match() {
+    let Some(executor) = executor() else { return };
+    let context = &executor.context;
+    let source = viewport_brdf_probe_source();
+    let creation_scopes = scopes(&context.device);
     let shader = context.device.create_shader_module(wgpu::ShaderModuleDescriptor {
         label: Some("actual viewport PBR oracle"),
         source: wgpu::ShaderSource::Wgsl(source.into()),
@@ -715,13 +729,13 @@ fn probe_pbr() {
         label: None,
         entries: &[
             wgpu::BindGroupLayoutEntry {
-                binding: 0,
+                binding: 2,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer { ty: wgpu::BufferBindingType::Uniform, has_dynamic_offset: false, min_binding_size: None },
                 count: None,
             },
             wgpu::BindGroupLayoutEntry {
-                binding: 1,
+                binding: 3,
                 visibility: wgpu::ShaderStages::COMPUTE,
                 ty: wgpu::BindingType::Buffer {
                     ty: wgpu::BufferBindingType::Storage { read_only: false },
@@ -767,10 +781,11 @@ fn probe_pbr() {
         label: None,
         layout: &layout,
         entries: &[
-            wgpu::BindGroupEntry { binding: 0, resource: uniform.as_entire_binding() },
-            wgpu::BindGroupEntry { binding: 1, resource: values.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 2, resource: uniform.as_entire_binding() },
+            wgpu::BindGroupEntry { binding: 3, resource: values.as_entire_binding() },
         ],
     });
+    checked(creation_scopes).expect("viewport BRDF probe resource creation must validate");
     for metallic in [0.0, 0.5, 1.0] {
         for roughness in [0.045, 0.5, 1.0] {
             for ior in [1.0, 1.5, 3.0] {
@@ -800,6 +815,7 @@ fn probe_pbr() {
                         0.0,
                     ];
                     let bytes: Vec<u8> = input.iter().flat_map(|value| value.to_le_bytes()).collect();
+                    let dispatch_scopes = scopes(&context.device);
                     context.queue.write_buffer(&uniform, 0, &bytes);
                     let mut encoder = context.device.create_command_encoder(&Default::default());
                     {
@@ -810,6 +826,7 @@ fn probe_pbr() {
                     }
                     encoder.copy_buffer_to_buffer(&values, 0, &readback, 0, 16);
                     let submission = context.queue.submit([encoder.finish()]);
+                    checked(dispatch_scopes).expect("viewport BRDF probe dispatch must validate");
                     let slice = readback.slice(..);
                     let (tx, rx) = std::sync::mpsc::channel();
                     slice.map_async(wgpu::MapMode::Read, move |result| {
