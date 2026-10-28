@@ -3036,9 +3036,7 @@ fn render_workspace_focus_tab_only_toggles_render_without_text_focus() {
     h.step(&json!({"key":"Tab"})).unwrap();
     assert!(!h.app.shell.render_focus);
     h.frames(3);
-    h.step(&json!({"click":{"handle":"render:tree:output"}})).unwrap();
-    h.frames(3);
-    h.step(&json!({"click":{"handle":"render:setup-name"}})).unwrap();
+    h.step(&json!({"click":{"handle":"render:library-search"}})).unwrap();
     assert!(h.ctx.egui_wants_keyboard_input());
     h.step(&json!({"key":"Tab"})).unwrap();
     assert!(!h.app.shell.render_focus);
