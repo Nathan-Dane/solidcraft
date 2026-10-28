@@ -503,6 +503,7 @@ fn vector(ui: &mut egui::Ui, label: &str, value: &mut [f64; 3], range: std::ops:
     });
 }
 
+#[cfg(test)]
 pub(super) fn light_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     super::light::lighting(app, ui);
 }

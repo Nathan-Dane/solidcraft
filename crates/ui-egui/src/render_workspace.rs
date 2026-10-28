@@ -910,6 +910,7 @@ fn cpu_sampling_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     });
 }
 
+#[cfg(test)]
 fn cpu_lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.label(app.tr("render.cpu_lighting"));
     let presets = [

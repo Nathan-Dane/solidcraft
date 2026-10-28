@@ -241,6 +241,7 @@ pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
 }
 
+#[cfg(test)]
 pub(super) fn lighting_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     super::light::lighting(app, ui);
 }
