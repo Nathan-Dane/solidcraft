@@ -6,7 +6,9 @@ use std::sync::{Arc, Mutex};
 use egui::{Color32, Sense};
 use serde_json::json;
 use solidcraft_engine::doc::render_settings::RenderSetup;
-use solidcraft_engine::render::job::{ImageHost, Integrator, LightingPreset, PreviewInfo, RaytraceOptions};
+#[cfg(test)]
+use solidcraft_engine::render::job::LightingPreset;
+use solidcraft_engine::render::job::{ImageHost, Integrator, PreviewInfo, RaytraceOptions};
 use solidcraft_engine::render::{
     Availability, Camera, ExecutorDescriptor, ExecutorId, ProductScene, RenderLimits, RenderMode, RenderOperation, RenderProfile, RenderRequest,
     ScratchLayout,
