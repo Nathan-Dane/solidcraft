@@ -188,6 +188,8 @@ fn stage_catalogs_fill_a_290_by_530_panel_and_keep_two_line_labels_inside_tiles(
             h.ctx = crate::fonts::test_context();
             crate::theme::set_dark(dark);
             h.ctx.set_visuals(if dark { egui::Visuals::dark() } else { egui::Visuals::light() });
+            // A resizable 290 pt card needs the floating, wide-screen policy.
+            h.app.ui.layout = crate::shell::LayoutMode::Floating;
             h.app.preferences.render_browser_width = 290.0;
             h.app.preferences.render_browser_side = "left".into();
             super::super::select_image_method(&mut h.app, method);
@@ -196,7 +198,7 @@ fn stage_catalogs_fill_a_290_by_530_panel_and_keep_two_line_labels_inside_tiles(
             let document = h.app.session.doc.to_json();
             let history = (h.app.session.undo.len(), h.app.session.redo.len());
             // Panel::workspace reserves an 8 pt bottom gap in these bounds.
-            let bounds = Rect::from_min_size(Pos2::ZERO, vec2(1000.0, 538.0));
+            let bounds = Rect::from_min_size(Pos2::ZERO, vec2(1200.0, 538.0));
             let mut textures = std::collections::HashMap::new();
             let mut output = None;
             let mut unselected_height = 0.0;

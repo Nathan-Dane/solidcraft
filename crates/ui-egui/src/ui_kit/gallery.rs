@@ -293,6 +293,11 @@ const ELEMENTS: &[Element] = &[
         }
         .content(ui, &mut state.checked, |_| {});
     }),
+    element!("catalog_footer_height", |ui, _| {
+        let expected = catalog_footer_height(ui);
+        catalog_footer(ui, "Click to apply to the selection.");
+        assert_eq!(crate::scenario::rect_of("catalog:footer").unwrap().height(), expected);
+    }),
     element!("catalog_footer_with_tip", |ui, _| {
         catalog_footer_with_tip(ui, "Click to apply to the selection.", "Paint and drag assignment are not supported yet.");
     }),
