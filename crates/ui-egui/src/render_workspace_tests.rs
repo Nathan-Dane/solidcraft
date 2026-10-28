@@ -5700,7 +5700,7 @@ fn output_viewer_evidence() {
 }
 
 #[test]
-fn output_viewer_radial_defaults_keep_planned_actions_disabled() {
+fn output_viewer_radial_defaults_enable_lights_and_keep_planned_compare_disabled() {
     let h = output_viewer_fixture();
     let expected = [
         "render.start",
@@ -5713,9 +5713,8 @@ fn output_viewer_radial_defaults_keep_planned_actions_disabled() {
         "undo",
     ];
     assert_eq!(crate::mouse_gesture::Studio::Render.defaults(), expected);
-    for id in ["render.lights.add", "render.compare"] {
-        assert!(!crate::mouse_gesture::item(&h.app, id).unwrap().enabled);
-    }
+    assert!(crate::mouse_gesture::item(&h.app, "render.lights.add").unwrap().enabled);
+    assert!(!crate::mouse_gesture::item(&h.app, "render.compare").unwrap().enabled);
 }
 
 #[test]
