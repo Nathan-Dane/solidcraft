@@ -20,7 +20,7 @@ pub(crate) fn linear_color_field(ui: &mut Ui, rgb: &mut [f64; 3], maximum: f64) 
         let color = Color32::from(egui::Rgba::from_rgb(preview[0], preview[1], preview[2]));
         let mut bytes = [color.r(), color.g(), color.b()];
         if color_field(ui, &mut bytes).changed() {
-            let linear = egui::Rgba::from(Color32::from_rgb(bytes[0], bytes[1], bytes[2])).to_array();
+            let linear = egui::Rgba::from(crate::theme::srgb(bytes.map(|c| f32::from(c) / 255.0))).to_array();
             for (channel, value) in rgb.iter_mut().zip(linear) {
                 *channel = f64::from(value);
             }
