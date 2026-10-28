@@ -36,8 +36,7 @@
     "render.light_type": "Type",
     "cmd.render_lights_duplicate": "Duplicate Render Light",
     "render.light_distance": "Distance",
-    "render.light_aim": "Aim at",
-    "cmd.render_lights_add": "Add Render Light"
+    "render.light_aim": "Aim at"
   },
   "de": {
     "cmd.render_lights_list": "Render-Lichter auflisten",
@@ -76,8 +75,7 @@
     "render.light_type": "Typ",
     "cmd.render_lights_duplicate": "Render-Licht duplizieren",
     "render.light_distance": "Abstand",
-    "render.light_aim": "Ausrichten auf",
-    "cmd.render_lights_add": "Render-Licht hinzufügen"
+    "render.light_aim": "Ausrichten auf"
   },
   "ja": {
     "cmd.render_lights_list": "レンダーライトの一覧",
@@ -116,8 +114,7 @@
     "render.light_type": "タイプ",
     "cmd.render_lights_duplicate": "レンダーライトを複製",
     "render.light_distance": "距離",
-    "render.light_aim": "照射先",
-    "cmd.render_lights_add": "レンダーライトを追加"
+    "render.light_aim": "照射先"
   },
   "ko": {
     "cmd.render_lights_list": "렌더 조명 목록",
@@ -156,8 +153,7 @@
     "render.light_type": "유형",
     "cmd.render_lights_duplicate": "렌더 조명 복제",
     "render.light_distance": "거리",
-    "render.light_aim": "조준 대상",
-    "cmd.render_lights_add": "렌더 조명 추가"
+    "render.light_aim": "조준 대상"
   },
   "zh": {
     "cmd.render_lights_list": "列出渲染灯光",
@@ -196,8 +192,7 @@
     "render.light_type": "类型",
     "cmd.render_lights_duplicate": "复制渲染灯光",
     "render.light_distance": "距离",
-    "render.light_aim": "瞄准",
-    "cmd.render_lights_add": "添加渲染灯光"
+    "render.light_aim": "瞄准"
   },
   "ar": {
     "cmd.render_lights_list": "سرد أضواء التصيير",
@@ -236,8 +231,7 @@
     "render.light_type": "النوع",
     "cmd.render_lights_duplicate": "تكرار ضوء التصيير",
     "render.light_distance": "المسافة",
-    "render.light_aim": "التصويب نحو",
-    "cmd.render_lights_add": "إضافة ضوء تصيير"
+    "render.light_aim": "التصويب نحو"
   },
   "he": {
     "cmd.render_lights_list": "הצג אורות רינדור",
@@ -276,8 +270,7 @@
     "render.light_type": "סוג",
     "cmd.render_lights_duplicate": "שכפל אור רינדור",
     "render.light_distance": "מרחק",
-    "render.light_aim": "כוון אל",
-    "cmd.render_lights_add": "הוסף אור רינדור"
+    "render.light_aim": "כוון אל"
   },
   "vi": {
     "cmd.render_lights_list": "Liệt kê đèn kết xuất",
@@ -316,7 +309,6 @@
     "render.light_type": "Loại",
     "cmd.render_lights_duplicate": "Nhân bản đèn kết xuất",
     "render.light_distance": "Khoảng cách",
-    "render.light_aim": "Nhắm vào",
-    "cmd.render_lights_add": "Thêm đèn kết xuất"
+    "render.light_aim": "Nhắm vào"
   }
 }
