@@ -229,6 +229,9 @@ pub(crate) fn sections(app: &mut SolveApp, ui: &mut egui::Ui) {
             if let Some(rect) = row.rect {
                 crate::scenario::publish_target(&format!("render:tree:light:{index}"), rect);
             }
+            if let Some(rect) = row.eye_rect.filter(|rect| rect.is_positive()) {
+                crate::scenario::publish_target(&format!("render:tree:light:{index}:mute"), rect);
+            }
             if row.eye {
                 if !visible && app.render_workspace.view.lights.visibility.solo.is_some() {
                     let _ = app.run("render.lights.solo", json!({"solo":false}));
