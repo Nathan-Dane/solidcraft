@@ -9,7 +9,7 @@ use std::sync::{Arc, Weak};
 use ui_kit::LookStep;
 
 #[derive(Clone, Debug, Default)]
-pub(super) struct View {
+pub(crate) struct View {
     selection: Vec<Sel>,
     mode: usize,
     pick_mode: usize,
@@ -25,7 +25,7 @@ pub(super) struct View {
 }
 
 #[derive(Clone, Debug, Default)]
-pub(super) struct Targets {
+pub(crate) struct Targets {
     items: Vec<Sel>,
     components: Vec<u64>,
 }
@@ -67,7 +67,7 @@ fn step_index(step: LookStep) -> usize {
         LookStep::Material => 3,
     }
 }
-pub(super) fn targets(app: &SolveApp, step: LookStep) -> Targets {
+pub(crate) fn targets(app: &SolveApp, step: LookStep) -> Targets {
     let mut targets = Targets::default();
     let state = app.session.world_state();
     for selection in &app.session.selection {
@@ -127,7 +127,7 @@ fn decode_look(value: &Value) -> Option<Look> {
         pbr: value.get("pbr").filter(|v| !v.is_null()).and_then(|p| serde_json::from_value(p.clone()).ok()),
     })
 }
-pub(super) fn chains(app: &mut SolveApp, targets: &Targets) -> Result<Vec<[Option<Look>; 4]>, String> {
+pub(crate) fn chains(app: &mut SolveApp, targets: &Targets) -> Result<Vec<[Option<Look>; 4]>, String> {
     targets
         .queries()
         .into_iter()
@@ -146,14 +146,14 @@ pub(super) fn chains(app: &mut SolveApp, targets: &Targets) -> Result<Vec<[Optio
 fn look_params(look: &Look) -> Value {
     json!({"name":look.name,"color":look.color,"opacity":look.opacity,"pbr":look.pbr})
 }
-pub(super) fn users(app: &SolveApp, look: &Look) -> usize {
+pub(crate) fn users(app: &SolveApp, look: &Look) -> usize {
     assigned_looks(app).filter(|l| *l == look).count()
 }
 fn assigned_looks(app: &SolveApp) -> impl Iterator<Item = &Look> {
     let appearances = &app.session.doc.appearances;
     appearances.bodies.values().chain(appearances.components.values()).chain(appearances.faces.iter().map(|f| &f.look))
 }
-pub(super) fn assign(app: &mut SolveApp, targets: &Targets, from: &Look, to: &Look, all_users: bool) -> Result<(), String> {
+pub(crate) fn assign(app: &mut SolveApp, targets: &Targets, from: &Look, to: &Look, all_users: bool) -> Result<(), String> {
     if all_users {
         app.run("appearance.replace", json!({"from":look_params(from),"to":look_params(to)}))?;
     } else if let Some(params) = targets.params(to) {
@@ -161,7 +161,7 @@ pub(super) fn assign(app: &mut SolveApp, targets: &Targets, from: &Look, to: &Lo
     }
     Ok(())
 }
-pub(super) fn clear(app: &mut SolveApp, targets: &Targets, look: &Look) -> Result<(), String> {
+pub(crate) fn clear(app: &mut SolveApp, targets: &Targets, look: &Look) -> Result<(), String> {
     if let Some(params) = targets.params(look) {
         app.run("appearance.assign", dialogs_appearance::without_look(params))?;
     }
@@ -169,7 +169,7 @@ pub(super) fn clear(app: &mut SolveApp, targets: &Targets, look: &Look) -> Resul
 }
 
 // The same validated response used by the existing material/appearance editors.
-pub(super) fn finish(look: &mut Look, index: usize) -> Result<(), String> {
+pub(crate) fn finish(look: &mut Look, index: usize) -> Result<(), String> {
     let (metallic, roughness) = match index {
         0 => (0.0, 0.85),
         1 => (0.0, 0.5),
@@ -195,10 +195,10 @@ fn finish_index(look: &Look) -> usize {
 fn sphere(look: &Look) -> ui_kit::Sphere {
     super::super::library::tile_sphere(&look_params(look))
 }
-pub(super) fn mixed<T: PartialEq>(looks: &[Look], value: impl Fn(&Look) -> T) -> bool {
+pub(crate) fn mixed<T: PartialEq>(looks: &[Look], value: impl Fn(&Look) -> T) -> bool {
     looks.first().is_some_and(|first| looks.iter().skip(1).any(|look| value(look) != value(first)))
 }
-pub(super) fn inspected_look(chain: &[Option<Look>; 4], step: Option<LookStep>) -> Option<&Look> {
+pub(crate) fn inspected_look(chain: &[Option<Look>; 4], step: Option<LookStep>) -> Option<&Look> {
     chain.iter().skip(step.map_or(0, step_index)).flatten().next()
 }
 fn source_step(chain: &[Option<Look>; 4], inspected: Option<LookStep>) -> Option<LookStep> {
@@ -214,7 +214,7 @@ fn ended(response: &egui::Response, ui: &egui::Ui) -> bool {
         || response.changed() && !response.has_focus() && !ui.input(|i| i.pointer.any_down()) && !ui.ctx().egui_wants_keyboard_input()
 }
 
-pub(super) fn scope_label(app: &SolveApp) -> &str {
+pub(crate) fn scope_label(app: &SolveApp) -> &str {
     app.tr(match app.session.selection.last() {
         Some(Sel::Occurrence { .. }) => "render.pick_component",
         Some(Sel::Face { .. }) => "render.pick_face",
@@ -222,7 +222,7 @@ pub(super) fn scope_label(app: &SolveApp) -> &str {
     })
 }
 
-pub(super) fn reset(app: &mut SolveApp) {
+pub(crate) fn reset(app: &mut SolveApp) {
     let view = &app.render_workspace.view.inspector.selection_appearance;
     if view.selection != app.session.selection || view.document.as_ref().is_none_or(|d| !Weak::ptr_eq(d, &Arc::downgrade(&app.session.doc))) {
         return;
@@ -247,7 +247,7 @@ pub(super) fn reset(app: &mut SolveApp) {
     }
 }
 
-pub(super) fn remove(app: &mut SolveApp) {
+pub(crate) fn remove(app: &mut SolveApp) {
     let view = &app.render_workspace.view.inspector.selection_appearance;
     let selected = targets(app, view.inspected.unwrap_or(mode_step(view.mode)));
     if let Some(look) = view.draft.clone() {
@@ -258,7 +258,7 @@ pub(super) fn remove(app: &mut SolveApp) {
     }
 }
 
-pub(super) fn footer(app: &mut SolveApp, ui: &mut egui::Ui) {
+pub(crate) fn footer(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
         let enabled = !app.session.selection.is_empty();
         if ui_kit::icon_label_action(ui, app.tr("render.inspector_save_library"), Some("plus"), enabled, false)
@@ -276,7 +276,7 @@ pub(super) fn footer(app: &mut SolveApp, ui: &mut egui::Ui) {
 }
 
 /// Returns false only when the explicit-target fallback should be shown.
-pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
+pub(crate) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
     if app.session.selection.is_empty() {
         app.render_workspace.view.inspector.selection_appearance = View::default();
         return false;
@@ -353,13 +353,16 @@ pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) -> bool {
         None
     };
     ui_kit::settings_form(ui, t.form_label_width + t.space_8, |ui| super::materials::selection_controls(app, ui, body));
-    // Resource forms keep their existing explicit prepare/review/apply flow until
-    // the Surfaces and references editor owns them. They never duplicate optics.
-    let resource_kinds = ["surfaces", "materials", "selene_appearances", "physical_profiles"];
-    if resource_kinds.iter().any(|kind| super::library::selected_kind(app, kind)) {
-        let title = app.tr("render.inspector_advanced").to_owned();
-        ui_kit::editor_section(ui, "render:appearance:resources", &title, true, |ui| super::library::inspect_kinds(app, ui, &resource_kinds));
-    }
+    let layers = super::super::scene::wear_subtitle(app);
+    let status = crate::i18n::format("render.dispatch.wear_status", &[("layers", &layers)]);
+    ui.horizontal_wrapped(|ui| {
+        ui_kit::text(ui, &status, ui_kit::Text::Inline);
+        let open = ui_kit::text_button(ui, app.tr("render.dispatch.open_wear"), true);
+        crate::scenario::publish_target("render:appearance:wear", open.rect);
+        if open.clicked() {
+            let _ = app.run("view.render_select", json!({"kind":"wear"}));
+        }
+    });
     app.render_workspace.view.inspector.selection_appearance = view;
     true
 }

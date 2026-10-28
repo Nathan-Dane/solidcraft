@@ -168,6 +168,7 @@ pub(crate) fn searchable_dropdown(
     custom: Option<&str>,
     pending: Option<&str>,
 ) -> Option<String> {
+    crate::prefs_search::note_current(ui, current);
     searchable_dropdown_with(ui, id, current, filter, options, SearchMenu { custom, pending, icon: None })
 }
 
@@ -186,7 +187,6 @@ fn searchable_dropdown_with(
     menu: SearchMenu<'_>,
 ) -> Option<String> {
     let SearchMenu { custom, pending, icon } = menu;
-    crate::prefs_search::note_current(ui, current);
     let mut chosen = None;
     let row = label(ui).to_owned();
     let combo = egui::ComboBox::from_id_salt(id)
@@ -435,6 +435,29 @@ pub(crate) fn value_pair(ui: &mut Ui, label: &str, values: [&mut String; 2], axe
     })
 }
 
+/// Paired bounded numeric fields in the shared value-pair row geometry.
+pub(crate) fn number_pair<T: egui::emath::Numeric>(
+    ui: &mut Ui,
+    label: &str,
+    values: [&mut T; 2],
+    range: std::ops::RangeInclusive<T>,
+    speed: f64,
+    suffix: &str,
+) -> [Response; 2] {
+    let t = Tokens::get();
+    super::row(ui, label, |ui| {
+        let width = ((dimension(ui.available_width()) - t.space_8) / 2.0).max(0.0);
+        ui.spacing_mut().item_spacing.x = t.space_8;
+        values.map(|value| {
+            ui.allocate_ui_with_layout(vec2(width, row_height()), egui::Layout::left_to_right(egui::Align::Center), |ui| {
+                ui.set_clip_rect(ui.clip_rect().intersect(ui.max_rect()));
+                number_field(ui, value, range.clone(), speed, suffix)
+            })
+            .inner
+        })
+    })
+}
+
 /// Variable-radius location editor. Tokens: scope's control and typography tokens.
 /// Retains the established 0.01 step, fractional range and locale parser.
 /// Locale-aware variable-radius position editor. Tokens: `scope control/font tokens`.
@@ -538,6 +561,16 @@ pub(crate) struct Slider {
     pub show_value: bool,
     pub integer: bool,
     pub workspace_accent: bool,
+}
+
+/// Bounded read-only code box for diagnostic payloads. Native selection and copying
+/// remain available; the caller's source cannot be edited. Uses shared form styling.
+pub(crate) fn read_only_text(ui: &mut Ui, text: &str) -> Response {
+    let mut source = text;
+    egui::ScrollArea::vertical()
+        .max_height(160.0)
+        .show(ui, |ui| ui.add(egui::TextEdit::multiline(&mut source).code_editor().desired_width(ui.available_width()).desired_rows(8)))
+        .inner
 }
 
 impl Default for Slider {
@@ -788,6 +821,34 @@ pub(crate) fn vector3_field(ui: &mut Ui, values: &mut [f64; 3], range: std::ops:
         }
     });
     changed
+}
+
+/// Equal-width numeric cells within a shared `row`. Returns each field's response in order.
+/// Tokens: `control_height`, inherited item spacing and number-field tokens.
+pub(crate) fn number_fields<T: egui::emath::Numeric>(
+    ui: &mut Ui,
+    values: &mut [T],
+    range: std::ops::RangeInclusive<T>,
+    speed: f64,
+    suffix: &str,
+) -> Vec<Response> {
+    let gap = ui.spacing().item_spacing.x;
+    let width = dimension(ui.available_width() - gap * values.len().saturating_sub(1) as f32) / values.len().max(1) as f32;
+    values
+        .iter_mut()
+        .enumerate()
+        .map(|(index, value)| {
+            ui.push_id(index, |ui| {
+                ui.allocate_ui_with_layout(vec2(width, row_height()), egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
+                    ui.spacing_mut().text_edit_width = width;
+                    ui.spacing_mut().interact_size.x = width;
+                    number_field(ui, value, range.clone(), speed, suffix)
+                })
+                .inner
+            })
+            .inner
+        })
+        .collect()
 }
 
 /// Growing plain-text message editor; its parent owns scrolling and Enter routing.

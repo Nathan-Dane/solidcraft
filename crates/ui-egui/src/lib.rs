@@ -983,19 +983,38 @@ impl SolveApp {
             solidcraft_engine::slicers::set_chosen_programs(&self.preferences.custom_slicers);
         }
         let t0 = now_ms();
+        if matches!(id, "render.lights.solo" | "render.lights.mute") {
+            render_workspace::light::validate_visibility(self, &params)?;
+        }
+        let params = if matches!(id, "render.start" | "render.preflight") { render_workspace::light::filter_request(self, params)? } else { params };
         let selected_before = self.session.selection.clone();
-        let r = self.session.execute(id, &params).map_err(|e| e.to_string());
+        let revision = self.session.revision;
+        let r = self.session.execute(id, &params).map_err(|e| e.to_string()).and_then(|reply| {
+            render_workspace::apply_command(self, id, &reply)?;
+            Ok(reply)
+        });
         self.big_operation |= now_ms() - t0 >= recovery_ui::BIG_OPERATION_MS;
+        // An Undo offered by the last toast is stale once another command changed the design.
+        if self.status_undo && revision != self.session.revision {
+            self.status_undo = false;
+            self.status = None;
+        }
         let done = self.command_completed(id, r);
+        // Semantic Browser focus survives the command clearing the previous CAD picks.
         if done.is_ok()
             && id != "view.render_select"
             && (self.session.selection != selected_before || matches!(id, "select.set" | "select.clear" | "select.same_look"))
         {
-            self.render_workspace.view.selection = if self.session.selection.is_empty() {
-                render_workspace::RenderSelection::Nothing
-            } else {
-                render_workspace::RenderSelection::Object(self.session.selection.clone())
-            };
+            let selection = render_workspace::object_selection(self);
+            render_workspace::select(self, selection);
+        }
+        if let Ok(v) = &done {
+            if matches!(id, "render.lights.solo" | "render.lights.mute") {
+                render_workspace::light::apply_visibility(self, id, v);
+            }
+            if matches!(id, "render.lights.set" | "render.lights.add" | "render.lights.duplicate" | "render.lights.remove") {
+                render_workspace::light::edited(self, &params, v);
+            }
         }
         done
     }
@@ -1035,16 +1054,27 @@ impl SolveApp {
             if id == "view.render_browser" {
                 render_workspace::apply_browser_controls(self, v);
             }
+            if id == "view.render_frame" {
+                render_workspace::shot::apply_frame(self, v);
+            }
+            if id == "appearance.favorite" {
+                render_workspace::assign::favorite_applied(self, v);
+            }
             if id == "view.render_select" {
                 use render_workspace::RenderSelection;
                 let selected = match v.get("kind").and_then(Value::as_str) {
                     Some("environment") => RenderSelection::Environment,
+                    Some("lighting") => RenderSelection::Lighting,
+                    Some("wear") => RenderSelection::Wear,
                     Some("output") => RenderSelection::Output,
+                    Some("sampling") => RenderSelection::Sampling,
+                    Some("effects") => RenderSelection::Effects,
+                    Some("check") => RenderSelection::Check,
                     Some("light") => RenderSelection::Light(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
                     Some("shot") => RenderSelection::Shot(v.get("id").and_then(Value::as_str).unwrap_or_default().into()),
                     _ => RenderSelection::Nothing,
                 };
-                self.render_workspace.view.selection = selected;
+                render_workspace::select(self, selected);
             }
             if id == "view.layout" {
                 let layout =
@@ -1126,6 +1156,12 @@ impl SolveApp {
             sketch_palette::apply_mode(self, id, v);
         }
         self.finish_command(id, &r);
+        if render_workspace::active(self)
+            && matches!(id, "appearance.assign" | "appearance.paste")
+            && let Ok(value) = &r
+        {
+            render_workspace::assign::assigned(self, value);
+        }
         r
     }
 
@@ -2289,7 +2325,10 @@ impl SolveApp {
                 (i.pointer.middle_down() || i.pointer.secondary_down())
                     && i.pointer.press_origin().is_some_and(|p| full.contains(p) && !shell::covered(self, p))
             });
-            let blocked = !continuing_navigation && ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| shell::covered(self, p));
+            // A captured comparison divider also keeps its primary drag across floating cards.
+            let continuing_comparison = render_workspace::comparison_drag_captured(self) && ui.input(|i| i.pointer.primary_down());
+            let blocked =
+                !continuing_navigation && !continuing_comparison && ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| shell::covered(self, p));
             let mut viewport_ui = ui.new_child(egui::UiBuilder::new().max_rect(full).id_salt("floating_viewport"));
             if blocked {
                 // Disabled only to shield the scene from input under a card or menu; it must

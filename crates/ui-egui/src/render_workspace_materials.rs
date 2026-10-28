@@ -18,7 +18,9 @@ use solidcraft_engine::{
     },
 };
 
-use crate::{SolveApp, theme::Tokens, ui_kit};
+#[cfg(test)]
+use crate::theme::Tokens;
+use crate::{SolveApp, ui_kit};
 
 const MAX_BINDINGS: usize = 128;
 
@@ -164,7 +166,9 @@ pub(super) struct View {
     pub enabled: bool,
     pub bindings: Vec<Binding>,
     targets: Vec<Target>,
+    #[cfg(test)]
     target: Option<usize>,
+    #[cfg(test)]
     target_search: String,
     selected: Option<usize>,
     target_revision: Option<u64>,
@@ -315,6 +319,7 @@ fn vector(app: &SolveApp, ui: &mut egui::Ui, key: &str, values: &mut [f64; 3], r
     ui_kit::row(ui, app.tr(key), |ui| ui_kit::vector3_field(ui, values, range, suffix))
 }
 
+#[cfg(test)]
 pub(super) fn controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.material_title").to_string();
     ui_kit::section(ui, "render_materials", &title, false, |ui| {
@@ -878,8 +883,6 @@ fn reflection_section(app: &mut SolveApp, ui: &mut egui::Ui, body: Option<&str>)
         {
             app.set_status(error, true);
         }
-        let title = app.tr("render.appearance_editor.reflection_sampling").to_owned();
-        ui_kit::editor_section(ui, "render:appearance:reflection-sampling", &title, false, |ui| super::cpu::reflection_sampling_controls(app, ui));
     });
 }
 

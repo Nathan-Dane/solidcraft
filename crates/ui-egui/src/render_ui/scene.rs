@@ -8,7 +8,7 @@ use crate::{
     ui_kit,
 };
 use egui::Color32;
-use serde_json::json;
+use serde_json::{Value, json};
 use solidcraft_engine::{
     Sel,
     doc::{ModelBody, appearance::Look},
@@ -70,12 +70,12 @@ fn section(app: &mut SolveApp, ui: &mut egui::Ui, key: &str) -> bool {
     let open = browser::is_open(app, &id, true);
     let label = app.tr(&format!("render.tree_{key}")).to_string();
     let add_label = app.tr(if key == "lights" { "render.tree_add_light" } else { "render.tree_add_shot" }).to_string();
-    let pending = app.tr("render.tree_lights_pending").to_string();
+    let pending = app.tr("render.light_backend_limit").to_string();
     let actions = [ui_kit::TreeAction {
         icon: "plus",
         hover_only: false,
         label: &add_label,
-        reason: (key == "lights").then_some(pending.as_str()),
+        reason: (key == "lights" && app.render_workspace.view.method == ImageMethod::Raster).then_some(pending.as_str()),
         target: if key == "lights" { "render:tree:lights:add" } else { "render:tree:shots:add" },
     }];
     let row = browser::draw_row(
@@ -96,6 +96,7 @@ fn section(app: &mut SolveApp, ui: &mut egui::Ui, key: &str) -> bool {
             }
             .to_string(),
             fold: Some(open),
+            selected: key == "lights" && app.render_workspace.view.selection == RenderSelection::Lighting,
             actions: if matches!(key, "lights" | "shots") { &actions } else { &[] },
             ..Default::default()
         },
@@ -105,9 +106,18 @@ fn section(app: &mut SolveApp, ui: &mut egui::Ui, key: &str) -> bool {
     }
     if row.actions.iter().any(|r| r.clicked()) {
         // The existing Shots manager owns naming and saving. This navigation never saves.
-        app.start("render.settings.get");
+        if key == "lights" {
+            if let Err(error) = super::light::edit(app, "render.lights.add", None, Some(json!({"kind":"area"}))) {
+                app.set_status(error, true);
+            }
+        } else {
+            app.start("render.settings.get");
+        }
     }
-    if row.fold || row.clicked {
+    if row.clicked && key == "lights" {
+        select(app, "lighting", None);
+    }
+    if row.fold || (row.clicked && key != "lights") {
         browser::toggle(app, &id, true);
     }
     open
@@ -119,28 +129,18 @@ fn select(app: &mut SolveApp, kind: &str, id: Option<&str>) {
 }
 
 pub(crate) fn light_types(app: &SolveApp) -> Vec<&'static str> {
-    let view = &app.render_workspace.view;
-    let mut lights = Vec::new();
-    match view.method {
-        ImageMethod::Raster => {}
-        ImageMethod::CpuRaytrace => {
-            lights.extend(view.raytrace.lights.iter().flatten().map(|_| "render.tree_directional"));
-            lights.extend(
-                view.raytrace.punctual_lights.iter().flatten().map(|l| if l.cone.is_some() { "render.tree_spot" } else { "render.tree_point" }),
-            );
-            lights.extend(view.raytrace.area_lights.iter().flatten().map(|_| "render.tree_rectangle"));
-        }
-        ImageMethod::GpuRaytrace if view.studio.lighting_enabled => {
-            if view.studio.sun_enabled {
-                lights.push("render.tree_sun");
-            }
-            lights.extend(view.studio.area_lights.iter().map(|_| "render.tree_rectangle"));
-        }
-        ImageMethod::GpuRaytrace => {}
-    }
-    lights
+    super::light::rows(app)
+        .unwrap_or_default()
+        .iter()
+        .map(|light| match light.geometry {
+            solidcraft_engine::schema::render_lights::Geometry::Directional { angular_radius_rad: Some(_), .. } => "render.tree_sun",
+            solidcraft_engine::schema::render_lights::Geometry::Directional { .. } => "render.tree_directional",
+            solidcraft_engine::schema::render_lights::Geometry::Point { .. } => "render.tree_point",
+            solidcraft_engine::schema::render_lights::Geometry::Spot { .. } => "render.tree_spot",
+            solidcraft_engine::schema::render_lights::Geometry::Area { .. } => "render.tree_rectangle",
+        })
+        .collect()
 }
-
 pub(crate) fn environment(app: &SolveApp) -> (String, String) {
     let view = &app.render_workspace.view;
     let fixed = || (app.tr("render.tree_fixed_studio").to_string(), view.draft.environment_rotation, view.draft.environment_intensity);
@@ -200,41 +200,26 @@ pub(crate) fn sections(app: &mut SolveApp, ui: &mut egui::Ui) {
     }
     if row.clicked {
         select(app, "environment", None);
-        app.render_workspace.view.inspector.page = inspector::Page::Environment;
     }
     if section(app, ui, "lights") {
-        for (index, key) in light_types(app).iter().enumerate() {
-            let label = app.tr(key).to_string();
-            let id = format!("{}:{key}:{index}", app.render_workspace.view.method.label());
+        for (index, light) in super::light::rows(app).unwrap_or_default().iter().enumerate() {
+            let label = super::light::name(app, light);
+            let id = &light.id;
+            let visible = app.render_workspace.view.lights.visibility.visible(id);
+            let solo = app.render_workspace.view.lights.visibility.solo.as_deref() == Some(id);
             let solo_target = format!("render:tree:light:{index}:solo");
-            let mute_target = format!("render:tree:light:{index}:mute");
-            let eye_target = format!("render:tree:light:{index}:visibility");
-            let pending = app.tr("render.tree_lights_pending");
-            let actions = [
-                ui_kit::TreeAction {
-                    icon: "lookat",
-                    hover_only: true,
-                    label: app.tr("render.tree_solo"),
-                    reason: Some(pending),
-                    target: &solo_target,
-                },
-                ui_kit::TreeAction {
-                    icon: "suppress",
-                    hover_only: true,
-                    label: app.tr("render.tree_mute"),
-                    reason: Some(pending),
-                    target: &mute_target,
-                },
-                ui_kit::TreeAction { icon: "eye", hover_only: false, label: app.tr("ui.hide"), reason: Some(pending), target: &eye_target },
-            ];
+            let solo_label = app.tr("render.tree_solo").to_string();
+            let actions = [ui_kit::TreeAction { icon: "lookat", hover_only: true, label: &solo_label, reason: None, target: &solo_target }];
             let row = browser::draw_row(
                 ui,
-                ui.id().with(("render_light", &id)),
+                ui.id().with(("render_light", id)),
                 &Row {
                     depth: 1,
                     label: &label,
                     name: true,
                     icon: "render_scene",
+                    eye: Some(visible),
+                    dim: !visible,
                     actions: &actions,
                     selected: app.render_workspace.view.selection == RenderSelection::Light(id.clone()),
                     ..Default::default()
@@ -243,9 +228,17 @@ pub(crate) fn sections(app: &mut SolveApp, ui: &mut egui::Ui) {
             if let Some(rect) = row.rect {
                 crate::scenario::publish_target(&format!("render:tree:light:{index}"), rect);
             }
+            if row.eye {
+                if !visible && app.render_workspace.view.lights.visibility.solo.is_some() {
+                    let _ = app.run("render.lights.solo", json!({"solo":false}));
+                }
+                let _ = app.run("render.lights.mute", json!({"id":id,"mute":visible}));
+            }
+            if row.actions.iter().any(|response| response.clicked()) {
+                let _ = app.run("render.lights.solo", json!({"id":id,"solo":!solo}));
+            }
             if row.clicked {
-                select(app, "light", Some(&id));
-                app.render_workspace.view.inspector.page = inspector::Page::Lighting;
+                select(app, "light", Some(id));
             }
         }
     }
@@ -320,6 +313,31 @@ pub(crate) fn output(app: &mut SolveApp, ui: &mut egui::Ui) {
     if row.clicked {
         select(app, "output", None);
     }
+    for (kind, key, selection) in [
+        ("sampling", "render.children.sampling", RenderSelection::Sampling),
+        ("effects", "render.output_effects", RenderSelection::Effects),
+        ("check", "render.children.check", RenderSelection::Check),
+    ] {
+        let subtitle = crate::render_workspace::output_child_summary(app, kind);
+        let row = browser::draw_row(
+            ui,
+            ui.id().with(("render_output_child", kind)),
+            &Row {
+                depth: 1,
+                label: app.tr(key),
+                name: true,
+                subtitle: &subtitle,
+                selected: app.render_workspace.view.selection == selection,
+                ..Default::default()
+            },
+        );
+        if let Some(rect) = row.rect {
+            crate::scenario::publish_target(&format!("render:tree:output:{kind}"), rect);
+        }
+        if row.clicked {
+            select(app, kind, None);
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -343,6 +361,38 @@ pub(crate) fn groups(app: &SolveApp) -> Vec<LookGroup> {
     groups
 }
 
+pub(crate) fn wear_subtitle(app: &SolveApp) -> String {
+    let count = app.render_workspace.view.studio.aging.len();
+    if count == 0 {
+        app.tr("render.wear_no_layers").into()
+    } else {
+        crate::i18n::format(if count == 1 { "render.wear_layer_one" } else { "render.wear_layer_count" }, &[("count", &count.to_string())])
+    }
+}
+
+fn wear(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let subtitle = wear_subtitle(app);
+    let row = browser::draw_row(
+        ui,
+        ui.id().with("render_wear"),
+        &Row {
+            depth: 1,
+            label: app.tr("render.wear_title"),
+            name: true,
+            icon: "appearance",
+            subtitle: &subtitle,
+            selected: app.render_workspace.view.selection == RenderSelection::Wear,
+            ..Default::default()
+        },
+    );
+    if let Some(rect) = row.rect {
+        crate::scenario::publish_target("render:tree:wear", rect);
+    }
+    if row.clicked {
+        select(app, "wear", None);
+    }
+}
+
 /// Returns true when the object section is closed or the By look lens drew its objects.
 pub(crate) fn objects(app: &mut SolveApp, ui: &mut egui::Ui, hover_bodies: &mut Vec<String>, hovered: &mut bool) -> bool {
     if app.tree.reveal.is_some() {
@@ -351,6 +401,7 @@ pub(crate) fn objects(app: &mut SolveApp, ui: &mut egui::Ui, hover_bodies: &mut 
     if !section(app, ui, "objects") {
         return true;
     }
+    wear(app, ui);
     if !app.render_workspace.view.by_look {
         return false;
     }
@@ -469,4 +520,110 @@ pub(crate) fn objects(app: &mut SolveApp, ui: &mut egui::Ui, hover_bodies: &mut 
 pub(crate) fn matches_query(app: &SolveApp, name: &str, look: &str) -> bool {
     let query = app.render_workspace.view.object_query.trim().to_lowercase();
     !app.render_workspace.view.search_objects || query.is_empty() || name.to_lowercase().contains(&query) || look.to_lowercase().contains(&query)
+}
+
+pub(crate) fn overview(app: &mut SolveApp, ui: &mut egui::Ui) {
+    let title = app.tr("render.scene_stages").to_string();
+    ui_kit::section(ui, "render_scene_stages", &title, true, |ui| {
+        let view = &app.render_workspace.view;
+        let overrides = app.session.doc.render.setups.get(&view.name).map_or(0, |s| s.optics.len().saturating_add(s.surfaces.len()));
+        let looks = groups(app).iter().filter(|g| g.look.is_some()).count();
+        let look = crate::i18n::format("render.scene_look_summary", &[("looks", &looks.to_string()), ("overrides", &overrides.to_string())]);
+        let light = crate::i18n::format(
+            "render.scene_light_summary",
+            &[("environment", &environment(app).0), ("lights", &light_types(app).len().to_string())],
+        );
+        let lens = if app.cam.fov > 0.0 { format!("{:.0}°", app.cam.fov.to_degrees()) } else { app.tr("render.stage_orthographic").to_string() };
+        let aspect = super::shot::aspect_label(app, &view.draft);
+        let frame = format!("{} · {lens} · {aspect}", view.name);
+        let format = if view.studio.export_exr { "EXR" } else { "PNG" };
+        let output = format!("{} × {} · {format} · {}", view.draft.width, view.draft.height, app.tr(view.method.label()));
+        for (stage, summary, icon) in [
+            (super::Stage::Look, look, "appearance"),
+            (super::Stage::Light, light, "environment_map"),
+            (super::Stage::Frame, frame, "camera"),
+            (super::Stage::Output, output, "export"),
+        ] {
+            let response = ui_kit::tree_row(
+                ui,
+                ui.id().with(("scene_stage", stage.key())),
+                &ui_kit::Row { compact: true, label: app.tr(stage.label()), secondary: &summary, icon, ..Default::default() },
+            );
+            if let Some(rect) = response.rect {
+                crate::scenario::publish_target(&format!("render:scene:{}", stage.key()), rect);
+            }
+            if response.clicked {
+                scene_stage(app, stage);
+            }
+        }
+    });
+    let title = app.tr("render.scene_ready").to_string();
+    ui_kit::section(ui, "render_scene_ready", &title, true, |ui| {
+        let state = match &app.render_workspace.view.inspector.checked {
+            Some(check) if check.current(app) && super::image_params(app).as_ref().ok() == Some(&check.request) => crate::i18n::format(
+                "render.scene_check_passed",
+                &[("notes", &check.reply.get("warnings").and_then(Value::as_array).map_or(0, Vec::len).to_string())],
+            ),
+            Some(_) => app.tr("render.scene_check_stale").to_string(),
+            None => app.tr("render.scene_check_unchecked").to_string(),
+        };
+        ui.horizontal_wrapped(|ui| {
+            ui_kit::text(ui, &state, ui_kit::Text::Inline);
+            let response = ui_kit::button(ui, app.tr("render.scene_open_check"), ui_kit::Button::Normal);
+            crate::scenario::publish_target("render:scene:open-check", response.rect);
+            if response.clicked() {
+                app.start("render.status");
+            }
+        });
+        if app.render_workspace.view.method == ImageMethod::GpuRaytrace && !matches!(app.render_workspace.path_host, super::PathHost::Ready(_)) {
+            inspector::gpu_status(app, ui);
+        } else {
+            let state = super::ribbon::action_ready(app, "render.start");
+            let text = state.err().unwrap_or_else(|| {
+                crate::i18n::format("render.scene_renderer_ready", &[("renderer", app.tr(app.render_workspace.view.method.label()))])
+            });
+            ui_kit::text(ui, &text, ui_kit::Text::Note("render:scene:renderer"));
+        }
+        ui.horizontal_wrapped(|ui| {
+            for (id, label, command, primary) in
+                [("check", "render.scene_check_now", "render.preflight", false), ("render", "render.frame_render_shot", "render.start", true)]
+            {
+                let ready = super::ribbon::action_ready(app, command);
+                let response = ui_kit::icon_label_action(ui, app.tr(label), None, ready.is_ok(), primary);
+                crate::scenario::publish_target(&format!("render:scene:{id}"), response.rect);
+                if let Err(reason) = ready {
+                    response.clone().on_disabled_hover_text(reason);
+                }
+                if response.clicked()
+                    && let Err(error) = super::ribbon::perform_job(app, command)
+                {
+                    app.set_status(error, true);
+                }
+            }
+        });
+        let label = crate::i18n::format("render.scene_all_shots", &[("count", &app.session.doc.render.setups.len().to_string())]);
+        let ready = super::ribbon::action_ready(app, "render.batch");
+        let response = ui_kit::button(ui, &label, ui_kit::Button::Enabled(ready.is_ok()));
+        crate::scenario::publish_target("render:scene:all-shots", response.rect);
+        if let Err(reason) = ready {
+            response.clone().on_disabled_hover_text(reason);
+        }
+        if response.clicked() {
+            app.start("render.batch");
+        }
+    });
+    let title = app.tr("render.scene_reminders").to_string();
+    ui_kit::section(ui, "render_scene_reminders", &title, true, |ui| {
+        ui_kit::text(ui, app.tr("render.scene_reminder"), ui_kit::Text::Note("render.scene_preserves_design"));
+    });
+}
+fn scene_stage(app: &mut SolveApp, stage: super::Stage) {
+    let _ = app.run("view.render_stage", json!({"stage":stage.key()}));
+    let selection = match stage {
+        super::Stage::Look => super::object_selection(app),
+        super::Stage::Light => RenderSelection::Environment,
+        super::Stage::Frame => super::current_shot_selection(app),
+        super::Stage::Output => RenderSelection::Output,
+    };
+    super::select(app, selection);
 }

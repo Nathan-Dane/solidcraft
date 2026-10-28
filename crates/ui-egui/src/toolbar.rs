@@ -2223,9 +2223,21 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
         match k {
             Key::Escape => {
                 app.esc_handled = true;
+                if crate::render_workspace::result_active(app) {
+                    crate::keymap::press(app, "Escape", repeat);
+                    continue;
+                }
                 // End navigation before the underlying tool or dialog; sketch double-Escape
                 // handling starts with the next press.
                 if app.viewport.nav.take().is_some() {
+                    app.last_escape = None;
+                    continue;
+                }
+                if crate::render_workspace::assign::cancel(app) {
+                    app.last_escape = None;
+                    continue;
+                }
+                if crate::render_workspace::escape_inspector(app, ctx) {
                     app.last_escape = None;
                     continue;
                 }
