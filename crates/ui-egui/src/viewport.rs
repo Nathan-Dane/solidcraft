@@ -4899,7 +4899,7 @@ pub(crate) fn transient_messages(app: &mut SolveApp, ui: &egui::Ui, viewport: Re
         if shown_ms < STATUS_TOAST_MS {
             let undo = app.status_undo;
             let actions = if undo { vec![(crate::i18n::tr_label("Undo"), ToastKind::Secondary)] } else { Vec::new() };
-            if let Some((r, clicked)) = paint_toast_with(ui, free, msg, ToastLead::Dot(error), &actions) {
+            if let Some((r, clicked, _)) = paint_toast_with(ui, free, msg, ToastLead::Dot(error), &actions) {
                 if undo && clicked == Some(0) {
                     app.status = None;
                     app.status_undo = false;
