@@ -12,7 +12,8 @@ fn window_widths(h: &Harness) -> Vec<(egui::Id, f32)> {
         m.areas()
             .visible_layer_ids()
             .into_iter()
-            .filter(|l| l.order == egui::Order::Middle && l.id != egui::Id::new("sc_browser_card"))
+            // Workspace hosts are not command windows; the Shots strip intentionally spans the canvas.
+            .filter(|l| l.order == egui::Order::Middle && ![egui::Id::new("sc_browser_card"), egui::Id::new("sc_render_shots_strip")].contains(&l.id))
             .filter_map(|l| m.area_rect(l.id).map(|r| (l.id, r.width())))
             .collect()
     })
@@ -41,6 +42,20 @@ fn fresh() -> Harness {
     h.call("engine.execute", json!({"command": "solid.box", "params": {"length": 40, "width": 30, "height": 20}}));
     h.frames(3);
     h
+}
+
+#[test]
+fn render_strip_is_excluded_while_real_windows_are_still_measured() {
+    let mut h = fresh();
+    assert_eq!(h.call("ui.workspace", json!({"workspace":"render"}))["ok"], true);
+    h.app.help.about = true;
+    h.frames(6);
+    let strip = egui::Id::new("sc_render_shots_strip");
+    let width = h.ctx.memory(|m| m.area_rect(strip)).expect("visible Shots strip").width();
+    assert!(width > DIALOG_MAX_W, "the workspace strip should span the canvas: {width}");
+    let windows = window_widths(&h);
+    assert!(!windows.iter().any(|(id, _)| *id == strip));
+    assert!(windows.iter().any(|(id, _)| *id == egui::Id::new("sc_about")), "real About window is still measured: {windows:?}");
 }
 
 #[test]
