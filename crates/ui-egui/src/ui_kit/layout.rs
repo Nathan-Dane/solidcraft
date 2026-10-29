@@ -660,6 +660,7 @@ fn note_galley(ui: &Ui, text: &str) -> std::sync::Arc<egui::Galley> {
 }
 
 /// Reserve the actual wrapped note height when budgeting a bounded card's scroll area.
+#[cfg(test)]
 pub(crate) fn note_height(ui: &Ui, text: &str) -> f32 {
     note_galley(ui, text).size().y + Tokens::get().space_4 * 2.0
 }
