@@ -4865,11 +4865,11 @@ fn render_lights_browser_focus_covers_each_kind_without_design_edits() {
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Shot("Shot".into()));
     // The browser is height-capped even in a tall window. Output is its last row,
     // and published targets can lie below the scroll clip as more rows are added.
-    let browser = crate::scenario::rect_of("render:browser").unwrap();
+    let browser = crate::scenario::rect_of("browser:card").unwrap();
     let header = crate::scenario::rect_of("render:browser:header").unwrap();
     h.call("ui.scroll", json!({"x":browser.center().x,"y":(header.bottom()+browser.bottom())/2.0,"delta":-2000}));
     h.frames(20);
-    let browser = crate::scenario::rect_of("render:browser").unwrap();
+    let browser = crate::scenario::rect_of("browser:card").unwrap();
     let header = crate::scenario::rect_of("render:browser:header").unwrap();
     let output = crate::scenario::handle_at("render:tree:output").unwrap();
     assert!(
