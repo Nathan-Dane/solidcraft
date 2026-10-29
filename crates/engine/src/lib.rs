@@ -33,6 +33,7 @@ pub mod slicer_files;
 mod slicer_icon;
 pub mod slicers;
 pub mod snap;
+pub mod status_items;
 pub mod timing;
 pub mod view;
 
@@ -417,6 +418,8 @@ pub struct Session {
     /// The seams `inspect.continuity` last measured, for the viewport to shade. View state: not
     /// part of the design and not an undo step.
     pub continuity: Vec<ContinuitySeam>,
+    /// Transient activation order only; effect settings remain in their existing fields.
+    status_order: Vec<status_items::StatusId>,
     /// What is hidden or shown in the view (`browser.visibility`): saved with the design and an
     /// undo step of its own ([`Snapshot::visibility`]). A design brings its saved visibility when
     /// it opens (`Session::new`).
@@ -594,6 +597,7 @@ impl Session {
             colored_components: None,
             analysis: None,
             continuity: Vec::new(),
+            status_order: Vec::new(),
             checkpoints: Vec::new(),
             next_checkpoint: 1,
             replacements: 0,
@@ -1435,6 +1439,7 @@ impl Session {
             colored_components: None,
             analysis: None,
             continuity: Vec::new(),
+            status_order: Vec::new(),
             checkpoints: Vec::new(),
             next_checkpoint: 1,
             replacements: 0,

@@ -179,6 +179,22 @@ changed it meanwhile. Compare both values, and export when either differs from t
 answer. The same answer comes from `engine.execute` `document.revision` (and so from scripts and
 MCP `execute`), which waits its turn behind design changes like any command.
 
+`engine.execute` with `view.status_items` and `{}` reads the persistent viewport effects without
+evaluating the model or changing the design, undo history or view revision. It returns
+`{items: [...]}` in oldest activation order. Each item contains a stable slot `id`
+(`surface_analysis` or `section`), `kind`, source `command`, structured `setting`, `has_key`
+and a `clear: {command, params}` request that can be executed unchanged. Settings retain numbers:
+lengths use millimetres, Draft's `angle_deg` uses degrees, directions are normalised, and
+Continuity's `edge_count` counts the seams currently kept for shading. Labels and units are
+formatted by clients. `engine.describe {command: "view.status_items"}` exposes both schemas.
+
+Surface analyses, including Continuity, share one slot; successful replacement keeps that
+slot's position and ends the previous analysis. Section stacks independently. Clearing and
+re-enabling a slot makes it newest. Ordering metadata belongs only to the running session;
+effects and ordering are not saved in the design. Existing analysis clear semantics apply:
+any surface-shading command with `{clear: true}` clears the active surface shading, whereas
+Continuity clears its seam records. Section clear never clears an analysis.
+
 A client need not ask again and again: after `control.subscribe` on its connection, the app
 sends it a line whenever the active design changes (#6985):
 
