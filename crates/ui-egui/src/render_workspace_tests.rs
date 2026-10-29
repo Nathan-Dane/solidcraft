@@ -3976,7 +3976,7 @@ fn render_workspace_hosts_float_and_shield_input_in_both_ribbon_layouts() {
 }
 
 #[test]
-fn render_workspace_assignment_hint_fits_stacked_card_with_shots_shown_and_hidden() {
+fn render_workspace_assignment_footer_fits_stacked_card_with_shots_shown_and_hidden() {
     for layout in [crate::shell::LayoutMode::Floating, crate::shell::LayoutMode::Docked] {
         let mut h = Harness::new();
         h.app.ui.layout = layout;
@@ -3987,8 +3987,9 @@ fn render_workspace_assignment_hint_fits_stacked_card_with_shots_shown_and_hidde
             h.frames(4);
             let browser = h.app.shell.workspace_panels["render:browser"].0;
             let appearances = h.app.shell.workspace_panels["render:appearances"].0;
-            let hint = crate::scenario::rect_of("dialog:note:render.assign_help").unwrap();
-            assert!(appearances.contains_rect(hint), "{layout:?}, Shots {shown}: hint {hint:?} outside {appearances:?}");
+            // Assignment help is the shared footer's tooltip; its visible anchor stays in the card.
+            let footer = crate::scenario::rect_of("catalog:footer").unwrap();
+            assert!(appearances.contains_rect(footer), "{layout:?}, Shots {shown}: footer {footer:?} outside {appearances:?}");
             let gap = Tokens::get().space_8;
             assert!((appearances.top() - browser.bottom() - gap).abs() < 1.0);
             let bounds = crate::shell::panel_bounds(&h.app, h.app.viewport.rect.unwrap());
