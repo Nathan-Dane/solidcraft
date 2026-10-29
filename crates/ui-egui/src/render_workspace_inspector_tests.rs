@@ -192,8 +192,9 @@ fn render_workspace_shot_e7_order_disabled_reasons_output_link_and_confirm_remov
     h.step(&json!({"click":{"handle":"render:shot:remove"}})).unwrap();
     assert!(confirmation_open(&h.app));
     assert_eq!(h.app.session.doc.to_json(), before);
-    h.step(&json!({"widget":h.app.tr("render.keep_editing")})).unwrap();
+    h.step(&json!({"click":{"handle":"dialog:cancel"}})).unwrap();
     assert!(!confirmation_open(&h.app));
+    assert_eq!(h.app.session.doc.to_json(), before, "cancelling removal keeps the Shot");
     h.step(&json!({"click":{"handle":"render:shot:output"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.selection, super::super::RenderSelection::Output);
     assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
