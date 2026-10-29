@@ -1258,7 +1258,9 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
         assert!(crate::scenario::rect_of("render:job-footer").is_none());
         assert!(crate::scenario::rect_of("render:appearance:close").is_none());
         h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
-        // Select a body again to test recovery of the ordinary Appearance header.
+        // Clearing semantic focus opens Scene; choose Appearance to test its header recovery.
+        assert_eq!(h.app.render_workspace.view.inspector.page, Page::Scene);
+        h.app.render_workspace.view.inspector.page = Page::Appearance;
         h.app.session.selection = vec![solidcraft_engine::Sel::Body { name: "Subject".into() }];
         h.frames(3);
         assert_header(&h, "Subject");

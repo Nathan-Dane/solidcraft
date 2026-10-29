@@ -2102,6 +2102,8 @@ pub(crate) fn start_interactive(app: &mut SolveApp, id: &str) -> bool {
         && app.render_workspace.view.selection == RenderSelection::Wear
     {
         let _ = app.run("view.render_select", json!({"kind":"nothing"}));
+        // Clearing semantic focus routes to Scene; retain the explicit Advanced destination.
+        app.render_workspace.view.inspector.page = inspector::Page::Appearance;
     }
     handled
 }
