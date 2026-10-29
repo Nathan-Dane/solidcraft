@@ -1339,7 +1339,9 @@ fn check_report(app: &SolveApp) -> Option<String> {
     if let Some(check) = &app.render_workspace.view.inspector.checked {
         report.push_str(&format!("\n{}", check.reply));
     }
-    if let Some(quality) = &app.render_workspace.view.inspector.quality_review {
+    if let Some(review) = &app.render_workspace.view.library.review
+        && let library::review::Apply::Quality(quality) = &review.action
+    {
         report.push_str(&format!("\n{}: {quality}", app.tr("render.quality_review")));
     }
     // The clipboard command accepts at most 64 KiB; truncate on character boundaries.

@@ -1313,6 +1313,16 @@ fn output_sections_check_report_copies_success_staleness_and_errors_through_plat
     assert_eq!(lines[0].status, ui_kit::CheckStatus::Error);
     assert_eq!(lines[0].label, "host refused the request");
     assert!(check_report(&h.app).unwrap().contains("host refused the request"));
+
+    let quality = json!({"name":"Quality report regression", "gpu_options":{"samples":128}});
+    library::review::open(&mut h.app, "quality", "Quality".into(), quality.clone(), library::review::Apply::Quality(quality.clone())).unwrap();
+    let report = check_report(&h.app).unwrap();
+    assert!(report.contains(h.app.tr("render.quality_review")));
+    assert!(report.contains(&quality.to_string()));
+    h.app.run("render.preflight.copy", json!({"text":report})).unwrap();
+    assert_eq!(h.app.render_workspace.clipboard_text.as_deref(), Some(report.as_str()));
+    assert!(Arc::ptr_eq(&doc, &h.app.session.doc));
+    assert_eq!(state, (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len(), h.app.session.is_dirty()));
 }
 
 #[test]
