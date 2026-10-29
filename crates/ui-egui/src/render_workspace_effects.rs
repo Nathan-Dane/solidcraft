@@ -53,13 +53,6 @@ pub(super) fn failure(app: &mut SolveApp, result: Result<(), String>) {
         app.set_status(error, true);
     }
 }
-fn gpu(app: &SolveApp, ui: &mut egui::Ui) -> bool {
-    if app.render_workspace.view.method != ImageMethod::GpuRaytrace {
-        note(app, ui, "render.effects_gpu_only");
-        return false;
-    }
-    true
-}
 pub(super) fn layer_actions(app: &SolveApp, ui: &mut egui::Ui, prefix: &str, selected: usize, length: usize) -> (i32, bool) {
     let mut movement = 0;
     let mut remove = false;
