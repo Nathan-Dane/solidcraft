@@ -494,6 +494,7 @@ pub(super) fn environment_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui.small(app.tr("render.cpu_environment_background"));
 }
 
+#[cfg(test)]
 fn vector(ui: &mut egui::Ui, label: &str, value: &mut [f64; 3], range: std::ops::RangeInclusive<f64>, speed: f64, suffix: &str) {
     ui.label(label);
     ui.horizontal(|ui| {
