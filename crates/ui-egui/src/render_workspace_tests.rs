@@ -4863,6 +4863,19 @@ fn render_lights_browser_focus_covers_each_kind_without_design_edits() {
     h.frames(3);
     h.step(&json!({"click":{"handle":"render:tree:shot:Shot"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Shot("Shot".into()));
+    // The browser is height-capped even in a tall window. Output is its last row,
+    // and published targets can lie below the scroll clip as more rows are added.
+    let browser = crate::scenario::rect_of("render:browser").unwrap();
+    let header = crate::scenario::rect_of("render:browser:header").unwrap();
+    h.call("ui.scroll", json!({"x":browser.center().x,"y":(header.bottom()+browser.bottom())/2.0,"delta":-2000}));
+    h.frames(20);
+    let browser = crate::scenario::rect_of("render:browser").unwrap();
+    let header = crate::scenario::rect_of("render:browser:header").unwrap();
+    let output = crate::scenario::handle_at("render:tree:output").unwrap();
+    assert!(
+        browser.shrink(Tokens::get().space_8).contains(output) && output.y > header.bottom(),
+        "Output click must be inside the visible browser body"
+    );
     h.step(&json!({"click":{"handle":"render:tree:output"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.selection, RenderSelection::Output);
     h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
