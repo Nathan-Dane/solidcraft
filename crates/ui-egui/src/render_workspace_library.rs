@@ -1552,6 +1552,7 @@ pub(super) fn stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.passive_stage").to_string();
     ui_kit::section(ui, "render_passive_stage", &title, false, |ui| stage_content(app, ui));
 }
+#[cfg(test)]
 pub(super) fn stage_content(app: &mut SolveApp, ui: &mut egui::Ui) {
     ui_kit::text(ui, app.tr("render.passive_stage_help"), ui_kit::Text::Note("render.passive_stage_help"));
     let stage = &app.render_workspace.view.draft.stage;

@@ -100,9 +100,6 @@ pub(super) struct View {
     shot_name: String,
     pub checked: Option<Review>,
     scene_info: Option<Review>,
-    ground_margin: f64,
-    ground_gap: f64,
-    ground_color: [f64; 3],
     appearance: Appearance,
     selection_appearance: selection_appearance::View,
     pub(super) resolution: Resolution,
@@ -196,9 +193,6 @@ impl Default for View {
             shot_name: String::new(),
             checked: None,
             scene_info: None,
-            ground_margin: 1.0,
-            ground_gap: 0.1,
-            ground_color: [0.18; 3],
             appearance: Appearance::default(),
             selection_appearance: Default::default(),
             resolution: Resolution::default(),
@@ -615,48 +609,6 @@ fn scene_stage(app: &mut SolveApp, stage: super::Stage) {
     let _ = app.run("view.render_select", params);
     app.render_workspace.view.inspector.page = stage.page();
 }
-fn physical_stage_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
-    let title = app.tr("render.passive_stage").to_string();
-    reveal_section(app, ui, "render_ground_details");
-    ui_kit::section(ui, "render_ground_details", &title, false, |ui| {
-        ui.label(app.tr("render.ground_margin"));
-        ui_kit::number_field(ui, &mut app.render_workspace.view.inspector.ground_margin, 0.0..=10.0, 0.05, " x");
-        ui.label(app.tr("render.ground_gap"));
-        ui_kit::number_field(ui, &mut app.render_workspace.view.inspector.ground_gap, 0.0001..=1000.0, 0.01, " mm");
-        let label = app.tr("render.ground_linear_rgb").to_string();
-        vector(ui, &label, &mut app.render_workspace.view.inspector.ground_color, 0.0..=1.0, 0.01);
-        let saved = setups::snapshot(app);
-        if ui_kit::button(
-            ui,
-            app.tr("render.ground_apply"),
-            ui_kit::Button::Enabled(saved.is_ok() && app.render_workspace.view.method != ImageMethod::Raster),
-        )
-        .clicked()
-            && let Ok(set) = saved
-        {
-            let v = &app.render_workspace.view.inspector;
-            let request = json!({"name":app.render_workspace.view.name,"set":set,"margin_fraction":v.ground_margin,"gap_mm":v.ground_gap,"reflectance_linear":v.ground_color,"replace_stage":true});
-            library::review::command(app, "render.stage.ground", request);
-        }
-        ui_kit::text(ui, app.tr("render.physical_background_help"), ui_kit::Text::Note("render.physical_background_help"));
-        for (kind, key) in [("floor_wall", "render.physical_floor_wall"), ("cyclorama", "render.physical_cyclorama")] {
-            let set = setups::snapshot(app);
-            let button =
-                ui_kit::button(ui, app.tr(key), ui_kit::Button::Enabled(set.is_ok() && app.render_workspace.view.method != ImageMethod::Raster));
-            crate::scenario::publish_target(&format!("render:stage-{kind}"), button.rect);
-            if button.clicked()
-                && let Ok(set) = set
-            {
-                let v = &app.render_workspace.view.inspector;
-                let p = json!({"name":app.render_workspace.view.name,"set":set,"kind":kind,"expected_revision":app.session.revision,
-                    "replace_stage":true,"reflectance_linear":v.ground_color});
-                library::review::command(app, "render.stage.backdrop", p);
-            }
-        }
-        library::stage_content(app, ui);
-    });
-}
-
 #[cfg(test)]
 fn shot_controls(app: &mut SolveApp, ui: &mut egui::Ui) {
     let title = app.tr("render.shot_manager").to_string();
