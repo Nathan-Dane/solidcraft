@@ -158,7 +158,7 @@ fn render_workspace_scene_overview_selection_order_links_and_readiness_are_read_
     h.frames(2);
     h.step(&json!({"click":{"handle":"render:scene:open-check"}})).unwrap();
     assert_eq!(h.app.render_workspace.view.inspector.page, Page::Output);
-    assert!(crate::scenario::rect_of("render:check:ready").is_some());
+    assert!(crate::scenario::rect_of("render:check").is_some());
     assert_eq!(h.app.session.doc.to_json(), before);
     assert_eq!(h.app.session.undo.len(), undo);
     assert!(h.app.render_workspace.view.job.is_none());
