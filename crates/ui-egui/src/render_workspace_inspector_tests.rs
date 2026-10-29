@@ -891,19 +891,34 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
         let header = crate::scenario::rect_of("render:inspector:header").unwrap();
         assert!(inspector.contains_rect(header));
         let tree = h.output.accesskit_update.as_ref().unwrap();
+        let context = format!(
+            "layout={:?}, page={:?}, title={title:?}, header={header:?}, pixels_per_point={}",
+            h.app.ui.layout,
+            h.app.render_workspace.view.inspector.page,
+            h.ctx.pixels_per_point(),
+        );
+        // egui stores Role::Label text in value(), not label(). Each pass supplies the
+        // title node; its bounds are UI points (the root carries the pixel-scale transform).
+        let titles: Vec<_> =
+            tree.nodes.iter().filter(|(_, node)| node.role() == egui::accesskit::Role::Label && node.value() == Some(title)).collect();
+        assert!(!titles.is_empty(), "missing inspector title: {context}");
+        let bounds: Vec<_> = titles.iter().map(|(id, node)| (id, node.bounds())).collect();
+        eprintln!(
+            "header diagnostic: {context}, bounds={bounds:?}, label_matches={}",
+            tree.nodes.iter().filter(|(_, node)| node.label() == Some(title)).count()
+        );
         assert!(
-            tree.nodes.iter().any(|(_, node)| {
-                node.label() == Some(title)
-                    && node.bounds().is_some_and(|bounds| {
-                        bounds.x1 > bounds.x0
-                            && bounds.y1 > bounds.y0
-                            && header.contains_rect(egui::Rect::from_min_max(
-                                egui::pos2(bounds.x0 as f32, bounds.y0 as f32),
-                                egui::pos2(bounds.x1 as f32, bounds.y1 as f32),
-                            ))
-                    })
+            titles.iter().any(|(_, node)| {
+                node.bounds().is_some_and(|bounds| {
+                    bounds.x1 > bounds.x0
+                        && bounds.y1 > bounds.y0
+                        && header.contains_rect(egui::Rect::from_min_max(
+                            egui::pos2(bounds.x0 as f32, bounds.y0 as f32),
+                            egui::pos2(bounds.x1 as f32, bounds.y1 as f32),
+                        ))
+                })
             }),
-            "{title} outside inspector header"
+            "inspector title has missing, empty or out-of-header bounds: {context}, bounds={bounds:?}"
         );
     }
     for layout in [crate::shell::LayoutMode::Docked, crate::shell::LayoutMode::Floating] {
