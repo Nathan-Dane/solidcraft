@@ -176,6 +176,12 @@ fn requested_menu_icons_have_artwork_and_match_manifest() {
     h.app.session.run_script(&solidcraft_engine::sample::script()).unwrap();
     h.frames(3);
     let mut requested = BTreeMap::new();
+    for preset in ["kinds", "key"] {
+        h.call("ui.status_fixture", json!({"preset":preset}));
+        h.frames(3);
+        collect(&mut h, "viewport status specimens", &mut requested);
+    }
+    h.call("ui.status_fixture", json!({"preset":"off"}));
     collect(&mut h, "initial browser and timeline", &mut requested);
     assistant(&mut h, &mut requested);
 

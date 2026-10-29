@@ -1,5 +1,12 @@
 # SolidCraft UI kit
 
+`viewport_status_item` and `viewport_status_row` draw persistent viewport pills on
+`Surface::ViewportStatus`. Callers supply translated names, formatted settings,
+kind, stable identity and key availability, and dispatch returned clear/edit actions.
+The row keeps supplied order and anchors to the top centre of the free viewport.
+Its presentation state only remembers which key card is open. The `ui.status_fixture`
+control method provides named specimens for UI scenarios and live visual review.
+
 `crates/ui-egui/src/ui_kit/` contains the tokenised controls used by feature dialogs,
 preferences, manager cards, prompts, context menus and the sketch palette. Import through
 `crate::ui_kit::{...}`. Most controls are crate-visible; the container API is public so platform apps use the same hosts.

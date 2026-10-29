@@ -1,0 +1,66 @@
+{
+  "en": {
+    "ui.viewport_status_clear": "Turn off {name}",
+    "ui.viewport_status_clear_hint": "Turn off {name} · Esc",
+    "ui.viewport_status_key": "Show key for {name}",
+    "ui.viewport_status_minimum_radius": "Minimum radius",
+    "ui.viewport_status_stripes": "{count} stripes",
+    "ui.viewport_status_pairs": "{count} pairs"
+  },
+  "ar": {
+    "ui.viewport_status_clear": "إيقاف {name}",
+    "ui.viewport_status_clear_hint": "إيقاف {name} · Esc",
+    "ui.viewport_status_key": "إظهار مفتاح الألوان لـ {name}",
+    "ui.viewport_status_minimum_radius": "أقل نصف قطر",
+    "ui.viewport_status_stripes": "{count} شريطًا",
+    "ui.viewport_status_pairs": "{count} أزواج"
+  },
+  "de": {
+    "ui.viewport_status_clear": "{name} ausschalten",
+    "ui.viewport_status_clear_hint": "{name} ausschalten · Esc",
+    "ui.viewport_status_key": "Legende für {name} anzeigen",
+    "ui.viewport_status_minimum_radius": "Mindestradius",
+    "ui.viewport_status_stripes": "{count} Streifen",
+    "ui.viewport_status_pairs": "{count} Paare"
+  },
+  "he": {
+    "ui.viewport_status_clear": "כיבוי {name}",
+    "ui.viewport_status_clear_hint": "כיבוי {name} · Esc",
+    "ui.viewport_status_key": "הצגת מקרא עבור {name}",
+    "ui.viewport_status_minimum_radius": "רדיוס מינימלי",
+    "ui.viewport_status_stripes": "{count} פסים",
+    "ui.viewport_status_pairs": "{count} זוגות"
+  },
+  "ja": {
+    "ui.viewport_status_clear": "{name}をオフにする",
+    "ui.viewport_status_clear_hint": "{name}をオフにする · Esc",
+    "ui.viewport_status_key": "{name}の凡例を表示",
+    "ui.viewport_status_minimum_radius": "最小半径",
+    "ui.viewport_status_stripes": "縞 {count} 本",
+    "ui.viewport_status_pairs": "{count} 組"
+  },
+  "ko": {
+    "ui.viewport_status_clear": "{name} 끄기",
+    "ui.viewport_status_clear_hint": "{name} 끄기 · Esc",
+    "ui.viewport_status_key": "{name} 범례 표시",
+    "ui.viewport_status_minimum_radius": "최소 반지름",
+    "ui.viewport_status_stripes": "줄무늬 {count}개",
+    "ui.viewport_status_pairs": "{count}쌍"
+  },
+  "vi": {
+    "ui.viewport_status_clear": "Tắt {name}",
+    "ui.viewport_status_clear_hint": "Tắt {name} · Esc",
+    "ui.viewport_status_key": "Hiển thị chú giải cho {name}",
+    "ui.viewport_status_minimum_radius": "Bán kính nhỏ nhất",
+    "ui.viewport_status_stripes": "{count} sọc",
+    "ui.viewport_status_pairs": "{count} cặp"
+  },
+  "zh": {
+    "ui.viewport_status_clear": "关闭{name}",
+    "ui.viewport_status_clear_hint": "关闭{name} · Esc",
+    "ui.viewport_status_key": "显示{name}的图例",
+    "ui.viewport_status_minimum_radius": "最小半径",
+    "ui.viewport_status_stripes": "{count} 条条纹",
+    "ui.viewport_status_pairs": "{count} 对"
+  }
+}

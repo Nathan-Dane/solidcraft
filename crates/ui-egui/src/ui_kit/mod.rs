@@ -41,6 +41,7 @@ mod table;
 mod text;
 mod tree;
 mod value_focus;
+mod viewport_status;
 
 pub(crate) use actions::*;
 pub use actions::{Button, button};
@@ -88,6 +89,7 @@ pub(crate) use status::*;
 pub(crate) use table::*;
 pub(crate) use tree::*;
 pub(crate) use value_focus::*;
+pub(crate) use viewport_status::*;
 
 #[cfg(test)]
 mod gallery;

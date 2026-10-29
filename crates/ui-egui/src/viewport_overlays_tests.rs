@@ -1,7 +1,198 @@
 use super::*;
 use crate::{scenario::Harness, shell::LayoutMode};
 
+#[test]
+fn viewport_status_specimens_clear_and_open_keys_without_engine_changes() {
+    let mut h = Harness::new();
+    h.call("ui.status_fixture", json!({"preset":"row"}));
+    h.frames(4);
+    let zebra = crate::scenario::rect_of("viewport_status:zebra:item").unwrap();
+    let section = crate::scenario::rect_of("viewport_status:section:item").unwrap();
+    assert!(zebra.right() < section.left());
+    assert!((zebra.center().y - section.center().y).abs() < 1.0, "single row: {zebra:?}, {section:?}");
+    assert!(crate::scenario::rect_of("viewport_status:zebra:key").is_none());
+    assert!(h.app.session.analysis.is_none());
+    h.step(&json!({"click":{"handle":"viewport_status:zebra:close"}})).unwrap();
+    h.frames(2);
+    assert!(crate::scenario::rect_of("viewport_status:zebra:item").is_none());
+    assert!(crate::scenario::rect_of("viewport_status:section:item").is_some());
+    h.call("ui.status_fixture", json!({"preset":"key"}));
+    h.frames(4);
+    h.step(&json!({"click":{"handle":"viewport_status:draft:key"}})).unwrap();
+    h.frames(3);
+    let item = crate::scenario::rect_of("viewport_status:draft:item").unwrap();
+    let card = crate::scenario::rect_of("viewport_status:card").unwrap();
+    assert!(card.top() > item.bottom());
+    assert!((card.left() - item.left()).abs() < 1.0);
+    h.step(&json!({"key":"Enter"})).unwrap();
+    h.frames(2);
+    assert!(crate::scenario::rect_of("viewport_status:card").is_none(), "focused Ghost key toggles with Enter");
+    h.step(&json!({"key":"Space"})).unwrap();
+    h.frames(2);
+    assert!(crate::scenario::rect_of("viewport_status:card").is_some(), "focused Ghost key toggles with Space");
+}
+
+#[test]
+fn viewport_status_kinds_keep_shape_outline_and_typography_across_themes() {
+    use crate::ui_kit::{StatusItem, StatusKind, StatusPresentation, viewport_status_item};
+    let previous = (crate::theme::is_dark(), crate::theme::vision());
+    assert_ne!(StatusKind::Mode.icon(), StatusKind::Result.icon());
+    assert_ne!(StatusKind::Result.icon(), StatusKind::Attention.icon());
+    for dark in [false, true] {
+        for vision in crate::theme::ColorVision::ALL {
+            crate::theme::set_dark(dark);
+            crate::theme::set_vision(vision);
+            let t = Tokens::get();
+            for (kind, outline) in [(StatusKind::Mode, t.accent), (StatusKind::Result, t.border), (StatusKind::Attention, t.warning)] {
+                let ctx = crate::fonts::test_context();
+                let item = StatusItem { id: "test".into(), kind, name: "Draft".into(), setting: "Z · 1°".into(), has_key: true, editable: false };
+                let output = crate::test_support::frame(&ctx, egui::RawInput::default(), |ui| {
+                    viewport_status_item(ui, &item, &mut StatusPresentation::default());
+                });
+                let (mut border, mut mono, mut name) = (false, false, false);
+                for shape in &output.shapes {
+                    crate::test_support::each_shape(&shape.shape, &mut |shape| match shape {
+                        Shape::Rect(rect) if rect.fill == t.overlay && rect.stroke.color == outline => border = true,
+                        Shape::Text(text) if text.galley.job.text == item.setting => {
+                            mono = text.galley.job.sections.first().is_some_and(|s| s.format.font_id.family == egui::FontFamily::Monospace);
+                        }
+                        Shape::Text(text) if text.galley.job.text == item.name => {
+                            name = text.galley.job.sections.first().is_some_and(|s| s.format.font_id == crate::fonts::semibold(t.font_label));
+                        }
+                        _ => {}
+                    });
+                }
+                assert!(border && mono && name, "{dark:?} {vision:?} {kind:?}: outline {border}, mono {mono}, name {name}");
+            }
+        }
+    }
+    crate::theme::set_dark(previous.0);
+    crate::theme::set_vision(previous.1);
+}
+
+#[test]
+fn viewport_status_every_part_is_centred_within_its_pill_in_every_theme() {
+    use crate::ui_kit::{StatusItem, StatusKind, StatusPresentation, viewport_status_item};
+    let previous = (crate::theme::is_dark(), crate::theme::vision());
+    for dark in [false, true] {
+        for vision in crate::theme::ColorVision::ALL {
+            crate::theme::set_dark(dark);
+            crate::theme::set_vision(vision);
+            for kind in [StatusKind::Mode, StatusKind::Result, StatusKind::Attention] {
+                for (name, setting, has_key, editable) in [
+                    ("Zebra", "12 stripes", false, false),
+                    ("A longer surface analysis name", "R 1234.5 mm", true, false),
+                    ("Mass centre", "", false, false),
+                    ("Draft", "Z · 1°", true, true),
+                ] {
+                    let ctx = crate::fonts::test_context();
+                    let item = StatusItem { id: "centred".into(), kind, name: name.into(), setting: setting.into(), has_key, editable };
+                    let output = crate::test_support::frame(&ctx, egui::RawInput::default(), |ui| {
+                        viewport_status_item(ui, &item, &mut StatusPresentation::default());
+                    });
+                    let pill = crate::scenario::rect_of("viewport_status:centred:item").unwrap();
+                    let centre = pill.center().y;
+                    let mut parts = vec!["icon", "name", "close", "close_glyph"];
+                    if !setting.is_empty() {
+                        parts.push("setting");
+                    }
+                    if has_key {
+                        parts.extend(["key", "key_glyph"]);
+                    }
+                    for part in parts {
+                        let rect = crate::scenario::rect_of(&format!("viewport_status:centred:{part}")).unwrap();
+                        assert!((rect.center().y - centre).abs() <= 0.5, "{dark:?} {vision:?} {kind:?} {name} {part}: {rect:?}, pill {pill:?}");
+                        assert!(pill.contains_rect(rect), "{part} stays inside its pill");
+                    }
+                    let mut text_centres = Vec::new();
+                    for shape in &output.shapes {
+                        crate::test_support::each_shape(&shape.shape, &mut |shape| {
+                            if let Shape::Text(text) = shape
+                                && (text.galley.job.text == name || (!setting.is_empty() && text.galley.job.text == setting))
+                            {
+                                text_centres.push(text.pos.y + text.galley.size().y / 2.0);
+                            }
+                        });
+                    }
+                    assert_eq!(text_centres.len(), if setting.is_empty() { 1 } else { 2 });
+                    assert!(
+                        text_centres.iter().all(|y| (*y - centre).abs() <= 0.5),
+                        "painted text must share the pill centre: {text_centres:?}, {pill:?}"
+                    );
+                }
+            }
+        }
+    }
+    crate::theme::set_dark(previous.0);
+    crate::theme::set_vision(previous.1);
+}
+
 // These tests inspect shapes without submitting their texture uploads to a renderer.
+#[test]
+fn viewport_status_close_hover_has_a_theme_fill_and_native_space_action_in_every_mode() {
+    use crate::ui_kit::{StatusAction, StatusItem, StatusKind, StatusPresentation, viewport_status_item};
+
+    fn paint(
+        ctx: &egui::Context,
+        item: &StatusItem,
+        state: &mut StatusPresentation,
+        events: Vec<egui::Event>,
+    ) -> (egui::FullOutput, Option<StatusAction>) {
+        let mut action = None;
+        let mut output = crate::test_support::frame(ctx, egui::RawInput { events, focused: true, ..Default::default() }, |ui| {
+            action = viewport_status_item(ui, item, state).1;
+        });
+        output.textures_delta.clear();
+        (output, action)
+    }
+
+    fn has_hover_fill(output: &egui::FullOutput, target: Rect, t: Tokens) -> bool {
+        let mut found = false;
+        for shape in &output.shapes {
+            crate::test_support::each_shape(&shape.shape, &mut |shape| {
+                if let Shape::Rect(rect) = shape {
+                    found |= rect.rect == target && rect.fill == t.hover && rect.corner_radius == t.control_radius.into();
+                }
+            });
+        }
+        found
+    }
+
+    let previous = (crate::theme::is_dark(), crate::theme::vision());
+    for dark in [false, true] {
+        for vision in crate::theme::ColorVision::ALL {
+            crate::theme::set_dark(dark);
+            crate::theme::set_vision(vision);
+            let t = Tokens::get();
+            let ctx = crate::fonts::test_context();
+            let item = StatusItem {
+                id: "hover".into(),
+                kind: StatusKind::Mode,
+                name: "Zebra".into(),
+                setting: "12 stripes".into(),
+                has_key: false,
+                editable: false,
+            };
+            let mut state = StatusPresentation::default();
+            let (rest, action) = paint(&ctx, &item, &mut state, vec![]);
+            let close = crate::scenario::rect_of("viewport_status:hover:close").unwrap();
+            assert!(action.is_none());
+            assert!(!has_hover_fill(&rest, close, t), "rest must stay quiet: {dark:?} {vision:?}");
+            let (hover, action) = paint(&ctx, &item, &mut state, vec![egui::Event::PointerMoved(close.center())]);
+            assert!(action.is_none(), "hover cannot clear the item");
+            assert!(has_hover_fill(&hover, close, t), "close must expose its token hover target: {dark:?} {vision:?}");
+            assert_eq!(hover.platform_output.cursor_icon, egui::CursorIcon::PointingHand);
+            paint(&ctx, &item, &mut state, crate::test_support::pointer(close.center(), true));
+            let (_, clicked) = paint(&ctx, &item, &mut state, crate::test_support::pointer(close.center(), false));
+            assert_eq!(clicked, Some(StatusAction::Clear(item.id.clone())));
+            let (_, keyboard) = paint(&ctx, &item, &mut state, crate::test_support::key(egui::Key::Space));
+            assert_eq!(keyboard, Some(StatusAction::Clear(item.id.clone())), "hover decoration must preserve native Space activation");
+        }
+    }
+    crate::theme::set_dark(previous.0);
+    crate::theme::set_vision(previous.1);
+}
+
 fn draw(ctx: &egui::Context, paint: impl FnMut(&mut egui::Ui)) -> egui::FullOutput {
     let mut output = ctx.run_ui(egui::RawInput::default(), paint);
     output.textures_delta.clear();

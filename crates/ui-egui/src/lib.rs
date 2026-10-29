@@ -294,6 +294,7 @@ mod view_confirm;
 pub mod view_pick;
 pub mod viewport;
 mod viewport_layout;
+mod viewport_status_fixture;
 pub mod workspace;
 
 use std::sync::mpsc::Receiver;
@@ -447,6 +448,7 @@ pub struct PreSketchComponent {
 }
 
 pub struct SolveApp {
+    pub(crate) viewport_status_fixture: viewport_status_fixture::Fixture,
     /// Compact browser embed: retain model panels and joint controls without application chrome.
     pub embedded: bool,
     pub session: Session,
@@ -688,6 +690,7 @@ impl SolveApp {
         #[cfg(not(target_arch = "wasm32"))]
         solidcraft_engine::slicer_files::clean_old();
         let mut app = SolveApp {
+            viewport_status_fixture: Default::default(),
             session,
             ui: UiState::default(),
             shell: Default::default(),

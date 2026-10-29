@@ -462,6 +462,7 @@ fn dispatch(app: &mut SolveApp, ctx: &egui::Context, method: &str, p: &Value) ->
     let f = |k: &str| p.get(k).and_then(Value::as_f64).filter(|x| x.is_finite());
     let b = |k: &str| p.get(k).and_then(Value::as_bool).unwrap_or(false);
     match method {
+        "ui.status_fixture" => wrap(crate::viewport_status_fixture::control(app, p)),
         "ui.workspace" => {
             if let Some(workspace) = s("workspace") {
                 if !matches!(workspace, "design" | "render") {
@@ -1222,6 +1223,29 @@ mod tests {
 
     use super::*;
     use crate::Services;
+
+    #[test]
+    fn viewport_status_fixture_rejects_hostile_presets_without_mutating_the_session() {
+        let mut h = crate::scenario::Harness::new();
+        let revision = h.app.session.revision;
+        for params in [Value::Null, json!([]), json!({}), json!({"preset":false}), json!({"preset":[]}), json!({"preset":"unknown"})] {
+            let reply = h.call("ui.status_fixture", params);
+            assert_eq!(reply["ok"], false, "{reply}");
+            assert_eq!(h.app.session.revision, revision);
+        }
+        let reply = h.call("ui.status_fixture", json!({"preset":"mode"}));
+        assert_eq!(reply["ok"], true, "{reply}");
+        assert_eq!(h.app.session.revision, revision);
+        assert!(h.app.session.analysis.is_none());
+        for preset in ["off", "mode"] {
+            h.call("ui.status_fixture", json!({"preset":preset}));
+            h.call("ui.resize", json!({"width":200,"height":600}));
+            h.frames(4);
+            assert_eq!(h.app.session.revision, revision);
+            h.call("ui.resize", json!({"width":1400,"height":900}));
+            h.frames(4);
+        }
+    }
 
     #[test]
     fn touchpad_automation_moves_with_modifiers_and_releases_without_buttons() {

@@ -257,6 +257,7 @@ split_face	false
 spun	false
 star	false
 status_error	false
+status_pin	false
 status_recovery	false
 style	false
 style_hidden_edges	false
