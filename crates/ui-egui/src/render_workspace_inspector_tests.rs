@@ -928,6 +928,11 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
         let before = h.app.session.doc.to_json();
         let history = (h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len());
         h.app.run("view.render_select", json!({"kind":"wear"})).unwrap();
+        assert!(h.app.session.selection.is_empty(), "Render focus clears object picks");
+        let wear_history = (history.0 + 1, history.1, history.2);
+        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), wear_history);
+        // Exercise stale object picks alongside Wear; normal focus commands clear them.
+        h.app.session.selection = vec![solidcraft_engine::Sel::Body { name: "Subject".into() }];
         for page in [Page::Output, Page::Appearance] {
             h.app.render_workspace.view.inspector.page = page;
             h.frames(3);
@@ -942,8 +947,13 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
             for name in ["render:check", "render:start", "render:cancel", "render:export"] {
                 assert!(footer.contains_rect(crate::scenario::rect_of(name).unwrap()), "{name} outside Wear footer");
             }
+            assert_eq!(h.app.session.doc.to_json(), before);
+            assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), wear_history);
         }
         h.app.run("view.render_select", json!({"kind":"output"})).unwrap();
+        assert!(h.app.session.selection.is_empty());
+        let output_history = (history.0 + 2, history.1, history.2);
+        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), output_history);
         h.app.render_workspace.view.inspector.page = Page::Appearance;
         h.frames(3);
         assert_header(&h, h.app.tr("render.page_output"));
@@ -951,6 +961,8 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
         assert!(crate::scenario::rect_of("render:job-footer").is_none());
         assert!(crate::scenario::rect_of("render:appearance:close").is_none());
         h.app.run("view.render_select", json!({"kind":"nothing"})).unwrap();
+        // Select a body again to test recovery of the ordinary Appearance header.
+        h.app.session.selection = vec![solidcraft_engine::Sel::Body { name: "Subject".into() }];
         h.frames(3);
         assert_header(&h, "Subject");
         let inspector = crate::scenario::rect_of("render:inspector").unwrap();
@@ -958,7 +970,7 @@ fn wear_selection_precedes_output_page_and_appearance_selection_chrome() {
         assert!(header.contains_rect(crate::scenario::rect_of("render:appearance:close").unwrap()));
         assert!(inspector.contains_rect(crate::scenario::rect_of("dialog:editor_footer").unwrap()));
         assert_eq!(h.app.session.doc.to_json(), before);
-        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), history);
+        assert_eq!((h.app.session.revision, h.app.session.undo.len(), h.app.session.redo.len()), output_history);
     }
 }
 
