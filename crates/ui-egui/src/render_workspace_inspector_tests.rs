@@ -9,6 +9,23 @@ fn fixture() -> Harness {
     h.frames(3);
     h
 }
+
+fn reveal_inspector_target(h: &mut Harness, target: &str) -> egui::Rect {
+    for _ in 0..8 {
+        let rect = crate::scenario::rect_of(target).unwrap();
+        let inspector = crate::scenario::rect_of("render:inspector").unwrap();
+        let top = crate::scenario::rect_of("render:inspector:header").unwrap().bottom() + Tokens::get().space_8;
+        let bottom = inspector.bottom() - Tokens::get().space_8;
+        if rect.top() >= top && rect.bottom() <= bottom {
+            return rect;
+        }
+        let at = rect.center();
+        let delta = at.y.clamp(top + rect.height() / 2.0, bottom - rect.height() / 2.0) - at.y;
+        h.call("ui.scroll", json!({"x":inspector.center().x,"y":(top+bottom)/2.0,"delta":delta}));
+        h.frames(20);
+    }
+    panic!("inspector target {target} is still clipped");
+}
 #[test]
 fn native_inspector_keeps_stage_actions_on_screen_and_output_has_no_pinned_footer() {
     for dark in [false, true] {
@@ -1238,14 +1255,23 @@ fn output_sections_bloom_tone_and_grading_save_one_command_per_edit_without_star
     let tone = crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr("render.children.tone"))).unwrap();
     let grading = crate::scenario::rect_of(&format!("dialog:section:{}", h.app.tr("render.children.finishing"))).unwrap();
     let bloom = crate::scenario::rect_of("render:bloom-enable").unwrap();
-    assert!(tone.top() < bloom.top() && bloom.top() < grading.top());
+    let reset = crate::scenario::rect_of("render:post-reset").unwrap();
+    assert!(tone.bottom() <= grading.top());
+    assert!(grading.bottom() <= bloom.top() && bloom.bottom() <= reset.top(), "Bloom belongs to the Finishing section");
+    reveal_inspector_target(&mut h, "render:bloom-enable");
     h.step(&json!({"click":{"handle":"render:bloom-enable"}})).unwrap();
     assert_eq!(undo + 1, h.app.session.undo.len());
     assert!(h.app.render_workspace.view.studio.finishing.bloom.is_some());
-    let next = if h.app.render_workspace.view.studio.tone_map == ToneMap::Reinhard { "render:tone:aces" } else { "render:tone:reinhard" };
+    let (next, expected) = if h.app.render_workspace.view.studio.tone_map == ToneMap::Reinhard {
+        ("render:tone:aces", ToneMap::AcesFitted)
+    } else {
+        ("render:tone:reinhard", ToneMap::Reinhard)
+    };
+    reveal_inspector_target(&mut h, next);
     h.step(&json!({"click":{"handle":next}})).unwrap();
+    assert_eq!(h.app.render_workspace.view.studio.tone_map, expected);
     assert_eq!(undo + 2, h.app.session.undo.len());
-    let contrast = crate::scenario::rect_of("render.post_contrast").unwrap();
+    let contrast = reveal_inspector_target(&mut h, "render.post_contrast");
     h.step(&json!({"click":[contrast.right()-10.0,contrast.center().y],"double":true})).unwrap();
     h.step(&json!({"key":"A","cmd":true})).unwrap();
     h.step(&json!({"text":"1.4"})).unwrap();
@@ -2051,14 +2077,16 @@ fn output_children_unsupported_controls_stay_visible_with_reason_and_cannot_edit
     h.frames(3);
     assert!(h.shapes.iter().any(|s| has_text(&s.shape, h.app.tr("render.effects_gpu_only"))));
     assert!(h.shapes.iter().any(|s| has_text(&s.shape, h.app.tr("render.children.needs_cpu"))));
+    h.step(&json!({"click":{"handle":format!("dialog:section:{}", h.app.tr("render.children.adaptive"))}})).unwrap();
+    h.frames(3);
     let before = h.app.render_workspace.view.studio.clone();
-    let point = crate::scenario::rect_of("render:adaptive-enable").unwrap().center();
+    let point = reveal_inspector_target(&mut h, "render:adaptive-enable").center();
     h.step(&json!({"click":[point.x,point.y]})).unwrap();
     assert_eq!(h.app.render_workspace.view.studio.adaptive, before.adaptive);
     h.app.run("view.render_select", json!({"kind":"effects"})).unwrap();
     h.frames(3);
     assert!(h.shapes.iter().any(|s| has_text(&s.shape, h.app.tr("render.children.effects_banner"))));
-    let point = crate::scenario::rect_of("render:bloom-enable").unwrap().center();
+    let point = reveal_inspector_target(&mut h, "render:bloom-enable").center();
     h.step(&json!({"click":[point.x,point.y]})).unwrap();
     assert_eq!(h.app.render_workspace.view.studio.finishing, before.finishing);
     assert_eq!(h.app.render_workspace.view.method, ImageMethod::Raster);

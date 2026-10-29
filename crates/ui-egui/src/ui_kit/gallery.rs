@@ -309,6 +309,11 @@ const ELEMENTS: &[Element] = &[
     element!("check_line_error", |ui, _s| {
         check_status_line(ui, "gallery:check_error", "Image size exceeds the renderer limit", CheckStatus::Error);
     }),
+    element!("check_status_line", |ui, _| {
+        check_status_line(ui, "gallery:status_ok", "Ready", CheckStatus::Ok);
+        check_status_line(ui, "gallery:status_warning", "Transparency approximation", CheckStatus::Warning);
+        check_status_line(ui, "gallery:status_error", "Image size exceeds the renderer limit", CheckStatus::Error);
+    }),
     element!("segmented_unavailable", |ui, s| {
         segmented(
             ui,

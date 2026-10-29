@@ -101,6 +101,17 @@ pub(crate) enum CheckStatus {
     Error,
 }
 
+impl CheckStatus {
+    /// Plain-text marker for copied check reports.
+    pub(crate) fn text_marker(self) -> &'static str {
+        match self {
+            Self::Ok => "✓",
+            Self::Warning => "!",
+            Self::Error => "×",
+        }
+    }
+}
+
 /// Semantic status glyphs use the same geometry and theme colours in every report.
 pub(crate) fn check_status_line(ui: &mut egui::Ui, key: &str, label: &str, status: CheckStatus) -> egui::Response {
     let t = Tokens::get();

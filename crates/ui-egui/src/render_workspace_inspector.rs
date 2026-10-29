@@ -1324,11 +1324,7 @@ fn check_report(app: &SolveApp) -> Option<String> {
     }
     let mut report = app.tr("render.output_check").to_string();
     for line in lines {
-        let status = match line.status {
-            ui_kit::CheckStatus::Ok => "✓",
-            ui_kit::CheckStatus::Warning => "!",
-            ui_kit::CheckStatus::Error => "×",
-        };
+        let status = line.status.text_marker();
         report.push_str(&format!("\n{status} {}", line.label));
     }
     let backend = app.session.render_backend();
