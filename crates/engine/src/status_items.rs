@@ -11,6 +11,8 @@ use crate::{Session, SurfaceAnalysis};
 #[serde(rename_all = "snake_case")]
 pub enum StatusId {
     SurfaceAnalysis,
+    /// Independent Continuity slot when the compatibility policy is enabled.
+    Continuity,
     Section,
 }
 
@@ -89,6 +91,80 @@ pub struct StatusItems {
 }
 
 impl Session {
+    /// Whether shading and Continuity share one slot (the default). This is session
+    /// configuration, never design data; SDK clients may choose the legacy independent policy.
+    pub fn single_surface_analysis(&self) -> bool {
+        self.single_surface_analysis
+    }
+
+    /// Change the analysis policy without changing the design or undo history. Enabling a
+    /// single slot keeps the latest successful analysis activation/replacement and retains the
+    /// oldest analysis-group position relative to Section. Queries never perform this transition.
+    pub fn set_single_surface_analysis(&mut self, single: bool) {
+        if self.single_surface_analysis == single {
+            return;
+        }
+        let before = self.status_items();
+        if single && self.analysis.is_some() && !self.continuity.is_empty() {
+            if self.latest_analysis == Some(StatusId::Continuity) {
+                self.analysis = None;
+            } else {
+                self.continuity.clear();
+            }
+        }
+        self.single_surface_analysis = single;
+        self.status_order.clear();
+        for item in &before {
+            let id = match item.id {
+                StatusId::SurfaceAnalysis | StatusId::Continuity if single => StatusId::SurfaceAnalysis,
+                StatusId::SurfaceAnalysis if self.analysis.is_none() => StatusId::Continuity,
+                id => id,
+            };
+            let active = match id {
+                StatusId::SurfaceAnalysis => self.analysis.is_some() || (single && !self.continuity.is_empty()),
+                StatusId::Continuity => !self.continuity.is_empty(),
+                StatusId::Section => self.section.is_some(),
+            };
+            self.status_slot(id, active);
+        }
+        if self.status_items() != before {
+            self.revision += 1;
+        }
+    }
+
+    /// After a successful activation, or a clear (`None`), reconcile only chronology and the
+    /// explicitly configured sharing policy. No duplicate effect settings are kept here.
+    pub(crate) fn status_analysis_changed(&mut self, activated: Option<StatusId>) {
+        if let Some(source) = activated
+            && self.single_surface_analysis
+        {
+            match source {
+                StatusId::SurfaceAnalysis => self.continuity.clear(),
+                StatusId::Continuity => self.analysis = None,
+                StatusId::Section => {}
+            }
+        }
+        // A successful Continuity measurement may find only open boundaries and no seams.
+        // An ended/empty effect cannot become the winning source on the next policy change.
+        let shading = self.analysis.is_some();
+        let continuity = !self.continuity.is_empty();
+        let active = |source: &StatusId| match source {
+            StatusId::SurfaceAnalysis => shading,
+            StatusId::Continuity => continuity,
+            StatusId::Section => false,
+        };
+        let remaining = if shading {
+            Some(StatusId::SurfaceAnalysis)
+        } else if continuity {
+            Some(StatusId::Continuity)
+        } else {
+            None
+        };
+        self.latest_analysis = activated.filter(active).or(self.latest_analysis.filter(active)).or(remaining);
+        self.status_slot(StatusId::SurfaceAnalysis, self.analysis.is_some() || (self.single_surface_analysis && !self.continuity.is_empty()));
+        self.status_slot(StatusId::Continuity, !self.single_surface_analysis && !self.continuity.is_empty());
+    }
+
     /// Current effects, derived without evaluating the model or changing any session state.
     pub fn status_items(&self) -> Vec<StatusItem> {
         let analysis = self
@@ -101,13 +177,15 @@ impl Session {
                 SurfaceAnalysis::Curvature { radius } => ("inspect.curvature_map", StatusSetting::Curvature { radius_mm: radius }, true),
             })
             .or_else(|| {
-                (!self.continuity.is_empty()).then_some((
+                (self.single_surface_analysis && !self.continuity.is_empty()).then_some((
                     "inspect.continuity",
                     StatusSetting::Continuity { edge_count: self.continuity.len() },
                     false,
                 ))
             });
         let analysis = analysis.map(|(command, setting, has_key)| item(StatusId::SurfaceAnalysis, command, setting, has_key));
+        let continuity = (!self.single_surface_analysis && !self.continuity.is_empty())
+            .then(|| item(StatusId::Continuity, "inspect.continuity", StatusSetting::Continuity { edge_count: self.continuity.len() }, false));
         let section = self.section.map(|(origin, normal)| {
             item(
                 StatusId::Section,
@@ -119,9 +197,10 @@ impl Session {
         // Public effect fields can also be populated by embedders without command chronology.
         // Include those effects after recorded slots, without inventing or storing timestamps.
         let mut items = Vec::new();
-        for id in self.status_order.iter().chain([StatusId::SurfaceAnalysis, StatusId::Section].iter()) {
+        for id in self.status_order.iter().chain([StatusId::SurfaceAnalysis, StatusId::Continuity, StatusId::Section].iter()) {
             let effect = match id {
                 StatusId::SurfaceAnalysis => &analysis,
+                StatusId::Continuity => &continuity,
                 StatusId::Section => &section,
             };
             if let Some(effect) = effect

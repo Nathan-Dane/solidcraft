@@ -47,6 +47,15 @@ fn status_items_has_strict_empty_input_and_a_typed_output_schema() {
         let typed: StatusItems = serde_json::from_value(reply.clone()).unwrap();
         assert_eq!(serde_json::to_value(typed).unwrap(), reply);
     }
+    s.set_single_surface_analysis(false);
+    s.execute("solid.box", &json!({"length":10,"width":10,"height":10})).unwrap();
+    s.execute("inspect.continuity", &json!({"edges":[[5,0,0]],"samples":5})).unwrap();
+    let reply = s.execute("view.status_items", &json!({})).unwrap();
+    assert!(conforms(schema, schema, &reply), "legacy reply {reply} doesn't match {schema}");
+    assert_eq!(reply["items"].as_array().unwrap().len(), 3);
+    assert!(reply["items"].as_array().unwrap().iter().any(|item| item["id"] == "continuity"));
+    let typed: StatusItems = serde_json::from_value(reply.clone()).unwrap();
+    assert_eq!(serde_json::to_value(typed).unwrap(), reply);
 }
 
 #[test]
