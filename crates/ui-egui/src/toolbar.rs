@@ -2973,7 +2973,7 @@ pub fn shortcuts(app: &mut SolveApp, ctx: &egui::Context) {
     let inline_editor = crate::dim_view::editing();
     if !popup_owner
         && app.viewport_status.open_key.is_some()
-        && crate::ui_kit::details_field_owns_focus(ctx)
+        && crate::ui_kit::details_field_owned_escape(ctx)
         && ctx.input_mut(|input| input.consume_key(egui::Modifiers::NONE, egui::Key::Escape))
     {
         ctx.memory_mut(|memory| {

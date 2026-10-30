@@ -33,6 +33,15 @@ pub(crate) fn details_field_owns_focus(ctx: &egui::Context) -> bool {
         fields.iter().any(|(field, rect)| *field == id || ctx.read_response(id).is_some_and(|response| rect.contains(response.rect.center())))
     })
 }
+pub(crate) fn details_field_owned_escape(ctx: &egui::Context) -> bool {
+    if details_field_owns_focus(ctx) {
+        return true;
+    }
+    let fields = ctx.data(|data| data.get_temp::<Vec<(egui::Id, egui::Rect)>>(egui::Id::new(FIELD_FOCUS))).unwrap_or_default();
+    // egui blurs native value editors before global shortcuts see Escape. The
+    // preceding visible frame still owns that press, just as a text editor does.
+    ctx.memory(|memory| memory.focused().is_none() && fields.iter().any(|(id, _)| memory.had_focus_last_frame(*id)))
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub(crate) enum DetailValue {
@@ -175,20 +184,28 @@ fn setting(ui: &mut Ui, field: &DetailSetting, focus: bool) -> Option<DetailEven
                 // Visibility reads Context::will_discard. Never re-enter Context while
                 // holding its data write lock.
                 let visible = ui.is_visible() && ui.is_enabled() && ui.is_rect_visible(response.rect);
-                ui.ctx().data_mut(|data| {
-                    let key = egui::Id::new(FIELD_FOCUS);
-                    let mut fields = data.get_temp::<Vec<(egui::Id, egui::Rect)>>(key).unwrap_or_default();
-                    if visible {
-                        fields.push((response.id, response.rect));
-                    }
-                    data.insert_temp(key, fields);
-                });
                 if focus {
                     ui.scroll_to_rect(response.rect, None);
                     if visible {
                         response.request_focus();
                     }
                 }
+                // A DragValue may focus its inner TextEdit rather than its outer
+                // response. Retain only the actual native editor inside this field.
+                let native_focus = ui.ctx().memory(|memory| memory.focused()).filter(|id| {
+                    *id == response.id || ui.ctx().read_response(*id).is_some_and(|native| response.rect.contains(native.rect.center()))
+                });
+                ui.ctx().data_mut(|data| {
+                    let key = egui::Id::new(FIELD_FOCUS);
+                    let mut fields = data.get_temp::<Vec<(egui::Id, egui::Rect)>>(key).unwrap_or_default();
+                    if visible {
+                        fields.push((response.id, response.rect));
+                        if let Some(id) = native_focus {
+                            fields.push((id, response.rect));
+                        }
+                    }
+                    data.insert_temp(key, fields);
+                });
                 changed |= response.changed();
             }
         });
