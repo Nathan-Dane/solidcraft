@@ -38,6 +38,7 @@ pub(crate) struct StatusPresentation {
     focus_ids: Vec<Id>,
     summary_popup: Option<Id>,
     summary_members: Vec<String>,
+    summary_suspended: bool,
 }
 
 impl StatusPresentation {
@@ -57,6 +58,24 @@ impl StatusPresentation {
             self.focus_ids.clear();
             self.open_key = None;
             self.summary_members = members;
+        }
+    }
+
+    /// A higher owner dismisses only this popup, without returning focus to its badge.
+    pub(crate) fn suspend_summary(&mut self, ctx: &egui::Context, suspended: bool) {
+        self.summary_suspended = suspended;
+        if suspended && !self.summary_members.is_empty() {
+            if let Some(id) = self.summary_popup.take() {
+                egui::Popup::close_id(ctx, id);
+            }
+            if self.owns_focus(ctx) {
+                ctx.memory_mut(|memory| {
+                    if let Some(id) = memory.focused() {
+                        memory.surrender_focus(id);
+                    }
+                });
+            }
+            self.focus_ids.clear();
         }
     }
 
@@ -262,6 +281,10 @@ pub(crate) fn viewport_status_summary(
             };
             let frame = container.frame(ctx, t.overlay, crate::frame::Side::Left).stroke(t.primary_border(outline)).inner_margin(t.space_4);
             container.show_frame(ui, frame, free, |ui| {
+                // The background badge cannot open a foreground popup above a higher owner.
+                if state.summary_suspended {
+                    ui.disable();
+                }
                 let mut button_id = None;
                 let mut summary_popup = None;
                 let menu = super::Menu::button_with(

@@ -1970,6 +1970,85 @@ fn summary_native_menu_escape_is_close_only_then_newest_replacement_clears_and_u
 }
 
 #[test]
+fn summary_menu_yields_to_preferences_and_command_dialog_without_resuming_or_stealing_focus() {
+    use solidcraft_engine::status_items::StatusId;
+    fn contains_text(shape: &Shape, text: &str) -> bool {
+        match shape {
+            Shape::Text(shape) => shape.galley.text() == text,
+            Shape::Vec(shapes) => shapes.iter().any(|shape| contains_text(shape, text)),
+            _ => false,
+        }
+    }
+    for owner in ["preferences", "command", "stacked"] {
+        let mut h = summary_three_effects();
+        let frames = (h.ctx.global_style().animation_time * 60.0).ceil() as usize + 2;
+        h.step(&json!({"click":{"handle":"viewport_status:summary"}})).unwrap();
+        h.frames(frames);
+        assert!(egui::Popup::is_any_open(&h.ctx));
+        assert!(crate::scenario::rect_of("menu:viewport_status_clear_all").is_some());
+        let effects = h.app.session.status_items();
+        let eligible = [StatusId::SurfaceAnalysis, StatusId::Continuity, StatusId::Section];
+        let newest = h.app.session.newest_status_item(&eligible);
+        let document = serde_json::to_value(&*h.app.session.doc).unwrap();
+        if owner != "preferences" {
+            h.app.start("solid.fillet");
+            assert!(h.app.dialog.is_some());
+        }
+        if owner != "command" {
+            h.call("ui.prefs", json!({"open":"Interface"}));
+        }
+        h.frames(frames);
+        assert!(!egui::Popup::is_any_open(&h.ctx), "{owner} dismisses the lower Summary popup");
+        assert!(crate::scenario::rect_of("menu:viewport_status_clear_all").is_none());
+        let heading = crate::i18n::tr("ui.viewport_status_summary_heading").to_uppercase();
+        assert!(!h.shapes.iter().any(|shape| contains_text(&shape.shape, &heading)), "no Summary list paints over {owner}");
+        if owner != "command" {
+            h.step(&json!({"click":{"handle":"prefs:search"}})).unwrap();
+            let focus = h.ctx.memory(|memory| memory.focused()).expect("native click focuses Preferences search");
+            h.frames(frames);
+            assert_eq!(h.ctx.memory(|memory| memory.focused()), Some(focus), "Summary must not reclaim focus");
+            assert!(!h.app.viewport_status.owns_focus(&h.ctx));
+        }
+        h.step(&json!({"key":"Escape"})).unwrap();
+        assert!(!h.app.prefs_window.open);
+        assert_eq!(h.app.dialog.is_some(), owner == "stacked", "one Escape closes only the highest owner");
+        assert_eq!(h.app.session.status_items(), effects);
+        assert_eq!(h.app.session.newest_status_item(&eligible), newest);
+        assert_eq!(serde_json::to_value(&*h.app.session.doc).unwrap(), document);
+        assert!(!egui::Popup::is_any_open(&h.ctx), "a dismissed Summary must not reopen after the owner closes");
+        if owner == "stacked" {
+            h.step(&json!({"key":"Escape"})).unwrap();
+            assert!(h.app.dialog.is_none());
+            assert_eq!(h.app.session.status_items(), effects);
+        }
+        h.step(&json!({"click":{"handle":"viewport_status:summary"}})).unwrap();
+        h.frames(frames);
+        assert!(egui::Popup::is_any_open(&h.ctx), "a distinct native click can reopen Summary");
+        assert_eq!(h.app.session.status_items(), effects);
+    }
+}
+
+#[test]
+fn summary_menu_keeps_tool_owned_row_clear_available() {
+    let mut h = summary_three_effects();
+    h.app.run("inspect.continuity", json!({"clear":true})).unwrap();
+    h.app.start("inspect.continuity");
+    let frames = (h.ctx.global_style().animation_time * 60.0).ceil() as usize + 2;
+    h.frames(frames);
+    assert!(h.app.tool.is_some());
+    assert_eq!(h.app.session.status_items().len(), 3);
+    h.step(&json!({"click":{"handle":"viewport_status:summary"}})).unwrap();
+    h.frames(frames);
+    assert!(egui::Popup::is_any_open(&h.ctx), "a Tool is not a higher modal owner");
+    let section = h.app.session.status_items().into_iter().find(|item| item.id == solidcraft_engine::status_items::StatusId::Section).unwrap();
+    let section = crate::viewport_status::presentation(&h.app, &section).unwrap();
+    h.step(&json!({"click":{"handle":format!("viewport_status:{}:close", section.id)}})).unwrap();
+    assert!(h.app.session.section.is_none());
+    assert!(h.app.tool.is_some(), "row X retains the active Tool");
+    assert!(h.app.session.analysis.is_some() && !h.app.session.continuity.is_empty());
+}
+
+#[test]
 fn summary_popup_closes_on_preference_count_and_replacement_transitions() {
     for transition in ["disable", "count", "replace", "zero"] {
         let mut h = summary_three_effects();

@@ -133,6 +133,14 @@ pub(crate) fn reconcile(app: &mut SolveApp, ctx: &egui::Context) {
     let members =
         if app.preferences.viewport_status_summary && items.len() >= 3 { items.into_iter().map(|item| item.id).collect() } else { Vec::new() };
     app.viewport_status.reconcile_summary(ctx, members);
+    // The popup is a separate foreground host: the badge's Background layer cannot
+    // shield it. Tools deliberately remain eligible for their existing row actions.
+    let higher_owner = app.prefs_window.open
+        || app.dialog.is_some()
+        || app.keymap.open
+        || app.ui.palette_open
+        || ctx.memory(|memory| memory.top_modal_layer().is_some());
+    app.viewport_status.suspend_summary(ctx, higher_owner);
 }
 
 pub(crate) fn show(app: &mut SolveApp, ctx: &egui::Context, viewport: egui::Rect) {
