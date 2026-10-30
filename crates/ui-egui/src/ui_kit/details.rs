@@ -172,17 +172,20 @@ fn setting(ui: &mut Ui, field: &DetailSetting, focus: bool) -> Option<DetailEven
             };
             if let Some(response) = response {
                 scenario::publish_target(&format!("details:field:{}", field.id), response.rect);
+                // Visibility reads Context::will_discard. Never re-enter Context while
+                // holding its data write lock.
+                let visible = ui.is_visible() && ui.is_enabled() && ui.is_rect_visible(response.rect);
                 ui.ctx().data_mut(|data| {
                     let key = egui::Id::new(FIELD_FOCUS);
                     let mut fields = data.get_temp::<Vec<(egui::Id, egui::Rect)>>(key).unwrap_or_default();
-                    if ui.is_visible() && ui.is_enabled() && ui.is_rect_visible(response.rect) {
+                    if visible {
                         fields.push((response.id, response.rect));
                     }
                     data.insert_temp(key, fields);
                 });
                 if focus {
                     ui.scroll_to_rect(response.rect, None);
-                    if ui.is_visible() && ui.is_enabled() && ui.is_rect_visible(response.rect) {
+                    if visible {
                         response.request_focus();
                     }
                 }

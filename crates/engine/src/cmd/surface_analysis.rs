@@ -780,10 +780,14 @@ mod tests {
         let records = s.continuity.clone();
         assert!(!records.is_empty());
         assert!(s.continuity_details().iter().all(|row| row.current));
-        let retained_model = s.model.state();
+        let before_drag = s.model.state();
         s.execute("sketch.drag", &json!({"entity":"l1.start","from":[5,5],"to":[4,5],"live":true})).unwrap();
         assert!(s.model.is_stale());
-        assert!(Arc::ptr_eq(&retained_model, &s.model.state()));
+        // The live solver replaces ModelState to show the moved sketch, while retaining
+        // its old downstream B-rep body. That body/key, not the whole container Arc,
+        // is the misleading geometry the pure descriptor must refuse.
+        let retained_model = s.model.state();
+        assert!(before_drag.body(&records[0].body).unwrap().body.same_shape(&retained_model.body(&records[0].body).unwrap().body));
         assert_eq!(
             retained_model.body(&records[0].body).unwrap().geometry_key(),
             records[0].details.geometry_key,
@@ -801,6 +805,13 @@ mod tests {
         assert!(Arc::ptr_eq(&retained_model, &s.model.state()));
         assert_eq!(s.continuity, records, "query does not clean or fabricate measurements");
         assert_eq!((s.revision, s.undo.len(), s.redo.len(), s.is_dirty(), s.evaluations, s.status_order.clone()), before);
+        s.execute("sketch.drag_end", &json!({})).unwrap();
+        s.execute("sketch.finish", &json!({})).unwrap();
+        s.execute("inspect.continuity", &json!({"samples":5})).unwrap();
+        assert!(!s.model.is_stale());
+        assert!(s.continuity_details().iter().all(|row| row.current));
+        let fresh = &s.continuity[0];
+        assert!(s.continuity_target_points(&fresh.body, fresh.edge).is_some(), "normal fresh evaluation/measurement restores valid targets");
     }
 
     /// The edges of the first body of a continuity reply.
@@ -1013,7 +1024,17 @@ mod tests {
         assert!(!s.continuity_details()[0].current);
         assert!(s.continuity_target_points(&seam.body, seam.edge).is_none());
         s.execute("edit.undo", &json!({})).unwrap();
-        assert!(s.continuity_details()[0].current);
+        let restored_key = s.model.state().body(&seam.body).unwrap().geometry_key();
+        assert_ne!(
+            restored_key, seam.details.geometry_key,
+            "feature redefinition undo produces a new evaluated generation, despite restoring dimensions"
+        );
+        assert!(!s.continuity_details()[0].current);
+        assert!(s.continuity_target_points(&seam.body, seam.edge).is_none());
+        s.execute("inspect.continuity",&json!({"body":seam.body,"edges":[{"index":seam.edge}],"samples":seam.details.samples,
+            "gap_tolerance_mm":seam.details.gap_tolerance_mm,"angle_tolerance_deg":seam.details.angle_tolerance_deg,"curvature_tolerance_per_mm":seam.details.curvature_tolerance_per_mm})).unwrap();
+        assert!(s.continuity_details()[0].current, "a real fresh report validates the restored geometry generation");
+        assert!(s.continuity_target_points(&seam.body, seam.edge).is_some());
         s.execute("edit.redo", &json!({})).unwrap();
         assert!(!s.continuity_details()[0].current);
         s.execute("inspect.continuity", &json!({"clear":true})).unwrap();
@@ -1030,7 +1051,8 @@ mod tests {
         s.execute("inspect.continuity", &json!({"body":"PartBody","edges":[[5,0,0]],"samples":5})).unwrap();
         let record = s.continuity[0].clone();
         assert!(s.continuity_details()[0].current);
-        s.execute("occurrence.move", &json!({"occurrence":occurrence,"translate":[0,20,0]})).unwrap();
+        s.execute("occurrence.move", &json!({"occurrence":occurrence,"translate":[0,20,0],"capture":false})).unwrap();
+        assert!(s.pending_moves.contains_key(&occurrence), "this test intentionally exercises a pending, revertible placement");
         let revision = s.revision;
         assert!(!s.continuity_details()[0].current);
         assert_eq!(s.revision, revision, "descriptor does not prepare a stale world or mutate it");
@@ -1038,6 +1060,7 @@ mod tests {
         assert!(!s.continuity_details()[0].current, "a warmed moved occurrence is still different geometry placement");
         assert!(s.continuity_target_points(&record.body, record.edge).is_none());
         s.execute("component.revert_position", &json!({"occurrences":[occurrence]})).unwrap();
+        assert!(!s.pending_moves.contains_key(&occurrence));
         let _restored = s.world_state();
         assert!(s.continuity_details()[0].current, "matching restored placement is validated by real geometry identity");
     }
