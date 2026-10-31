@@ -181,7 +181,7 @@ pub(crate) fn theme_options_list(
                                         vec2(option_width.max(0.0), t.control_height),
                                         egui::Layout::left_to_right(egui::Align::Center),
                                         |ui| {
-                                            theme_option_control(ui, option, options, values, metrics);
+                                            theme_option_control(ui, option, options, values, metrics, cell.len() == 1);
                                         },
                                     );
                                 }
@@ -214,6 +214,7 @@ fn theme_option_control(
     options: &[ThemeOptionRow<'_>],
     values: &mut std::collections::BTreeMap<String, crate::theme_files::OptionValue>,
     metrics: &ThemeOptionMetrics,
+    fill_range: bool,
 ) {
     use crate::theme_files::{OptionKind, OptionValue};
     let t = Tokens::get();
@@ -242,7 +243,9 @@ fn theme_option_control(
                             }
                             (OptionKind::Range { min, max, step, unit, .. }, OptionValue::Num(n)) => {
                                 let available = dimension(ui.available_width() - metrics.readout - t.space_8);
-                                let width = available.min(t.form_label_width.max(theme_option_slider_minimum(&t)));
+                                // Standalone ranges fill their cell; composites retain their compact control alignment.
+                                let width =
+                                    if fill_range { available } else { available.min(t.form_label_width.max(theme_option_slider_minimum(&t))) };
                                 ui.allocate_ui_with_layout(vec2(width, t.control_height), egui::Layout::left_to_right(egui::Align::Center), |ui| {
                                     super::slider(
                                         ui,

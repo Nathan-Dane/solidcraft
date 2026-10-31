@@ -6087,7 +6087,8 @@ mod tests {
                         {"id":"shadow","type":"bool","default":true,"label":{"en":"Shadow","de":"Schatten"}},
                         {"id":"softness","type":"range","default":5.5,"min":0,"max":10,"step":0.5,"unit":"px","parent":"shadow",
                             "label":{"en":"Softness","de":"Weichheit"}},
-                        {"id":"edges","type":"bool","default":false,"label":{"en":"Edges","de":"Kanten"}}
+                        {"id":"edges","type":"range","default":5.5,"min":0,"max":10,"step":0.5,"unit":"px",
+                            "label":{"en":"Edges","de":"Kanten"}}
                     ]});
                     let out = h.call("ui.prefs", json!({"theme_import":file,"open":"Interface","language":language}));
                     assert!(out["error"].is_null(), "{out}");
@@ -6120,7 +6121,8 @@ mod tests {
                         rect(&format!("dialog:slider:{}", labels[1])),
                         rect("prefs:theme_option_readout:softness"),
                         rect(&format!("dialog:label:{}", labels[2])),
-                        rect(&format!("prefs:theme_option_switch:{}", labels[2])),
+                        rect(&format!("dialog:slider:{}", labels[2])),
+                        rect("prefs:theme_option_readout:edges"),
                     ];
                     for (i, part) in parts.iter().enumerate() {
                         assert!(body.contains_rect(*part), "{base} {language} width={width}: {part:?} outside {body:?}");
@@ -6129,6 +6131,24 @@ mod tests {
                         }
                     }
                     assert!(rect(&format!("dialog:slider:{}", labels[1])).width() >= Tokens::get().space_24 * 2.0, "retain a usable slider track");
+                    let control = rect(&format!("dialog:control:{}", labels[2]));
+                    let track = rect(&format!("dialog:slider_track:{}", labels[2]));
+                    let readout = rect("prefs:theme_option_readout:edges");
+                    let t = Tokens::get();
+                    let natural_width = |text: &str| {
+                        h.ctx.fonts_mut(|fonts| {
+                            fonts.layout_no_wrap(text.to_owned(), egui::FontId::proportional(t.font_label), t.form_ink).size().x.ceil()
+                        })
+                    };
+                    assert!((rect(&format!("dialog:label:{}", labels[2])).width() - natural_width(labels[2]) - t.space_4).abs() <= 1.0);
+                    assert!((readout.width() - natural_width("5.5px")).abs() <= 1.0, "readout must retain its natural width");
+                    let reserved_readout = ["0px", "10px", "5.5px", "0.5px", "9.5px"].into_iter().map(natural_width).fold(0.0, f32::max);
+                    assert!(neighbour.expand(1.0).contains_rect(control));
+                    assert!(control.contains_rect(track) && control.contains_rect(readout));
+                    assert!(
+                        (track.width() - (control.width() - reserved_readout - t.space_8 - t.space_4)).abs() <= 1.0,
+                        "standalone slider must fill the width left by its natural label and readout: {base} {language} width={width}: {control:?} {track:?} {readout:?}"
+                    );
                 }
             }
         }
