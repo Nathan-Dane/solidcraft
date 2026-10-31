@@ -264,6 +264,16 @@ impl ThemeFile {
         self.requires > REQUIREMENTS_LEVEL
     }
 
+    /// Read option tables from a stored or directly supplied theme with the import parser.
+    /// Base tables are deliberately left alone; only completely valid declarations replace these.
+    pub(crate) fn set_option_tables(&mut self, source: &Value) -> Result<(), String> {
+        let options = if self.needs_newer() { Vec::new() } else { parse_options(source.get("options"))? };
+        let overlays = if self.needs_newer() { Vec::new() } else { parse_overlays(source.get("overlays"), &options)? };
+        self.options = options;
+        self.overlays = overlays;
+        Ok(())
+    }
+
     /// Validate direct control-channel preference updates as strictly as file imports.
     pub(crate) fn validate_radii(&self) -> Result<(), String> {
         for (key, value) in &self.radii {
