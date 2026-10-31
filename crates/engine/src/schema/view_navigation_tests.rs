@@ -41,8 +41,7 @@ fn status_details_has_checked_pure_query_and_current_typed_diagnostics() {
 
 #[test]
 fn surface_and_section_contracts_match_successful_existing_reply_shapes() {
-    let mut s = Session::default();
-    s.param_check = ParamCheck::Strict;
+    let mut s = Session { param_check: ParamCheck::Strict, ..Default::default() };
     s.execute("solid.box", &json!({"length":10,"width":10,"height":10})).unwrap();
     for (command, params) in [
         ("inspect.zebra", json!({"stripes":14.5})),
