@@ -1397,18 +1397,25 @@ fn render_preview_tab_surfaces_use_published_gradient_through_fade() {
         let request = image_request(&h.app).unwrap();
         let history = (h.app.session.revision, h.app.session.undo.len());
         let end = crate::theme_files::resolve_for_tab(&file, &Default::default(), Some("RENDER"));
+        let expected_start = [model.viewport_top, model.viewport_top, model.viewport_bottom, model.viewport_bottom];
         let expected_end = [end.viewport_top, end.viewport_top, end.viewport_bottom, end.viewport_bottom];
+        let mut previous = expected_start;
         for progress in [0.0, 0.25, 0.5, 0.75, 1.0] {
             let colors = render_preview_background_frame(&mut h, 2.0 + 0.24 * progress);
             let shown = Tokens::get();
             assert_eq!(colors, [shown.viewport_top, shown.viewport_top, shown.viewport_bottom, shown.viewport_bottom]);
             if progress == 0.0 {
-                assert_eq!(colors, [model.viewport_top, model.viewport_top, model.viewport_bottom, model.viewport_bottom]);
+                assert_eq!(colors, expected_start);
             } else if progress == 1.0 {
                 assert_eq!(colors, expected_end);
-            } else {
-                assert_ne!(colors, expected_end, "the Render canvas must receive intermediate fade colours");
+            } else if progress <= 0.5 {
+                assert_ne!(colors, expected_start, "the Render canvas must leave the starting colours at {progress}");
+                assert_ne!(colors, expected_end, "the Render canvas must receive intermediate fade colours at {progress}");
+                assert_ne!(colors, previous, "the Render canvas fade must advance between early samples at {progress}");
             }
+            // At 75% elapsed time, ease-out cubic is already 98.4375% of the way to the
+            // destination. Byte quantization can legitimately produce the exact final colours.
+            previous = colors;
             assert!(Arc::ptr_eq(&document, &h.app.session.doc));
             assert_eq!((h.app.session.revision, h.app.session.undo.len()), history);
             assert_eq!(image_request(&h.app).unwrap(), request, "UI themes never modify rendered image settings");
