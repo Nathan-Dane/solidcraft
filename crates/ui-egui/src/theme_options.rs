@@ -79,42 +79,9 @@ pub(crate) fn apply(file: &ThemeFile, values: &BTreeMap<String, OptionValue>, to
     }
 }
 
-/// Alpha changes only these floating surface fills. Each fill retains its unmultiplied RGB.
-/// Check both viewport extremes (black/white also cover background overrides and busy models).
+/// Adapt the option value; all colour math belongs to the theme boundary.
 fn apply_opacity(t: &mut Tokens, value: &OptionValue) {
-    let OptionValue::Num(percent) = value else { return };
-    if !percent.is_finite() || *percent >= 100.0 {
-        return;
+    if let OptionValue::Num(percent) = value {
+        t.apply_panel_opacity(*percent);
     }
-    let scale = percent.clamp(40.0, 100.0) / 100.0;
-    let body_inks = [t.text, t.form_ink, t.dialog_label];
-    for fill in [&mut t.panel, &mut t.panel_header, &mut t.dialog_bg, &mut t.dialog_body, &mut t.dialog_footer, &mut t.overlay] {
-        *fill = readable_fill(*fill, &body_inks, scale);
-    }
-    t.nav_tip = readable_fill(t.nav_tip, &[t.nav_tip_ink], scale);
-}
-
-pub(crate) fn composite(fill: egui::Color32, background: egui::Color32) -> egui::Color32 {
-    let rgb = fill.to_srgba_unmultiplied();
-    let a = f64::from(rgb[3]) / 255.0;
-    let channel = |index: usize| (f64::from(rgb[index]) * a + f64::from(background[index]) * (1.0 - a)).round() as u8;
-    egui::Color32::from_rgb(channel(0), channel(1), channel(2))
-}
-
-fn readable_fill(fill: egui::Color32, inks: &[egui::Color32], scale: f32) -> egui::Color32 {
-    let [r, g, b, alpha] = fill.to_srgba_unmultiplied();
-    let requested = (f32::from(alpha) * scale).round() as u8;
-    // At most 256 cheap colour comparisons per changed role; no allocations, GPU or I/O.
-    for a in requested..=255 {
-        let candidate = egui::Color32::from_rgba_unmultiplied(r, g, b, a);
-        if [egui::Color32::BLACK, egui::Color32::WHITE].iter().all(|background| {
-            let ground = composite(candidate, *background);
-            inks.iter().all(|ink| crate::theme::contrast_ratio(composite(*ink, ground), ground) >= 4.5)
-        }) {
-            return candidate;
-        }
-    }
-    // An authored foreground may already fail at full opacity. Never alter that foreground;
-    // full alpha gives it the strongest protection this option can supply.
-    egui::Color32::from_rgb(r, g, b)
 }

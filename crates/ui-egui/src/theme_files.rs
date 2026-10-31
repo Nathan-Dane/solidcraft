@@ -1776,7 +1776,7 @@ mod tests {
 
     #[test]
     fn theme_options_opacity_contrast_protects_text_at_40_over_viewport_extremes() {
-        use crate::{theme::contrast_ratio, theme_options::composite};
+        use crate::theme::{composite, contrast_ratio};
         for base in ["light", "dark"] {
             let file = from_value(&json!({"format":FORMAT,"name":"Contrast","base":base,
                 "options":[{"id":"opacity","type":"range","default":40}]}))
