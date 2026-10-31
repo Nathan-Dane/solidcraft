@@ -205,6 +205,8 @@ struct TabThemeState {
     tab: String,
     shown: Option<Surfaces>,
     fade: Option<Fade>,
+    /// Ownership of the two egui fills survives target/theme invalidation until restored.
+    styled_surfaces: bool,
     #[cfg(test)]
     resolutions: usize,
 }
@@ -664,14 +666,25 @@ impl TabAccent {
 
     pub fn publish(app: &crate::SolveApp, ctx: &egui::Context) {
         let now = ctx.input(|i| i.time);
-        let (published, accent, fading) =
-            ctx.data_mut(|data| data.get_temp_mut_or_default::<TabThemeState>(egui::Id::new(TAB_STATE)).publish(&app.ui.tab, now));
+        let (published, accent, fading, style_surfaces) = ctx.data_mut(|data| {
+            let state = data.get_temp_mut_or_default::<TabThemeState>(egui::Id::new(TAB_STATE));
+            let (published, accent, fading) = state.publish(&app.ui.tab, now);
+            let style_surfaces = published.tab_surfaces || state.styled_surfaces;
+            state.styled_surfaces = published.tab_surfaces;
+            (published, accent, fading, style_surfaces)
+        });
         PUBLISHED.set(Some(published));
-        if ctx.global_style().visuals.panel_fill != published.tokens.panel {
-            ctx.global_style_mut(|style| {
-                style.visuals.panel_fill = published.tokens.panel;
-                style.visuals.window_fill = published.tokens.panel;
-            });
+        if style_surfaces {
+            let fills = {
+                let style = ctx.global_style();
+                (style.visuals.panel_fill, style.visuals.window_fill)
+            };
+            if fills != (published.tokens.panel, published.tokens.panel) {
+                ctx.global_style_mut(|style| {
+                    style.visuals.panel_fill = published.tokens.panel;
+                    style.visuals.window_fill = published.tokens.panel;
+                });
+            }
         }
         if fading {
             ctx.request_repaint();
@@ -1865,6 +1878,69 @@ mod tests {
         super::TabAccent::publish(app, &first);
         assert_eq!(super::TabAccent::current(&first).soft, super::Tokens::get().accent_soft);
         assert_eq!(super::TabAccent::current_icon_accent(&first), None);
+    }
+
+    #[test]
+    fn tabs_surface_publication_restores_base_fills_without_restyling_widgets() {
+        use crate::theme_files::{OptionValue, ThemeFile};
+        for base in ["dark", "light"] {
+            let ctx = crate::fonts::test_context();
+            let mut app = crate::SolveApp::new(solidcraft_engine::Session::default(), crate::Services::default());
+            let file = crate::theme_files::tab_fixture(base);
+            set_dark(file.base.is_dark());
+            set_vision(ColorVision::Off);
+            set_viewport_dark(None);
+            set_viewport_background(None);
+            set_custom(None);
+            let prepare = |file: &ThemeFile, enabled: Option<bool>| {
+                let raw = enabled.map(|enabled| BTreeMap::from([("tab_colours".into(), serde_json::json!(enabled))]));
+                let custom = prepare_tabs(&ctx, Some(file), raw.as_ref(), || {
+                    let saved = enabled.map(|enabled| BTreeMap::from([("tab_colours".into(), OptionValue::Bool(enabled))])).unwrap_or_default();
+                    crate::theme_files::effective_values(file, &saved).0
+                });
+                set_custom(custom)
+            };
+            let publish = |app: &crate::SolveApp, time| {
+                ctx.run_ui(egui::RawInput { time: Some(time), ..Default::default() }, |ui| TabAccent::publish(app, ui.ctx())).textures_delta.clear();
+            };
+            prepare(&file, Some(true));
+            apply(&ctx);
+            let before = ctx.global_style().visuals.clone();
+            let base_custom = CUSTOM.get();
+            app.ui.tab = "MODEL".into();
+            publish(&app, 0.0);
+            assert_eq!(ctx.global_style().visuals, before);
+            app.ui.tab = "SKETCH".into();
+            publish(&app, 1.0);
+            publish(&app, 1.12);
+            let panel = Tokens::get().panel;
+            assert_ne!(panel, before.panel_fill, "exercise an actual animated panel fill");
+            let mut animated = before.clone();
+            animated.panel_fill = panel;
+            animated.window_fill = panel;
+            assert_eq!(ctx.global_style().visuals, animated, "all non-surface widget/selection/status visuals stay unchanged");
+            // Repair either owned fill independently, even when the panel already matches.
+            ctx.global_style_mut(|style| style.visuals.window_fill = before.window_fill);
+            publish(&app, 1.12);
+            assert_eq!(ctx.global_style().visuals, animated);
+
+            assert!(!prepare(&file, Some(false)), "toggling surfaces does not change the base Custom tokens");
+            assert_eq!(CUSTOM.get(), base_custom);
+            // Deliberately omit apply(): a full restyle would conceal stale animated fills.
+            publish(&app, 1.13);
+            assert_eq!(ctx.global_style().visuals, before, "turning surfaces off must restore both base fills");
+
+            assert!(!prepare(&file, Some(true)));
+            publish(&app, 2.0);
+            assert_ne!(ctx.global_style().visuals.panel_fill, before.panel_fill);
+            let mut plain = file.clone();
+            plain.tabs.clear();
+            plain.options.clear();
+            assert!(!prepare(&plain, None), "a no-option theme can retain the exact same base tokens");
+            assert_eq!(CUSTOM.get(), base_custom);
+            publish(&app, 2.1);
+            assert_eq!(ctx.global_style().visuals, before, "restoring a no-option theme must release the surface fills");
+        }
     }
 
     #[test]
