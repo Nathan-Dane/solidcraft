@@ -95,6 +95,7 @@ struct PublishedTab {
     environment: Environment,
     tokens: Tokens,
     view: Tokens,
+    tab_surfaces: bool,
 }
 
 #[derive(Clone)]
@@ -322,7 +323,8 @@ impl TabThemeState {
         let mut view = if viewport_dark() == is_dark() { tokens } else { target.view };
         view.viewport_top = tokens.viewport_top;
         view.viewport_bottom = tokens.viewport_bottom;
-        (PublishedTab { environment, tokens, view }, target.accent, self.fade.is_some())
+        let tab_surfaces = self.prepared.as_ref().is_some_and(|p| p.enabled && !p.file.tabs.is_empty());
+        (PublishedTab { environment, tokens, view, tab_surfaces }, target.accent, self.fade.is_some())
     }
 }
 
@@ -707,6 +709,12 @@ pub fn viewport_dark() -> bool {
 /// The 3D view's own background colour, or `None` for the theme's gradient (#7688).
 pub fn viewport_background() -> Option<[u8; 3]> {
     VIEWPORT_BACKGROUND.get()
+}
+
+/// Whether the published theme opts into per-tab surfaces. Render's unauthored preview uses
+/// this cached policy; it must retain its existing scene backplate when the option is absent/off.
+pub(crate) fn tab_surfaces_enabled() -> bool {
+    PUBLISHED.get().is_some_and(|p| p.environment == Environment::current() && p.tab_surfaces)
 }
 
 /// The common conversion boundary for compiled icon palette data.

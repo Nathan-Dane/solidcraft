@@ -432,6 +432,13 @@ floors also apply to tab panels and interpolated alpha. A viewport set to the op
 palette keeps that palette; a flat background preference takes precedence over tab gradients. Definitions and authored defaults
 roundtrip through theme export; saved option values are excluded.
 
+Render's untouched, unsaved preview also uses these animated surfaces, including viewport
+palette and flat-colour preferences. Explicit scene backplates, transparency, environments,
+gradient backdrops and saved setups keep their existing background instead. Saved setups do
+not record whether their background was explicitly chosen, so even a setup saved only for its
+camera conservatively retains its scene backplate. With tab surfaces absent/off, Render keeps
+its original flat scene background. Theme surfaces never change rendered images or exports.
+
 Up to 32 overlays apply in file order, after the base palette and the theme's own value tables.
 Later matching entries win by key. Every overlay has one `when`: `{"opt":"id","eq":value}`
 for an exact, correctly typed comparison, or `gte`, `lte`, or both for inclusive range bounds.
