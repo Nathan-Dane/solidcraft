@@ -138,7 +138,7 @@ fn setting(ui: &mut Ui, field: &DetailSetting, focus: bool) -> Option<DetailEven
                 DetailValue::Number { value, min, max, suffix } => Some(super::number_field(ui, value, *min..=*max, 0.01, suffix)),
                 DetailValue::Length { value, units } => Some(super::length_field(ui, value, units, 6)),
                 DetailValue::Angle(value) => Some(super::angle_field(ui, value)),
-                DetailValue::Slider { value, min, max } => Some(super::slider(ui, value, *min..=*max, super::Slider::default())),
+                DetailValue::Slider { value, min, max } => Some(super::slider(ui, value, *min..=*max, Default::default())),
                 DetailValue::Check(value) => Some(super::checkbox(ui, "", value)),
                 DetailValue::Axis { value, .. } => {
                     let axes = [[1.0, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]];
