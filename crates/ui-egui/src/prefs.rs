@@ -3154,11 +3154,13 @@ pub fn control(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::
         None if rest.contains_key("theme") => {
             staged.theme_follow.clear();
             follow.launch = None;
+            let _ = follow.poll("", f64::NEG_INFINITY, true);
         }
         None => {}
     }
     let export = rest.remove("theme_export").and_then(|v| v.as_bool()).unwrap_or(false);
     let new = prepare_preferences(app, &staged, followed_theme(&staged, &follow), &serde_json::Value::Object(rest.clone()))?;
+    let stopped_following = !app.prefs_window.follow.path(&app.preferences.theme_follow).is_empty() && follow.path(&new.theme_follow).is_empty();
     if stand_up == Some(true) && app.stand_up.is_none() {
         return Err("no file is waiting to be stood up".into());
     }
@@ -3173,6 +3175,10 @@ pub fn control(app: &mut SolveApp, p: &serde_json::Value) -> Result<serde_json::
         Some(true) => crate::stand_up::stand_up(app)?,
         Some(false) => crate::stand_up::leave(app),
         None => {}
+    }
+    if stopped_following {
+        // Restore the selected theme's dark/light mode even when its saved id did not change.
+        stop_following(app);
     }
     app.prefs_window.follow = follow;
     let mut out = apply_preferences(app, new, &serde_json::Value::Object(rest))?;
@@ -6233,28 +6239,31 @@ mod tests {
         let mut h = crate::scenario::Harness::new();
         let path = h.dir.join("follow-options.json");
         let mut file = option_theme_file("Follow Options");
+        file["base"] = json!("light");
         std::fs::write(&path, file.to_string()).unwrap();
-        let out = control(&mut h.app, &json!({"theme_follow":path, "theme_options":{"follow-options":{"enabled":true,"amount":8}}})).unwrap();
+        let out = control(&mut h.app, &json!({"theme_follow":path, "theme_options":{"file-follow-options":{"enabled":true,"amount":8}}})).unwrap();
         assert_eq!(out["theme"], "dark");
         assert_eq!(out["theme_option_values"]["enabled"], true);
         h.frames(2);
         assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+        assert!(!h.app.ui.dark);
         let saved = h.app.prefs();
         let err = control(&mut h.app, &json!({"theme":"light", "theme_options":{"missing":{}}, "stand_up":false})).unwrap_err();
         assert!(err.contains("theme_options.missing"));
         assert_eq!(h.app.prefs(), saved);
-        assert_eq!(active_theme_file(&h.app).unwrap().id, "follow-options");
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
         let other_path = h.dir.join("other-options.json");
         std::fs::write(&other_path, option_theme_file("Other Options").to_string()).unwrap();
-        assert!(control(&mut h.app, &json!({"theme_follow":other_path,"theme_options":{"other-options":{"enabled":42}}})).is_err());
+        let err = control(&mut h.app, &json!({"theme_follow":other_path,"theme_options":{"file-other-options":{"enabled":42}}})).unwrap_err();
+        assert!(err.contains("theme_options.file-other-options.enabled"), "{err}");
         assert_eq!(h.app.prefs(), saved);
-        assert_eq!(active_theme_file(&h.app).unwrap().id, "follow-options");
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
         file["options"][1]["max"] = json!(6);
         file["options"][1]["default"] = json!(2);
         std::fs::write(&path, file.to_string()).unwrap();
         let out = control(&mut h.app, &json!({"theme_follow":path, "theme_export":true})).unwrap();
         assert_eq!(out["theme_option_values"]["amount"], 2.0);
-        assert_eq!(out["theme_options"]["follow-options"]["amount"], 8);
+        assert_eq!(out["theme_options"]["file-follow-options"]["amount"], 8);
         assert_eq!(out["theme_option_notices"], json!([{"id":"amount","kind":"out_of_range"}]));
         assert_eq!(out["theme_file"]["name"], "Follow Options");
         assert_eq!(out["theme_file"]["options"][1]["default"], 2.0);
@@ -6262,8 +6271,11 @@ mod tests {
         let out = control(&mut h.app, &json!({"theme_follow":path})).unwrap();
         assert!(out["theme_follow_error"].is_string());
         assert_eq!(out["theme_option_values"]["enabled"], true);
-        control(&mut h.app, &json!({"theme_follow":""})).unwrap();
+        let out = control(&mut h.app, &json!({"theme_follow":""})).unwrap();
+        assert_eq!(out["dark"], true);
         assert!(active_theme_file(&h.app).is_none());
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
         let out = control(&mut h.app, &json!({"theme_follow":path})).unwrap();
         assert_eq!(out["theme_option_values"], json!({}), "stopping clears the last good file");
         control(&mut h.app, &json!({"theme_follow":""})).unwrap();
@@ -6274,6 +6286,19 @@ mod tests {
         assert_eq!(out["theme_follow"], "");
         assert_eq!(out["theme_option_values"]["enabled"], true);
         assert_eq!(Tokens::get().panel, egui::Color32::from_rgb(0xab, 0xcd, 0xef));
+        assert!(!h.app.ui.dark);
+        let saved = h.app.prefs();
+        let launch = h.app.prefs_window.follow.launch.clone();
+        assert!(control(&mut h.app, &json!({"theme":"dark","theme_options":{"missing":{}}})).is_err());
+        assert_eq!(h.app.prefs(), saved);
+        assert_eq!(h.app.prefs_window.follow.launch, launch);
+        assert_eq!(active_theme_file(&h.app).unwrap().id, "file-follow-options");
+        let out = control(&mut h.app, &json!({"theme":"dark"})).unwrap();
+        assert_eq!(out["dark"], true);
+        assert!(out["theme_followed"].is_null());
+        assert!(h.app.prefs_window.follow.theme().is_none());
+        h.frames(2);
+        assert_eq!(Tokens::get().panel, Tokens::dark().panel);
     }
 
     #[test]
