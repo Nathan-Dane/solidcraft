@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Pas de dekking van zwevende panelen aan. Een minimum voor leesbaarheid beschermt tekst boven de kleuren van de viewport.",
   "prefs.theme_option_tab_colours": "Tabbladkleuren",
   "prefs.theme_option_tab_colours_help": "Gebruik de paneel- en viewportkleuren van dit thema voor elk tabblad van het lint.",
-  "prefs.theme_option_tab_fade_ms": "Tabbladovergang",
+  "prefs.theme_option_tab_fade_ms": "Vervagen",
   "prefs.theme_option_tab_fade_ms_help": "Laat paneel- en viewportkleuren vervagen bij het wisselen van tabblad. Nul schakelt direct om.",
   "prefs.theme_options_badge": "Opties",
   "prefs.theme_options_more": "Meer · {count}",

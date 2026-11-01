@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Upravte neprůhlednost plovoucích panelů. Minimální čitelnost chrání text nad barvami pohledu.",
   "prefs.theme_option_tab_colours": "Barvy karet",
   "prefs.theme_option_tab_colours_help": "Použít pro každou kartu pásu karet barvy panelů a pohledu tohoto motivu.",
-  "prefs.theme_option_tab_fade_ms": "Přechod karet",
+  "prefs.theme_option_tab_fade_ms": "Prolínání",
   "prefs.theme_option_tab_fade_ms_help": "Prolnout barvy panelů a pohledu při přepínání karet. Nula přepíná okamžitě.",
   "prefs.theme_options_badge": "Možnosti",
   "prefs.theme_options_more": "Více · {count}",

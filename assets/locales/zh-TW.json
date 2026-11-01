@@ -2330,7 +2330,7 @@
   "prefs.theme_option_opacity_help": "調整浮動面板的不透明度。可讀性下限會保護視埠顏色上的文字。",
   "prefs.theme_option_tab_colours": "索引標籤顏色",
   "prefs.theme_option_tab_colours_help": "每個功能區索引標籤都使用此主題的面板和視埠顏色。",
-  "prefs.theme_option_tab_fade_ms": "索引標籤轉場",
+  "prefs.theme_option_tab_fade_ms": "淡化",
   "prefs.theme_option_tab_fade_ms_help": "切換索引標籤時，面板和視埠顏色會淡入淡出。設為零則立即切換。",
   "prefs.theme_options_badge": "選項",
   "prefs.theme_options_more": "更多 · {count}",

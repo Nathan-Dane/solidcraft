@@ -290,6 +290,10 @@ pub(crate) mod test_boat;
 pub mod theme;
 pub mod theme_files;
 mod theme_options;
+#[cfg(feature = "theme-studio")]
+pub mod theme_studio;
+#[cfg(feature = "theme-studio")]
+mod theme_studio_viewport;
 #[cfg(test)]
 mod thin_extrude_tests;
 pub mod timeline;

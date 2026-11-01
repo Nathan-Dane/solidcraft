@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Налаштуйте непрозорість плаваючих панелей. Нижня межа читабельності захищає текст на кольорах вікна перегляду.",
   "prefs.theme_option_tab_colours": "Кольори вкладок",
   "prefs.theme_option_tab_colours_help": "Використовувати кольори панелей і вікна перегляду цієї теми для кожної вкладки стрічки.",
-  "prefs.theme_option_tab_fade_ms": "Перехід між вкладками",
+  "prefs.theme_option_tab_fade_ms": "Згасання",
   "prefs.theme_option_tab_fade_ms_help": "Плавно змінювати кольори панелей і вікна перегляду під час перемикання вкладок. Нуль перемикає миттєво.",
   "prefs.theme_options_badge": "Параметри",
   "prefs.theme_options_more": "Ще · {count}",

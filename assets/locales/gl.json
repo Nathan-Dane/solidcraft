@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Axusta a opacidade dos paneis flotantes. Un mínimo de lexibilidade protexe o texto sobre as cores da ventá gráfica.",
   "prefs.theme_option_tab_colours": "Cores das lapelas",
   "prefs.theme_option_tab_colours_help": "Usa as cores de panel e de ventá gráfica deste tema para cada lapela da cinta.",
-  "prefs.theme_option_tab_fade_ms": "Transición entre lapelas",
+  "prefs.theme_option_tab_fade_ms": "Esvaecemento",
   "prefs.theme_option_tab_fade_ms_help": "Funde as cores do panel e da ventá gráfica ao cambiar de lapela. Cero cambia ao instante.",
   "prefs.theme_options_badge": "Opcións",
   "prefs.theme_options_more": "Máis · {count}",

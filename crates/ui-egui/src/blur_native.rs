@@ -5,6 +5,12 @@ use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
 
+#[cfg(feature = "theme-studio")]
+#[path = "blur_studio.rs"]
+mod studio;
+#[cfg(feature = "theme-studio")]
+pub use studio::{StudioFrame, StudioRenderer};
+
 thread_local! { static CURRENT: RefCell<Option<Arc<Shared>>> = const { RefCell::new(None) }; }
 thread_local! { static SURFACE_ALPHA: std::cell::Cell<Option<u8>> = const { std::cell::Cell::new(None) }; }
 const BUDGET: u64 = 256 * 1024 * 1024;
@@ -363,7 +369,7 @@ struct Inner {
     rendered: bool,
     drawn_before: u64,
     painted: Option<PaintedFrame>,
-    submitted_at: Option<std::time::Instant>,
+    submitted_at: Option<web_time::Instant>,
     gpu: Option<Gpu>,
     markers: Vec<Marker>,
     counts: Counters,
@@ -734,12 +740,7 @@ impl FrameCompositor for Shared {
             }
             let mut marker_ids: Vec<_> = inner.markers.iter().map(|marker| marker.callback_id).collect();
             marker_ids.sort_unstable();
-            let data = (
-                gpu.composition.view.clone(),
-                gpu.present.clone(),
-                gpu.presentation.group.clone(),
-                marker_ids,
-            );
+            let data = (gpu.composition.view.clone(), gpu.present.clone(), gpu.presentation.group.clone(), marker_ids);
             inner.counts.composition_passes += 1;
             data
         };
@@ -802,7 +803,7 @@ impl FrameCompositor for Shared {
         }
         if let Ok(mut inner) = self.inner.lock() {
             if inner.rendered && inner.counts.markers_drawn > inner.drawn_before && !self.host.lost.is_lost() {
-                let now = std::time::Instant::now();
+                let now = web_time::Instant::now();
                 inner.painted = Some(PaintedFrame {
                     frame: inner.frame,
                     interval_ms: inner.submitted_at.map(|at| now.duration_since(at).as_secs_f64() * 1000.0),
@@ -919,7 +920,12 @@ fn load_pass(encoder: &mut wgpu::CommandEncoder, label: &'static str, view: &wgp
     attachment_pass(encoder, label, view, wgpu::LoadOp::Load)
 }
 
-fn attachment_pass(encoder: &mut wgpu::CommandEncoder, label: &'static str, view: &wgpu::TextureView, load: wgpu::LoadOp<wgpu::Color>) -> wgpu::RenderPass<'static> {
+fn attachment_pass(
+    encoder: &mut wgpu::CommandEncoder,
+    label: &'static str,
+    view: &wgpu::TextureView,
+    load: wgpu::LoadOp<wgpu::Color>,
+) -> wgpu::RenderPass<'static> {
     encoder
         .begin_render_pass(&wgpu::RenderPassDescriptor {
             label: Some(label),

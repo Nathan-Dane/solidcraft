@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Laraskan kelegapan panel terapung. Paras kebolehbacaan minimum melindungi teks di atas warna tetingkap pandangan.",
   "prefs.theme_option_tab_colours": "Warna tab",
   "prefs.theme_option_tab_colours_help": "Gunakan warna panel dan tetingkap pandangan tema ini bagi setiap tab reben.",
-  "prefs.theme_option_tab_fade_ms": "Peralihan tab",
+  "prefs.theme_option_tab_fade_ms": "Pudar",
   "prefs.theme_option_tab_fade_ms_help": "Pudarkan warna panel dan tetingkap pandangan apabila bertukar tab. Sifar bertukar serta-merta.",
   "prefs.theme_options_badge": "Pilihan",
   "prefs.theme_options_more": "Lagi · {count}",

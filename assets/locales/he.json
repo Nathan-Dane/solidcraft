@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "כוונון אטימות הלוחות הצפים. רמת אטימות מינימלית שומרת על קריאות הטקסט על רקע צבעי חלון התצוגה.",
   "prefs.theme_option_tab_colours": "צבעי כרטיסיות",
   "prefs.theme_option_tab_colours_help": "השתמש בצבעי הלוח ואזור התצוגה של ערכת נושא זו עבור כל כרטיסייה ברצועת הכלים.",
-  "prefs.theme_option_tab_fade_ms": "מעבר בין כרטיסיות",
+  "prefs.theme_option_tab_fade_ms": "עמעום",
   "prefs.theme_option_tab_fade_ms_help": "שנה בהדרגה את צבעי הלוח ואזור התצוגה בעת מעבר בין כרטיסיות. ערך אפס מבצע את המעבר מיד.",
   "prefs.theme_options_badge": "אפשרויות",
   "prefs.theme_options_more": "עוד · {count}",

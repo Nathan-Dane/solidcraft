@@ -186,9 +186,6 @@ pub(crate) fn theme_options_list(
             for &index in cell {
                 let Some(option) = options.get(index) else { continue };
                 advanced |= option.definition.advanced;
-                if option.blur && cell.len() == 1 {
-                    width = Width::Wide;
-                }
                 if let OptionKind::Choice { values, .. } = &option.definition.kind
                     && choice_width(values.len()) == Width::Wide
                 {

@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Reglați opacitatea panourilor flotante. Un prag de lizibilitate protejează textul de deasupra culorilor ferestrei de vizualizare.",
   "prefs.theme_option_tab_colours": "Culorile filelor",
   "prefs.theme_option_tab_colours_help": "Folosește culorile panourilor și ale ferestrei de vizualizare ale acestei teme pentru fiecare filă din panglică.",
-  "prefs.theme_option_tab_fade_ms": "Tranziția filelor",
+  "prefs.theme_option_tab_fade_ms": "Estompare",
   "prefs.theme_option_tab_fade_ms_help": "Estompează culorile panourilor și ale ferestrei de vizualizare la schimbarea filelor. Zero comută instantaneu.",
   "prefs.theme_options_badge": "Opțiuni",
   "prefs.theme_options_more": "Mai multe · {count}",

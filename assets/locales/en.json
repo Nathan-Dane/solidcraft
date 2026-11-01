@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "Adjust floating panel opacity. A readability floor protects text over viewport colors.",
   "prefs.theme_option_tab_colours": "Tab colors",
   "prefs.theme_option_tab_colours_help": "Use this theme’s panel and viewport colors for each ribbon tab.",
-  "prefs.theme_option_tab_fade_ms": "Tab transition",
+  "prefs.theme_option_tab_fade_ms": "Fade",
   "prefs.theme_option_tab_fade_ms_help": "Fade panel and viewport colors when switching tabs. Zero switches instantly.",
   "prefs.theme_options_badge": "Options",
   "prefs.theme_options_more": "More · {count}",

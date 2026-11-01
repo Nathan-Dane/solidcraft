@@ -2335,7 +2335,7 @@
   "prefs.theme_option_opacity_help": "Regola l'opacità dei pannelli flottanti. Una soglia minima di leggibilità protegge il testo sopra i colori della vista.",
   "prefs.theme_option_tab_colours": "Colori delle schede",
   "prefs.theme_option_tab_colours_help": "Usa i colori dei pannelli e della vista di questo tema per ogni scheda della barra multifunzione.",
-  "prefs.theme_option_tab_fade_ms": "Transizione tra schede",
+  "prefs.theme_option_tab_fade_ms": "Dissolvenza",
   "prefs.theme_option_tab_fade_ms_help": "Sfuma i colori dei pannelli e della vista quando si cambia scheda. Zero cambia all'istante.",
   "prefs.theme_options_badge": "Opzioni",
   "prefs.theme_options_more": "Altro · {count}",

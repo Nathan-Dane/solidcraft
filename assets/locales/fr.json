@@ -2339,7 +2339,7 @@
   "prefs.theme_option_opacity_help": "Règle l'opacité des panneaux flottants. Un seuil de lisibilité protège le texte placé sur les couleurs de la vue 3D.",
   "prefs.theme_option_tab_colours": "Couleurs des onglets",
   "prefs.theme_option_tab_colours_help": "Utilise les couleurs de panneau et de vue 3D de ce thème pour chaque onglet du ruban.",
-  "prefs.theme_option_tab_fade_ms": "Transition des onglets",
+  "prefs.theme_option_tab_fade_ms": "Fondu",
   "prefs.theme_option_tab_fade_ms_help": "Fait passer progressivement les couleurs du panneau et de la vue 3D au changement d'onglet. Zéro bascule instantanément.",
   "prefs.theme_options_badge": "Options",
   "prefs.theme_options_more": "Plus · {count}",

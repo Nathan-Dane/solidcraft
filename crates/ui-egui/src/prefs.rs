@@ -3735,7 +3735,7 @@ fn resolved_theme(prefs: &Prefs, file: &crate::theme_files::ThemeFile) -> Tokens
     crate::theme_files::resolve_with(file, &effective_theme_options(prefs, file).0)
 }
 
-fn theme_option_text(text: &crate::theme_files::OptionText, language: &str, fallback: &str) -> String {
+pub(crate) fn theme_option_text(text: &crate::theme_files::OptionText, language: &str, fallback: &str) -> String {
     text.get(language).or_else(|| text.get("en")).map(String::as_str).unwrap_or(fallback).to_owned()
 }
 

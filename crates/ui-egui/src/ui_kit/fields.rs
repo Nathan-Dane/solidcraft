@@ -784,7 +784,8 @@ pub(crate) fn slider<T: egui::emath::Numeric>(ui: &mut Ui, value: &mut T, range:
             t.space_4
         };
         ui.spacing_mut().slider_width = dimension(ui.available_width() - reserved);
-        let mut widget = egui::Slider::new(value, range).show_value(options.show_value).handle_shape(egui::style::HandleShape::Circle);
+        let mut widget =
+            egui::Slider::new(value, range).show_value(options.show_value).handle_shape(egui::style::HandleShape::Circle).trailing_fill(false);
         if options.off_endpoint {
             // Blur's step is an editing affordance, not a persisted/API quantisation rule.
             widget = widget.clamping(egui::SliderClamping::Edits);
@@ -798,6 +799,8 @@ pub(crate) fn slider<T: egui::emath::Numeric>(ui: &mut Ui, value: &mut T, range:
         if options.integer {
             widget = widget.integer();
         }
+        let layer = ui.layer_id();
+        let paint_start = ui.ctx().graphics(|graphics| graphics.get(layer).map_or(egui::layers::ShapeIdx(0), |list| list.next_idx()));
         let response = ui.add(widget);
         if ui.ctx().memory(|memory| memory.focused()).is_some_and(|id| {
             ui.ctx().read_response(id).is_some_and(|focused| response.rect.contains(focused.rect.center()))
@@ -806,12 +809,35 @@ pub(crate) fn slider<T: egui::emath::Numeric>(ui: &mut Ui, value: &mut T, range:
             crate::prefs_search::note_key_sink(ui.ctx());
         }
         let slider = egui::Rect::from_min_size(response.rect.min, vec2(ui.spacing().slider_width, response.rect.height()));
-        let mut background = ui.painter().clone();
-        background.set_opacity(if ui.is_visible() { 1.0 } else { 0.0 });
-        // At the top of the range egui's own handle reaches `slider.right()` exactly, and a fill
-        // that stops there leaves its last column showing beside the editor (#5708). The gap
-        // before the editor is `item_spacing.x`, so a pixel past the edge covers nothing else.
-        background.rect_filled(slider.with_max_x(slider.right() + 1.0), 0.0, t.dialog_body);
+        // egui 0.36.2 paints its rail and circular handle first, before the native
+        // value editor. Remove only that exact pair from this widget's paint span;
+        // covering it with a surface-coloured rectangle breaks translucent parents.
+        ui.ctx().graphics_mut(|graphics| {
+            let Some(list) = graphics.get_mut(layer) else { return };
+            let native_pair = {
+                let mut shapes = list.all_entries().skip(paint_start.0);
+                match (shapes.next(), shapes.next()) {
+                    (Some(rail), Some(handle)) => match (&rail.shape, &handle.shape) {
+                        (egui::Shape::Rect(rail), egui::Shape::Circle(handle)) => {
+                            (rail.rect.left() - slider.left()).abs() < 0.01
+                                && (rail.rect.right() - slider.right()).abs() < 0.01
+                                && (rail.rect.center().y - slider.center().y).abs() < 0.01
+                                && rail.rect.height() <= slider.height()
+                                && (handle.center.y - slider.center().y).abs() < 0.01
+                                && rail.rect.x_range().contains(handle.center.x)
+                                && handle.radius > 0.0
+                                && handle.radius <= slider.height()
+                        }
+                        _ => false,
+                    },
+                    _ => false,
+                }
+            };
+            if native_pair {
+                list.mutate_shape(paint_start, |shape| shape.shape = egui::Shape::Noop);
+                list.mutate_shape(egui::layers::ShapeIdx(paint_start.0 + 1), |shape| shape.shape = egui::Shape::Noop);
+            }
+        });
         // Match egui's native input range (handle_radius = thickness / 2.5), so the
         // painted thumb stays under the pointer even at the two ends of the range.
         let input_radius = ui.text_style_height(&egui::TextStyle::Body).max(ui.spacing().interact_size.y) / 2.5;

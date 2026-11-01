@@ -29,7 +29,7 @@ pub struct Counters {
 }
 
 impl Counters {
-    #[cfg(not(target_arch = "wasm32"))]
+    #[cfg(any(not(target_arch = "wasm32"), feature = "theme-studio"))]
     pub(crate) fn clear_live(&mut self) {
         self.live_bytes = 0;
         self.live_textures = 0;
@@ -179,13 +179,13 @@ impl Session {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), feature = "theme-studio"))]
 #[path = "blur_native.rs"]
 mod implementation;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), feature = "theme-studio"))]
 pub use implementation::*;
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "theme-studio")))]
 mod implementation {
     use super::*;
     #[derive(Default)]
@@ -234,5 +234,5 @@ mod implementation {
         painter.add(egui_wgpu::Callback::new_paint_callback(rect, cb));
     }
 }
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(feature = "theme-studio")))]
 pub use implementation::*;

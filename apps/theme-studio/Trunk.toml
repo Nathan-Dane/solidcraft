@@ -1,0 +1,5 @@
+[build]
+target = "index.html"
+dist = "../../target/theme-studio-web"
+public_url = "./"
+filehash = true

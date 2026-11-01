@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "اضبط عتامة اللوحات العائمة. يُطبّق حد أدنى للعتامة للحفاظ على وضوح النص فوق ألوان منطقة العرض.",
   "prefs.theme_option_tab_colours": "ألوان علامات التبويب",
   "prefs.theme_option_tab_colours_help": "استخدم ألوان اللوحات ومنطقة العرض من هذه السمة لكل علامة تبويب في الشريط.",
-  "prefs.theme_option_tab_fade_ms": "انتقال علامات التبويب",
+  "prefs.theme_option_tab_fade_ms": "تلاشي",
   "prefs.theme_option_tab_fade_ms_help": "تتغيّر ألوان اللوحات ومنطقة العرض تدريجيًا عند تبديل علامات التبويب. القيمة صفر تبدّلها فورًا.",
   "prefs.theme_options_badge": "الخيارات",
   "prefs.theme_options_more": "المزيد · {count}",

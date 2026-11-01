@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Подесите непрозирност плутајућих панела. Доња граница читљивости штити текст преко боја прозора приказа.",
   "prefs.theme_option_tab_colours": "Боје картица",
   "prefs.theme_option_tab_colours_help": "Користи боје панела и прозора приказа ове теме за сваку картицу на траци.",
-  "prefs.theme_option_tab_fade_ms": "Прелаз између картица",
+  "prefs.theme_option_tab_fade_ms": "Претапање",
   "prefs.theme_option_tab_fade_ms_help": "Постепено мења боје панела и прозора приказа при промени картице. Нула прелази одмах.",
   "prefs.theme_options_badge": "Опције",
   "prefs.theme_options_more": "Више · {count}",

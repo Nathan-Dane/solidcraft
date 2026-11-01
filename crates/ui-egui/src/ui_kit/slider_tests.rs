@@ -188,41 +188,33 @@ fn a_sliders_value_box_takes_typed_numbers_and_clamps_them_to_its_range() {
     }
 }
 
-/// At the top of its range egui's own handle reaches the right edge of the rectangle the kit
-/// paints over it, so the mask has to pass that edge; flush with it, the handle's last column
-/// survives as a light sliver beside the value box (#5708).
+/// Native chrome is removed, so an endpoint needs no rectangular cover (#5708, #10374).
 #[test]
-fn the_mask_passes_the_edge_of_egui_s_own_handle_at_the_top_of_the_range() {
-    let ctx = crate::fonts::test_context();
-    let t = Tokens::get();
-    let mut value: f64 = 2.0;
-    let mut output =
-        ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(400.0, 200.0))), ..Default::default() }, |ui| {
-            scope(ui, |ui| {
-                slider(ui, &mut value, 0.0..=2.0, Slider { step: Some(0.05), ..Default::default() });
+fn slider_endpoints_have_only_the_token_thumb_and_no_backing_rectangle() {
+    for value in [0.0_f64, 2.0] {
+        let ctx = crate::fonts::test_context();
+        let t = Tokens::get();
+        let mut value = value;
+        let mut output =
+            ctx.run_ui(egui::RawInput { screen_rect: Some(Rect::from_min_size(egui::Pos2::ZERO, vec2(400.0, 200.0))), ..Default::default() }, |ui| {
+                scope(ui, |ui| {
+                    slider(ui, &mut value, 0.0..=2.0, Slider { step: Some(0.05), ..Default::default() });
+                });
             });
-        });
-    output.textures_delta.clear();
-    let handle = output
-        .shapes
-        .iter()
-        .find_map(|s| match &s.shape {
-            egui::Shape::Circle(c) if c.stroke.color != t.form_primary => Some(*c),
-            _ => None,
-        })
-        .expect("egui's own slider handle");
-    let mask = output
-        .shapes
-        .iter()
-        .find_map(|s| match &s.shape {
-            egui::Shape::Rect(r) if r.fill == t.dialog_body => Some(r.rect),
-            _ => None,
-        })
-        .expect("the rectangle the kit paints over egui's slider");
-    assert!(
-        mask.right() > handle.center.x + handle.radius,
-        "the mask ends at {} and egui's handle at {}: its last column would show",
-        mask.right(),
-        handle.center.x + handle.radius
-    );
+        output.textures_delta.clear();
+        let thumbs: Vec<_> = output
+            .shapes
+            .iter()
+            .filter_map(|shape| match &shape.shape {
+                egui::Shape::Circle(circle) => Some(circle),
+                _ => None,
+            })
+            .collect();
+        assert_eq!(thumbs.len(), 1, "only the shared token thumb is painted");
+        assert_eq!(thumbs[0].radius, t.space_8);
+        assert!(
+            !output.shapes.iter().any(|shape| matches!(&shape.shape, egui::Shape::Rect(rect) if rect.fill == t.dialog_body)),
+            "no surface-coloured cover obscures the parent material"
+        );
+    }
 }

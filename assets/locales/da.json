@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Juster opaciteten af flydende paneler. En nedre grænse for læsbarhed beskytter tekst oven på visningsområdets farver.",
   "prefs.theme_option_tab_colours": "Fanefarver",
   "prefs.theme_option_tab_colours_help": "Brug dette temas panel- og visningsområdefarver for hver fane på båndet.",
-  "prefs.theme_option_tab_fade_ms": "Faneovergang",
+  "prefs.theme_option_tab_fade_ms": "Toning",
   "prefs.theme_option_tab_fade_ms_help": "Tone panel- og visningsområdefarverne over, når du skifter fane. Nul skifter med det samme.",
   "prefs.theme_options_badge": "Muligheder",
   "prefs.theme_options_more": "Flere · {count}",

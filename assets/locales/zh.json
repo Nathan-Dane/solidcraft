@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "调整浮动面板的不透明度。最低不透明度限制可确保文字在视口颜色上清晰可读。",
   "prefs.theme_option_tab_colours": "选项卡颜色",
   "prefs.theme_option_tab_colours_help": "为每个功能区选项卡使用主题的面板和视口颜色。",
-  "prefs.theme_option_tab_fade_ms": "选项卡过渡",
+  "prefs.theme_option_tab_fade_ms": "渐变",
   "prefs.theme_option_tab_fade_ms_help": "切换选项卡时渐变面板和视口颜色。设为零可立即切换。",
   "prefs.theme_options_badge": "选项",
   "prefs.theme_options_more": "更多 · {count}",

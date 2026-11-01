@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Juster opasiteten til flytende paneler. En lesbarhetsgrense beskytter tekst over visningsfarger.",
   "prefs.theme_option_tab_colours": "Fanefarger",
   "prefs.theme_option_tab_colours_help": "Bruk dette temaets panel- og visningsfarger for hver båndfane.",
-  "prefs.theme_option_tab_fade_ms": "Faneovergang",
+  "prefs.theme_option_tab_fade_ms": "Uttoning",
   "prefs.theme_option_tab_fade_ms_help": "Toner panel- og visningsfarger når du bytter fane. Null bytter umiddelbart.",
   "prefs.theme_options_badge": "Alternativer",
   "prefs.theme_options_more": "Flere · {count}",

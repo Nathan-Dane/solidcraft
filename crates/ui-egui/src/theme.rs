@@ -41,6 +41,72 @@ thread_local! {
     static PUBLISHED: Cell<Option<PublishedTab>> = const { Cell::new(None) };
 }
 
+/// Complete thread-local palette binding for isolated studio contexts on one browser thread.
+#[cfg(feature = "theme-studio")]
+#[derive(Clone, Copy)]
+pub(crate) struct StudioEnvironment {
+    dark: bool,
+    vision: ColorVision,
+    custom: Option<Custom>,
+    generation: u64,
+    logo: bool,
+    viewport: Option<bool>,
+    background: Option<[u8; 3]>,
+    published: Option<PublishedTab>,
+}
+#[cfg(feature = "theme-studio")]
+impl Default for StudioEnvironment {
+    fn default() -> Self {
+        Self { dark: true, vision: ColorVision::Off, custom: None, generation: 0, logo: false, viewport: None, background: None, published: None }
+    }
+}
+#[cfg(feature = "theme-studio")]
+impl StudioEnvironment {
+    fn capture() -> Self {
+        Self {
+            dark: DARK.get(),
+            vision: VISION.get(),
+            custom: CUSTOM.get(),
+            generation: CUSTOM_GENERATION.get(),
+            logo: LOGO_ACCENT.get(),
+            viewport: VIEWPORT_DARK.get(),
+            background: VIEWPORT_BACKGROUND.get(),
+            published: PUBLISHED.get(),
+        }
+    }
+    fn install(self) {
+        DARK.set(self.dark);
+        VISION.set(self.vision);
+        CUSTOM.set(self.custom);
+        CUSTOM_GENERATION.set(self.generation);
+        LOGO_ACCENT.set(self.logo);
+        VIEWPORT_DARK.set(self.viewport);
+        VIEWPORT_BACKGROUND.set(self.background);
+        PUBLISHED.set(self.published);
+    }
+    pub(crate) fn enter(self) -> StudioEnvironmentGuard {
+        let previous = Self::capture();
+        self.install();
+        StudioEnvironmentGuard(previous)
+    }
+}
+#[cfg(feature = "theme-studio")]
+pub(crate) struct StudioEnvironmentGuard(StudioEnvironment);
+#[cfg(feature = "theme-studio")]
+impl StudioEnvironmentGuard {
+    pub(crate) fn finish(self) -> StudioEnvironment {
+        let current = StudioEnvironment::capture();
+        drop(self);
+        current
+    }
+}
+#[cfg(feature = "theme-studio")]
+impl Drop for StudioEnvironmentGuard {
+    fn drop(&mut self) {
+        self.0.install();
+    }
+}
+
 /// Exact registry names, including contextual/specialty tabs and legacy Render sub-tabs that
 /// still share the Render accent. Unknown names must never silently become Model on import.
 pub(crate) const TAB_NAMES: &[&str] = &[
@@ -684,10 +750,19 @@ impl TabAccent {
     }
 
     pub fn publish(app: &crate::SolveApp, ctx: &egui::Context) {
+        Self::publish_context(ctx, &app.ui.tab, app.session.active_sketch.is_some(), app.tool.is_some() || app.dialog.is_some());
+    }
+
+    #[cfg(feature = "theme-studio")]
+    pub(crate) fn publish_preview(ctx: &egui::Context, tab: &str) {
+        Self::publish_context(ctx, tab, tab == "SKETCH", true);
+    }
+
+    fn publish_context(ctx: &egui::Context, tab: &str, sketch_open: bool, tool_active: bool) {
         let now = ctx.input(|i| i.time);
         let (published, accent, fading, style_surfaces) = ctx.data_mut(|data| {
             let state = data.get_temp_mut_or_default::<TabThemeState>(egui::Id::new(TAB_STATE));
-            let (published, accent, fading) = state.publish(&app.ui.tab, now);
+            let (published, accent, fading) = state.publish(tab, now);
             let style_surfaces = published.tab_surfaces || state.styled_surfaces;
             state.styled_surfaces = published.tab_surfaces;
             (published, accent, fading, style_surfaces)
@@ -710,9 +785,9 @@ impl TabAccent {
         }
         ctx.data_mut(|d| {
             d.insert_temp(egui::Id::new("sc_tab_accent"), accent);
-            d.insert_temp(egui::Id::new("sc_tab_icon_accent"), icon_accent_for_tab(&app.ui.tab));
-            d.insert_temp(egui::Id::new("sc_sketch_open"), app.session.active_sketch.is_some());
-            d.insert_temp(egui::Id::new("sc_tool_accent"), app.tool.is_some() || app.dialog.is_some());
+            d.insert_temp(egui::Id::new("sc_tab_icon_accent"), icon_accent_for_tab(tab));
+            d.insert_temp(egui::Id::new("sc_sketch_open"), sketch_open);
+            d.insert_temp(egui::Id::new("sc_tool_accent"), tool_active);
         });
     }
 
@@ -1309,11 +1384,86 @@ impl Tokens {
         }
         let scale = percent.clamp(40.0, 100.0) / 100.0;
         let body_inks = [self.text, self.form_ink, self.dialog_label];
-        for fill in [&mut self.panel, &mut self.panel_header, &mut self.dialog_bg, &mut self.dialog_body, &mut self.dialog_footer, &mut self.overlay]
-        {
+        for fill in [
+            &mut self.panel,
+            &mut self.panel_header,
+            &mut self.toolbar,
+            &mut self.timeline,
+            &mut self.dialog_bg,
+            &mut self.dialog_body,
+            &mut self.dialog_footer,
+            &mut self.overlay,
+        ] {
             *fill = readable_fill(*fill, &body_inks, scale);
         }
         self.nav_tip = readable_fill(self.nav_tip, &[self.nav_tip_ink], scale);
+    }
+
+    /// Scale neutral backing colours before opacity protection; semantic ink stays authored.
+    pub(crate) fn apply_surface_brightness(&mut self, percent: f32) {
+        if !percent.is_finite() || percent == 100.0 {
+            return;
+        }
+        let scale = percent.clamp(60.0, 120.0) / 100.0;
+        let adjust = |color: &mut Color32| {
+            let [r, g, b, a] = color.to_srgba_unmultiplied();
+            if a > 0 {
+                let channel = |v: u8| (f32::from(v) * scale).round().clamp(0.0, 255.0) as u8;
+                *color = Color32::from_rgba_unmultiplied(channel(r), channel(g), channel(b), a);
+            }
+        };
+        for color in [
+            &mut self.panel,
+            &mut self.panel_header,
+            &mut self.toolbar,
+            &mut self.timeline,
+            &mut self.timeline_item,
+            &mut self.dialog_bg,
+            &mut self.dialog_body,
+            &mut self.dialog_footer,
+            &mut self.overlay,
+            &mut self.field,
+            &mut self.control_fill,
+            &mut self.app_bar,
+            &mut self.app_bar_tab_active,
+            &mut self.nav_tip,
+            &mut self.nav_field,
+            &mut self.nav_viewport,
+            &mut self.glyph_bg,
+            &mut self.cube_face,
+            &mut self.viewport_top,
+            &mut self.viewport_bottom,
+            &mut self.grid,
+            &mut self.grid_major,
+            &mut self.border,
+            &mut self.dialog_border,
+            &mut self.dialog_rule,
+            &mut self.control_border,
+            &mut self.app_bar_separator,
+            &mut self.nav_tip_key_border,
+            &mut self.cube_border,
+            &mut self.file_background,
+            &mut self.file_surface,
+            &mut self.file_border,
+            &mut self.file_recovery_well,
+        ] {
+            adjust(color);
+        }
+        for stroke in [
+            &mut self.borders.primary,
+            &mut self.borders.secondary,
+            &mut self.borders.tertiary,
+            &mut self.borders.container,
+            &mut self.borders.control,
+        ]
+        .into_iter()
+        .flatten()
+        {
+            adjust(&mut stroke.color);
+        }
+        if let Some(inset) = &mut self.borders.primary_inset {
+            adjust(&mut inset.stroke.color);
+        }
     }
 
     /// These tokens with the 3D view's background one flat colour (#7688), or as they are for `None`.

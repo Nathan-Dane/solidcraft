@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "A lebegő panelek átlátszatlanságának beállítása. Az olvashatósági alsó határ védi a szöveget a nézetablak színei fölött.",
   "prefs.theme_option_tab_colours": "Fülek színei",
   "prefs.theme_option_tab_colours_help": "A téma panel- és nézetablak-színeinek használata minden menüszalag-fülhöz.",
-  "prefs.theme_option_tab_fade_ms": "Fülváltás átmenete",
+  "prefs.theme_option_tab_fade_ms": "Áttűnés",
   "prefs.theme_option_tab_fade_ms_help": "A panel- és nézetablak-színek áttűnése fülváltáskor. A nulla azonnal vált.",
   "prefs.theme_options_badge": "Beállítások",
   "prefs.theme_options_more": "Továbbiak · {count}",

@@ -2282,7 +2282,7 @@
   "prefs.theme_option_opacity_help": "Настройте непрозрачность плавающих панелей. Нижний порог читаемости защищает текст поверх цветов видового экрана.",
   "prefs.theme_option_tab_colours": "Цвета вкладок",
   "prefs.theme_option_tab_colours_help": "Использовать цвета панелей и видового экрана этой темы для каждой вкладки ленты.",
-  "prefs.theme_option_tab_fade_ms": "Переход между вкладками",
+  "prefs.theme_option_tab_fade_ms": "Затухание",
   "prefs.theme_option_tab_fade_ms_help": "Плавно менять цвета панелей и видового экрана при переключении вкладок. Ноль переключает мгновенно.",
   "prefs.theme_options_badge": "Параметры",
   "prefs.theme_options_more": "Ещё · {count}",

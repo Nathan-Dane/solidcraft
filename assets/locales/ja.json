@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "フローティングパネルの不透明度を調整します。ビューポートの色に重なっても文字が読めるように下限が適用されます。",
   "prefs.theme_option_tab_colours": "タブの色",
   "prefs.theme_option_tab_colours_help": "リボンタブごとにテーマのパネルとビューポートの色を使用します。",
-  "prefs.theme_option_tab_fade_ms": "タブの切り替え",
+  "prefs.theme_option_tab_fade_ms": "フェード",
   "prefs.theme_option_tab_fade_ms_help": "タブの切り替え時にパネルとビューポートの色を徐々に変えます。0で即座に切り替えます。",
   "prefs.theme_options_badge": "オプション",
   "prefs.theme_options_more": "その他 · {count}",

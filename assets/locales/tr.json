@@ -2330,7 +2330,7 @@
   "prefs.theme_option_opacity_help": "Kayan panellerin opaklığını ayarlayın. Bir okunabilirlik alt sınırı, görünüm alanı renkleri üzerindeki metni korur.",
   "prefs.theme_option_tab_colours": "Sekme renkleri",
   "prefs.theme_option_tab_colours_help": "Her şerit sekmesi için bu temanın panel ve görünüm alanı renklerini kullanın.",
-  "prefs.theme_option_tab_fade_ms": "Sekme geçişi",
+  "prefs.theme_option_tab_fade_ms": "Solma",
   "prefs.theme_option_tab_fade_ms_help": "Sekme değiştirirken panel ve görünüm alanı renkleri arasında yumuşak geçiş yapın. Sıfır, anında değiştirir.",
   "prefs.theme_options_badge": "Seçenekler",
   "prefs.theme_options_more": "Daha fazla · {count}",

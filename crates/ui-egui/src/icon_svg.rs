@@ -509,6 +509,25 @@ impl Look {
     }
 }
 
+/// Resolved compiled defaults for authoring inherited roles; shares native precedence exactly.
+#[cfg(feature = "theme-studio")]
+pub(crate) fn studio_defaults(dark: bool) -> serde_json::Value {
+    let look = Look { dark, accent: None, vision: crate::theme::ColorVision::Off, palette: None };
+    let hex = |name: &str, look| {
+        let color = role_colour(name, look);
+        format!("#{:02x}{:02x}{:02x}", color.r(), color.g(), color.b())
+    };
+    let mut out = serde_json::Map::new();
+    for role in ROLE_NAMES.iter().copied().filter(|role| *role != "gap") {
+        out.insert(role.into(), serde_json::json!(hex(role, look)));
+    }
+    for (name, accent) in std::iter::once(("solid", None)).chain(ACCENT_NAMES.iter().enumerate().map(|(i, name)| (*name, Some(i)))) {
+        let look = Look { accent, ..look };
+        out.insert(name.into(), serde_json::json!(["active-1", "active-2", "active-3"].map(|role| hex(role, look))));
+    }
+    serde_json::Value::Object(out)
+}
+
 /// Explicit whole-glyph tinting maps shaded passive faces to the selected active ramp.
 /// Keep ink, guides, literal mask colours and knockouts in their original roles.
 #[derive(Clone, Copy)]

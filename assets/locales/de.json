@@ -2370,7 +2370,7 @@
   "prefs.theme_option_opacity_help": "Deckkraft schwebender Bedienfelder anpassen. Eine Mindestdeckkraft schützt die Lesbarkeit über den Ansichtsfarben.",
   "prefs.theme_option_tab_colours": "Tabfarben",
   "prefs.theme_option_tab_colours_help": "Panel- und Ansichtsfarben dieses Designs je Registerkarte verwenden.",
-  "prefs.theme_option_tab_fade_ms": "Tabübergang",
+  "prefs.theme_option_tab_fade_ms": "Überblenden",
   "prefs.theme_option_tab_fade_ms_help": "Panel- und Ansichtsfarben beim Tabwechsel überblenden. Null wechselt sofort.",
   "prefs.theme_options_badge": "Optionen",
   "prefs.theme_options_more": "Mehr · {count}",

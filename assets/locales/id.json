@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Atur opasitas panel mengambang. Batas minimum keterbacaan melindungi teks di atas warna viewport.",
   "prefs.theme_option_tab_colours": "Warna tab",
   "prefs.theme_option_tab_colours_help": "Pakai warna panel dan viewport tema ini untuk setiap tab ribbon.",
-  "prefs.theme_option_tab_fade_ms": "Transisi tab",
+  "prefs.theme_option_tab_fade_ms": "Pudar",
   "prefs.theme_option_tab_fade_ms_help": "Memudarkan warna panel dan viewport saat berpindah tab. Nol berpindah seketika.",
   "prefs.theme_options_badge": "Opsi",
   "prefs.theme_options_more": "Lainnya · {count}",

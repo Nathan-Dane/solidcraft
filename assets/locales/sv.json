@@ -2329,7 +2329,7 @@
   "prefs.theme_option_opacity_help": "Justera opaciteten för flytande paneler. En lägstanivå för läsbarhet skyddar text över färgerna i vyfönstret.",
   "prefs.theme_option_tab_colours": "Flikfärger",
   "prefs.theme_option_tab_colours_help": "Använd det här temats panel- och vyfönsterfärger för varje flik i menyfliksområdet.",
-  "prefs.theme_option_tab_fade_ms": "Flikövergång",
+  "prefs.theme_option_tab_fade_ms": "Toning",
   "prefs.theme_option_tab_fade_ms_help": "Tona över panel- och vyfönsterfärger när du byter flik. Noll byter direkt.",
   "prefs.theme_options_badge": "Alternativ",
   "prefs.theme_options_more": "Fler · {count}",

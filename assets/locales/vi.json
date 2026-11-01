@@ -2383,7 +2383,7 @@
   "prefs.theme_option_opacity_help": "Điều chỉnh độ đục của các bảng nổi. Giới hạn độ đục tối thiểu giúp văn bản luôn dễ đọc trên nền màu của khung nhìn.",
   "prefs.theme_option_tab_colours": "Màu thẻ",
   "prefs.theme_option_tab_colours_help": "Sử dụng màu bảng điều khiển và khung nhìn của chủ đề này cho từng thẻ trên dải băng.",
-  "prefs.theme_option_tab_fade_ms": "Chuyển đổi thẻ",
+  "prefs.theme_option_tab_fade_ms": "Chuyển mờ",
   "prefs.theme_option_tab_fade_ms_help": "Chuyển dần màu của bảng điều khiển và khung nhìn khi đổi thẻ. Đặt thành 0 để chuyển ngay lập tức.",
   "prefs.theme_options_badge": "Tùy chọn",
   "prefs.theme_options_more": "Thêm · {count}",

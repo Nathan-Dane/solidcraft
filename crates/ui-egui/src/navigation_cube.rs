@@ -5,7 +5,7 @@ use solidcraft_engine::geom::Ring;
 
 pub(super) const SIZE: f32 = 112.0;
 // Paint and picking use the same original coordinate space, scaled as a group.
-pub(super) const DESIGN_SIZE: f32 = 164.0;
+pub(crate) const DESIGN_SIZE: f32 = 164.0;
 const HALF: f64 = 40.0;
 // Corner squares lie on the six flat faces, preserving a sharp cube silhouette.
 // The remaining regions belong to the face, including the middle of each edge.
@@ -113,6 +113,65 @@ fn contains(points: &Ring<Pos2>, p: Pos2) -> bool {
 
 fn hit(faces: &[Facet], p: Pos2) -> Option<usize> {
     faces.iter().enumerate().rev().find(|(_, f)| contains(&f.points, p)).map(|(i, _)| i)
+}
+
+/// Paint-only studio study of the production cube. Camera changes remain owned by the
+/// caller; this does not install a second orbit/navigation input path.
+#[cfg(feature = "theme-studio")]
+pub(crate) fn studio_cube(ui: &mut egui::Ui, rect: Rect, cam: &Camera) {
+    if !rect.is_finite() || !rect.is_positive() {
+        return;
+    }
+    let scale = rect.width().min(rect.height()) / DESIGN_SIZE;
+    let c = rect.center();
+    let active = ui.is_enabled() && ui.rect_contains_pointer(rect);
+    let t = Tokens::get().navigation_cube(active);
+    let faces = facets(cam, c, HALF * f64::from(scale));
+    let pointer = ui.input(|i| i.pointer.hover_pos()).filter(|_| active);
+    let hovered = pointer.and_then(|p| hit(&faces, p));
+    let painter = ui.painter_at(rect);
+    paint_cube(&painter, &faces, hovered, t, true, scale);
+    if let Some(face) = hovered.and_then(|i| faces.get(i)) {
+        let at = pointer.unwrap_or(face.centre);
+        ui.interact(Rect::from_center_size(at, vec2(2.0, 2.0)), ui.id().with("studio_cube_tip"), Sense::hover())
+            .backing_on_hover_text(face.label.clone());
+    }
+    let square_on = faces.iter().filter(|f| f.text_axes.is_some()).count() == 1;
+    let (distance, button_size) = if square_on { (54.0, 20.0) } else { (74.0, 16.0) };
+    for (action, offset, direction) in [
+        ("left", vec2(-distance, 0.0), vec2(1.0, 0.0)),
+        ("right", vec2(distance, 0.0), vec2(-1.0, 0.0)),
+        ("up", vec2(0.0, -distance), vec2(0.0, 1.0)),
+        ("down", vec2(0.0, distance), vec2(0.0, -1.0)),
+    ] {
+        let at = c + offset * scale;
+        let response =
+            ui.interact(Rect::from_center_size(at, vec2(button_size, button_size) * scale), ui.id().with(("studio_cube", action)), Sense::hover());
+        if active {
+            arrow(&painter, at, direction * scale, response.hovered(), t);
+        }
+    }
+    for (name, offset, size, clockwise) in
+        [("counterclockwise", vec2(42.0, -72.0), vec2(40.0, 20.0), false), ("clockwise", vec2(72.0, -42.0), vec2(20.0, 40.0), true)]
+    {
+        let response = ui.interact(Rect::from_center_size(c + offset * scale, size * scale), ui.id().with(("studio_cube", name)), Sense::hover());
+        if active {
+            curved_arrow(&painter, c + vec2(42.0, -42.0) * scale, clockwise, response.hovered(), t, scale);
+        }
+    }
+    if active {
+        let home = Rect::from_center_size(c + vec2(-65.0, -65.0) * scale, vec2(26.0, 26.0) * scale);
+        icons::paint_icon(&painter, home.shrink(4.0 * scale), "home", f32::from(t.cube_face.a()) / 255.0);
+        let fit = c + vec2(67.0, 67.0) * scale;
+        painter.circle(fit, 6.0 * scale, t.cube_face, Stroke::new(1.0, t.cube_border));
+    }
+    let origin = c + vec2(-60.0, 52.0) * scale;
+    for (d, color, label) in [(Vec3::X, t.axis_x, "X"), (Vec3::Y, t.axis_y, "Y"), (Vec3::Z, t.axis_z, "Z")] {
+        let (r, u, _) = cam.basis();
+        let tip = origin + vec2((d.dot(r) * 17.0) as f32, -(d.dot(u) * 17.0) as f32) * scale;
+        painter.line_segment([origin, tip], Stroke::new(1.5, color));
+        painter.text(tip, Align2::CENTER_CENTER, label, FontId::proportional(t.font_triad), color);
+    }
 }
 
 pub(super) fn drag_origin(cam: &Camera, centre: Pos2, pointer: Pos2, scale: f32) -> bool {
