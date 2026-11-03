@@ -6,15 +6,15 @@ interaction, tool at cursor), Graphics (axis distances in Measure).
 
 ## Create
 
-Each group is a 120x64 figure at the left of its checkboxes, with a group name under it.
+One bordered card holds three rows (canvas version 212). Each row has the tool's real icon in a 36 pt rounded tile (`pref_well`) with the icon at 28 pt, the tool name (13 px / 600) beside it, and the tool's checkboxes in the right column (the left column is 290 pt wide, rows are separated by a 1 px `dialog_rule`, padding 10 14). The icons are the app's own: `hole`, `extrude`, and `rest`, `boss`, `snap_fit` (three tiles) from `assets/icons/ui/design/svg/model`, drawn with the icon palette for the theme. The earlier 120x64 figures (`tool-hole`, `tool-extrude`, `tool-placement`) are no longer used on this page.
 
 | Label | Control | Edits | Default | Hover | Figure | Notes |
 |---|---|---|---|---|---|---|
-| Hole: Snap to centres | Checkbox | `Prefs.hole_snaps` | `false` | "The middle of a face and the centres of its round edges." | `tool-hole` | Today's label "Snap to face and edge centres". |
-| Hole: Move by click or drag | Checkbox | `Prefs.hole_moves` | `false` | "Picking the face again moves the hole instead of removing it." | `tool-hole` | Today's label "Move holes by clicking or dragging". |
-| Extrude: Extrude to a picked target | Checkbox | `Prefs.extrude_auto_to_object` | `false` | "A face, vertex or parallel plane switches the extent to To Object." | `tool-extrude` | |
-| Extrude: Choose the operation automatically | Checkbox | `Prefs.auto_operation` | `true` | "Join, New Body or Cut, from what the material touches." | `tool-extrude` | |
-| Rest, Boss, Snap Fit: Placement handles | Checkbox | `Prefs.placement_handles` | `false` | "A marker to drag the feature across the model and a ring to turn it." | `tool-placement` | |
+| Hole: Snap to centres | Checkbox | `Prefs.hole_snaps` | `false` | "The middle of a face and the centres of its round edges." | icon `hole` | Today's label "Snap to face and edge centres". |
+| Hole: Move by click or drag | Checkbox | `Prefs.hole_moves` | `false` | "Picking the face again moves the hole instead of removing it." | icon `hole` | Today's label "Move holes by clicking or dragging". |
+| Extrude: Extrude to a picked target | Checkbox | `Prefs.extrude_auto_to_object` | `false` | "A face, vertex or parallel plane switches the extent to To Object." | icon `extrude` | |
+| Extrude: Choose the operation automatically | Checkbox | `Prefs.auto_operation` | `true` | "Join, New Body or Cut, from what the material touches." | icon `extrude` | |
+| Rest, Boss, Snap Fit: Placement handles | Checkbox | `Prefs.placement_handles` | `false` | "A marker to drag the feature across the model and a ring to turn it." | icons `rest`, `boss`, `snap_fit` | |
 
 ## Assembly Move
 
@@ -38,4 +38,4 @@ Three toggle tiles (208.8 x 140).
 ## Mismatches
 
 * The Near-axis and Far-axis mapping above is an assumption (see the row).
-* The Hole, Extrude and Placement groups reuse one 120x64 figure per group, not one per checkbox.
+* Create uses app icons, not figures; Assembly Move and Measure and pointer keep their figures.
