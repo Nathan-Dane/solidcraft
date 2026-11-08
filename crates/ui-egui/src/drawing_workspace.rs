@@ -11,6 +11,8 @@ pub struct State {
     previous_tab: Option<String>,
     pub settings_open: bool,
     options: Option<&'static str>,
+    /// The Export window's choices while it is open (`drawing_export_panel`).
+    pub(crate) export: Option<crate::drawing_export_panel::Export>,
     strip: Option<Rect>,
     strip_sizes: [Option<egui::Vec2>; 2],
     settings: Option<Rect>,
@@ -53,15 +55,27 @@ pub fn can_open_options(id: &str) -> bool {
 
 /// Dismiss the current Drawing inspector without touching source or drawing data.
 pub fn close_panel(app: &mut SolveApp) -> bool {
-    let open = app.drawing_workspace.settings_open || app.drawing_workspace.options.is_some();
+    let open = panel_open(app);
     app.drawing_workspace.settings_open = false;
     app.drawing_workspace.options = None;
+    app.drawing_workspace.export = None;
     app.drawing_workspace.settings = None;
     open
 }
 
-/// Toolbar clicks may inspect known options. This never executes a missing CAD command.
+/// A right-hand panel is open: Sheet Settings, a planned tool's options or Export.
+fn panel_open(app: &SolveApp) -> bool {
+    app.drawing_workspace.settings_open || app.drawing_workspace.options.is_some() || app.drawing_workspace.export.is_some()
+}
+
+/// Toolbar clicks may inspect known options. This never executes a missing CAD command. Export
+/// opens its window (`ui.start drawing.export`); `engine.execute` still runs the command alone.
 pub fn start(app: &mut SolveApp, id: &str) -> bool {
+    if active(app) && id == crate::drawing_export_panel::ID {
+        app.drawing_workspace.options = None;
+        crate::drawing_export_panel::open(app);
+        return true;
+    }
     if !active(app) || !can_open_options(id) {
         return false;
     }
@@ -73,6 +87,7 @@ pub fn start(app: &mut SolveApp, id: &str) -> bool {
         _ => None,
     };
     app.drawing_workspace.settings_open = false;
+    app.drawing_workspace.export = None;
     true
 }
 
@@ -94,7 +109,7 @@ fn panel_width(app: &SolveApp) -> f32 {
 pub(crate) fn left_inset(app: &SolveApp) -> f32 {
     if active(app)
         && Container::for_layout(app.ui.layout, Surface::Panel).floating()
-        && (app.drawing_workspace.settings_open || app.drawing_workspace.options.is_some())
+        && panel_open(app)
         && app.preferences.drawing_panel_side == "left"
     {
         panel_width(app) + crate::shell::SHELL_GAP
@@ -274,6 +289,7 @@ pub fn chrome(app: &mut SolveApp, ui: &mut egui::Ui) {
                 if icon_action(ui, "drawing:sheets:settings", "settings", "Sheet Settings", true).clicked() {
                     app.drawing_workspace.settings_open = !app.drawing_workspace.settings_open;
                     app.drawing_workspace.options = None;
+                    app.drawing_workspace.export = None;
                 }
             };
             if destination == "under_browser" {
@@ -300,7 +316,7 @@ pub fn chrome(app: &mut SolveApp, ui: &mut egui::Ui) {
 
 pub fn panel(app: &mut SolveApp, ui: &mut egui::Ui) {
     app.drawing_workspace.settings = None;
-    if !active(app) || (!app.drawing_workspace.settings_open && app.drawing_workspace.options.is_none()) {
+    if !active(app) || !panel_open(app) {
         return;
     }
     let left = app.preferences.drawing_panel_side == "left";
@@ -346,9 +362,9 @@ fn floating_panel(app: &mut SolveApp, ui: &mut egui::Ui, left: bool, width: f32)
     let frame = ui_kit::Panel::feature_frame(&ctx, app.ui.layout, side);
     let inner = (bounds.size() - frame.total_margin().sum()).max(egui::Vec2::ZERO);
     let anchor = if left { bounds.left_top() } else { bounds.right_top() };
-    let panel =
-        ui_kit::Panel::new(crate::i18n::tr_label("Sheet Settings"), egui::Id::new("sc_drawing_settings_floating"), anchor, available, side, frame)
-            .width(width);
+    let title =
+        if app.drawing_workspace.export.is_some() { crate::i18n::tr("ui.drawing_export.title") } else { crate::i18n::tr_label("Sheet Settings") };
+    let panel = ui_kit::Panel::new(title, egui::Id::new("sc_drawing_settings_floating"), anchor, available, side, frame).width(width);
     if let Some(card) = panel.window(&ctx).fixed_size(inner).show(&ctx, |ui| {
         ui.set_min_size(inner);
         ui.set_max_size(inner);
@@ -401,6 +417,10 @@ fn unavailable_row(ui: &mut egui::Ui, label: &str, value: &str) {
 }
 
 fn panel_body(app: &mut SolveApp, ui: &mut egui::Ui) {
+    if app.drawing_workspace.export.is_some() {
+        crate::drawing_export_panel::body(app, ui);
+        return;
+    }
     let options = app.drawing_workspace.options;
     ui.horizontal(|ui| {
         ui.heading(crate::i18n::tr_label(options.unwrap_or("Sheet Settings")));
