@@ -140,7 +140,7 @@ fn export_opens_its_window_from_the_ribbon_and_never_from_a_programmatic_call() 
     let export = h.app.drawing_workspace.export.as_ref().expect("the window is open");
     assert_eq!((export.format, export.paper, export.sheets.len()), (Format::Svg, Paper::White, 1));
     assert!(crate::scenario::rect_of("drawing:settings").is_some());
-    assert!(h.widget(crate::i18n::tr("ui.drawing_export.title")).is_some());
+    assert!(h.widget(solidcraft_ui_text::tr("ui.drawing_export.title")).is_some());
     h.step(&json!({"click": {"handle": "drawing:export:close"}})).unwrap();
     h.frames(2);
     assert!(h.app.drawing_workspace.export.is_none());
@@ -227,7 +227,7 @@ fn a_view_that_cant_be_drawn_is_named_instead_of_refused_silently() {
         }
     }
     let name = view_name(h.app.session.drawing("test").unwrap(), top);
-    assert_eq!(name, crate::i18n::tr("ui.drawing_export.view_top"));
+    assert_eq!(name, solidcraft_ui_text::tr("ui.drawing_export.view_top"));
     h.app.start(ID);
     h.frames(3);
     answer_saves_with(&mut h, "refused.svg");
@@ -247,13 +247,13 @@ fn views_are_named_as_people_know_them() {
     let mut h = Harness::new();
     let (sheet, front, top) = drawing(&mut h);
     let d = h.app.session.drawing("test").unwrap().clone();
-    assert_eq!(view_name(&d, front), crate::i18n::tr("ui.drawing_export.view_front"));
-    assert_eq!(view_name(&d, top), crate::i18n::tr("ui.drawing_export.view_top"));
+    assert_eq!(view_name(&d, front), solidcraft_ui_text::tr("ui.drawing_export.view_front"));
+    assert_eq!(view_name(&d, top), solidcraft_ui_text::tr("ui.drawing_export.view_top"));
     let again =
         h.app.run("drawing.view.base", json!({"sheet": ids::encode(sheet), "view": "front", "scale": "1:4", "position_mm": [320, 80]})).unwrap();
     let again = ids::decode(again["view"].as_str().unwrap()).unwrap();
     let d = h.app.session.drawing("test").unwrap().clone();
-    let front_name = crate::i18n::tr("ui.drawing_export.view_front");
+    let front_name = solidcraft_ui_text::tr("ui.drawing_export.view_front");
     assert!(view_name(&d, front).starts_with(front_name) && view_name(&d, front) != view_name(&d, again));
 }
 
@@ -295,7 +295,7 @@ fn cancel_while_sheets_are_written_stops_them_and_says_so() {
     }
     let export = h.app.drawing_workspace.export.as_ref().expect("the window says what Cancel stopped");
     let said: Vec<&str> = export.outcome.iter().map(|(_, line)| line.as_str()).collect();
-    let stopped = crate::i18n::tr("ui.drawing_export.stopped");
+    let stopped = solidcraft_ui_text::tr("ui.drawing_export.stopped");
     assert!(said.len() == 2 && said.iter().all(|line| line.contains(stopped)), "{said:?}");
     assert!(!export.busy() && !export.stopping);
     assert!(h.app.file_load.idle());
@@ -351,7 +351,7 @@ fn the_status_is_read_again_only_when_what_it_says_can_change() {
 }
 
 /// An import or export under way that isn't the window's is never stopped by its Cancel: only the
-/// window's sheets waiting behind it are dropped.
+/// window's sheets waiting behind it are dropped, even if both write to the same path.
 #[test]
 fn cancel_stops_only_the_windows_own_sheets() {
     let mut h = Harness::new();
@@ -359,9 +359,9 @@ fn cancel_stops_only_the_windows_own_sheets() {
     h.app.start(ID);
     h.frames(3);
     let (started, release) = hold_next_worker(&mut h);
-    let other = other_export(&mut h, sheet, "other.svg");
+    let other = other_export(&mut h, sheet, "same.svg");
     until_started(&mut h, &started);
-    answer_saves_with(&mut h, "mine.svg");
+    answer_saves_with(&mut h, "same.svg");
     // OK, as the window's own button would (the other export's progress card covers it now).
     export_now(&mut h.app, true);
     let began = std::time::Instant::now();
@@ -374,9 +374,9 @@ fn cancel_stops_only_the_windows_own_sheets() {
     release.send(()).unwrap();
     wait(&mut h);
     assert_eq!(other.try_recv().ok().map(|r| r["ok"].clone()), Some(json!(true)), "the other export went on");
-    assert!(h.dir.join("other.svg").exists() && !h.dir.join("mine.svg").exists());
+    assert!(h.dir.join("same.svg").exists());
     let export = h.app.drawing_workspace.export.as_ref().expect("the window says what Cancel stopped");
-    let stopped = crate::i18n::tr("ui.drawing_export.stopped");
+    let stopped = solidcraft_ui_text::tr("ui.drawing_export.stopped");
     let said: Vec<&str> = export.outcome.iter().map(|(_, line)| line.as_str()).collect();
     assert!(said.len() == 1 && said.iter().all(|line| line.contains(stopped)), "{said:?}");
 }
