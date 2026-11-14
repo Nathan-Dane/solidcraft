@@ -103,6 +103,7 @@ pub enum HostSharedAction {
     Focus,
     Close,
     Collapse,
+    ResetHeight,
     Move(Zone),
     Join(SectionId),
     Popout,
@@ -3093,6 +3094,11 @@ impl WorkspacePanelHost {
                 {
                     presentation.push(HostSharedAction::Collapse);
                 }
+                if section.preferred_extent.is_some()
+                    && super::layout::sole_side_section(layout, section, &frame.layout.allocation_environment.available)
+                {
+                    presentation.push(HostSharedAction::ResetHeight);
+                }
                 let mut placement: Vec<_> = [Zone::Left, Zone::Right, Zone::Bottom, Zone::Floating]
                     .into_iter()
                     .filter(|zone| *zone != section.location.zone() || section.tabs.len() > 1)
@@ -3385,6 +3391,7 @@ fn shared_menu_icon(action: &HostSharedAction, collapsed: bool, direction: Direc
     match action {
         HostSharedAction::Focus => "fit",
         HostSharedAction::Close => "close",
+        HostSharedAction::ResetHeight => "panel_reset_height",
         HostSharedAction::Collapse if collapsed => return ui_kit::Icon::Paint(&ui_kit::panel_expand_menu_icon),
         HostSharedAction::Collapse => return ui_kit::Icon::Paint(&ui_kit::panel_collapse_menu_icon),
         HostSharedAction::Move(zone @ (Zone::Left | Zone::Right)) if matches!(direction.edge(*zone), Ok(PhysicalEdge::Left)) => "panel_dock_left",
@@ -3433,6 +3440,7 @@ fn shared_label(
             HostSharedAction::Focus => "ui.panel_host.focus",
             HostSharedAction::Close => "ui.panel_host.close",
             HostSharedAction::Collapse => "ui.panel_host.collapse",
+            HostSharedAction::ResetHeight => "ui.panel_host.reset_height",
             HostSharedAction::Move(zone @ (Zone::Left | Zone::Right)) => {
                 if matches!(runtime.environment().direction.edge(*zone), Ok(PhysicalEdge::Left)) {
                     "ui.panel_host.left"
@@ -3464,6 +3472,7 @@ fn shared_action(
         HostSharedAction::Focus => vec![Mutation::Focus { instance: instance.clone() }],
         HostSharedAction::Close => vec![Mutation::Close { instance: instance.clone() }],
         HostSharedAction::Collapse => vec![Mutation::Collapse { section: section.id.clone(), collapsed: !section.collapsed }],
+        HostSharedAction::ResetHeight => vec![Mutation::ResetSideHeight { section: section.id.clone() }],
         HostSharedAction::Join(target) => {
             let target_section = service.layout().section(target)?;
             vec![Mutation::Move {
