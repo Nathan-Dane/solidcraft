@@ -1409,7 +1409,11 @@ impl FramePanelContent for ProductionFrame<'_> {
         }
         let scope = LocalScope { workspace: context.workspace.clone(), document: context.document.clone(), viewport: context.viewport.clone() };
         if let Some(capture) = capture.filter(|_| !context.preview_geometry) {
-            if let Some(mut extent) = capture.extent {
+            // Keep the last regular History height for the next width preview.
+            // The icon strip fills its column and has no need for the row extent.
+            if let Some(mut extent) = capture.extent
+                && !(product == Product::History && narrow_side_strip(context.outer.size.width))
+            {
                 extent.width = context.outer.size.width;
                 extent.flow = context.flow;
                 extent.composer = capture.composer;

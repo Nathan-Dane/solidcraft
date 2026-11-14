@@ -1331,7 +1331,21 @@ impl WorkspacePanelHost {
             let duration = solidcraft_theme::panel_motion_duration(ui.ctx(), runtime.environment().motion == Motion::Reduced);
             let progress = if duration <= 0.0 { 1.0 } else { ((now - started) as f32 / duration).clamp(0.0, 1.0) };
             let opacity = solidcraft_theme::panel_motion_ease(progress);
-            if let Some(projected) = &preview.projected {
+            let side_strip_resize = self.interaction.side_resize_source(&frame.layout).and_then(|(source, edge)| {
+                let before = frame.layout.sections.iter().find(|card| &card.section == source)?;
+                let after = preview.projected.as_ref()?.sections.iter().find(|card| &card.section == source)?;
+                frame.layout.geometry_policy.side_strips.contains(&before.instance).then_some((
+                    egui_rect(before.outer),
+                    egui_rect(after.outer),
+                    edge.physical(before.zone, frame.layout.direction),
+                ))
+            });
+            if let Some((before, after, edge)) = side_strip_resize {
+                // Keep the width guide under the pointer without flashing a full-column overlay.
+                let x = if edge == HostResizeEdge::Left { after.left() } else { after.right() };
+                let guide = egui::Rect::from_min_max(egui::pos2(x - 1.0, before.top()), egui::pos2(x + 1.0, before.bottom()));
+                ui_kit::panel_host_preview(ui, guide, true, None, 1.0);
+            } else if let Some(projected) = &preview.projected {
                 for section in &projected.sections {
                     if section.outer != preview.bounds
                         && frame
@@ -1350,7 +1364,9 @@ impl WorkspacePanelHost {
                     }
                 }
             }
-            ui_kit::panel_host_preview(ui, egui_rect(preview.bounds), true, None, opacity);
+            if side_strip_resize.is_none() {
+                ui_kit::panel_host_preview(ui, egui_rect(preview.bounds), true, None, opacity);
+            }
             if let Some(marker) = preview.tab_marker {
                 ui_kit::panel_host_tab_insertion(ui, egui_rect(marker), opacity);
             }

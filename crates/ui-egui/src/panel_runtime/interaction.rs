@@ -929,6 +929,15 @@ impl HostInteraction {
         }
     }
 
+    pub(super) fn side_resize_source<'a>(&'a self, layout: &HostLayout) -> Option<(&'a SectionId, HostResizeEdge)> {
+        let Gesture { kind: GestureKind::Resize { section, edge, .. }, dragging: true, .. } = self.capture.as_ref()? else {
+            return None;
+        };
+        (matches!(edge, HostResizeEdge::Left | HostResizeEdge::Right)
+            && layout.sections.iter().any(|card| &card.section == section && card.zone.side()))
+        .then_some((section, *edge))
+    }
+
     pub(crate) fn move_position(&self) -> Option<Point> {
         self.move_source().and(self.last_position)
     }
