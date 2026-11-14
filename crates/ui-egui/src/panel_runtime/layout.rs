@@ -575,7 +575,6 @@ pub struct HostGeometryPolicy {
     pub requested_opacity: Option<f32>,
     pub default_opaque: bool,
     pub effective_surfaces: BTreeMap<SectionId, PanelSurface>,
-    pub(crate) side_strips: BTreeMap<InstanceId, WidthGap>,
     pub(crate) hidden_header_actions: BTreeMap<InstanceId, BTreeSet<ControlId>>,
     pub(crate) header_title_widths: BTreeMap<InstanceId, f32>,
     pub(crate) tab_title_widths: BTreeMap<InstanceId, f32>,
@@ -593,7 +592,6 @@ impl PartialEq for HostGeometryPolicy {
             && self.surface_alpha == other.surface_alpha
             && self.default_opaque == other.default_opaque
             && self.effective_surfaces == other.effective_surfaces
-            && self.side_strips == other.side_strips
             && self.hidden_header_actions == other.hidden_header_actions
             && self.header_title_widths == other.header_title_widths
             && self.tab_title_widths == other.tab_title_widths
@@ -617,7 +615,6 @@ impl Default for HostGeometryPolicy {
             requested_opacity: None,
             default_opaque: true,
             effective_surfaces: BTreeMap::new(),
-            side_strips: BTreeMap::new(),
             hidden_header_actions: BTreeMap::new(),
             header_title_widths: BTreeMap::new(),
             tab_title_widths: BTreeMap::new(),
@@ -666,7 +663,6 @@ pub struct HostSection {
     pub body: Option<LogicalRect>,
     pub collapsed: bool,
     pub inline: bool,
-    pub side_strip: bool,
     /// Editable inline content is separate from the shared title drag region.
     pub inline_content: Option<LogicalRect>,
     pub collapse: Option<LogicalRect>,
@@ -1215,28 +1211,6 @@ fn header_actions_below(
                 .is_some_and(|title| width < title + metrics.control_extent * (primary + count) as f32 + solidcraft_theme::Tokens::get().space_2))
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub(crate) struct WidthGap {
-    pub strip: f32,
-    pub normal: f32,
-}
-
-impl WidthGap {
-    pub(super) fn snap(self, width: f32, min: f32, max: f32) -> f32 {
-        if (self.strip..self.normal).contains(&width) {
-            let lower = self.strip >= min && self.strip <= max;
-            let upper = self.normal >= min && self.normal <= max;
-            if lower && (!upper || width - self.strip <= self.normal - width) {
-                return self.strip;
-            }
-            if upper {
-                return self.normal;
-            }
-        }
-        width
-    }
-}
-
 fn append_section(
     out: &mut HostLayout,
     service: &LayoutService,
@@ -1249,11 +1223,7 @@ fn append_section(
     outer.validate()?;
     let metrics = out.metrics;
     let spec = service.registry().get(&proposed.instance(instance)?.kind)?;
-    let side_strip = !section.collapsed
-        && section.tabs.len() == 1
-        && section.location.zone().side()
-        && policy.side_strips.get(instance).is_some_and(|widths| outer.size.width <= widths.strip);
-    let collapsible = !side_strip && section_collapsible(proposed, service.registry(), section)?;
+    let collapsible = section_collapsible(proposed, service.registry(), section)?;
     let (flow, _) = responsive(section.location.zone(), outer.size, None)?;
     // A single row owns inline controls AND content; no hidden second body.
     let inline = !section.collapsed && flow == Flow::Wide && outer.size.height <= metrics.inline_max_height;
@@ -1263,10 +1233,7 @@ fn append_section(
     let action_count = visible_actions.clone().count();
     let primary_count = 1 + usize::from(collapsible) + usize::from(spec.features.hot_closable);
     let control_count = action_count + primary_count;
-    let split = !side_strip
-        && !inline
-        && !section.collapsed
-        && header_actions_below(policy, metrics, section, instance, spec, collapsible, header.size.width);
+    let split = !inline && !section.collapsed && header_actions_below(policy, metrics, section, instance, spec, collapsible, header.size.width);
     let action_bar = (split && !section.collapsed)
         .then(|| {
             positive_rect(
@@ -1277,10 +1244,9 @@ fn append_section(
             )
         })
         .flatten();
-    let controls_in_header = if side_strip { primary_count + 1 } else { control_count };
-    let extent = metrics.control_extent.min(header.size.height).min(header.size.width / controls_in_header as f32);
+    let extent = metrics.control_extent.min(header.size.height).min(header.size.width / control_count as f32);
     let primary_extent = if split { metrics.control_extent.min(header.size.height).min(header.size.width / primary_count as f32) } else { extent };
-    let header_controls = if split { primary_count } else { controls_in_header };
+    let header_controls = if split { primary_count } else { control_count };
     let edge_margin = ((header.size.height - primary_extent) / 2.0).min((header.size.width - header_controls as f32 * primary_extent).max(0.0));
     let mut cursor = if out.direction == Direction::Ltr { right(header) - edge_margin } else { header.origin.x + edge_margin };
     let take = |cursor: &mut f32, row: LogicalRect, extent: f32| {
@@ -1292,22 +1258,7 @@ fn append_section(
     let collapse = collapsible.then(|| take(&mut cursor, header, primary_extent));
     let menu = take(&mut cursor, header, primary_extent);
     let mut actions = Vec::new();
-    let mut side_controls_bottom = bottom(header);
-    let (heading, inline_content) = if side_strip {
-        let extent = metrics.control_extent.min(header.size.width);
-        let x = header.origin.x + (header.size.width - extent) / 2.0;
-        for action in visible_actions.clone() {
-            let available = (bottom(outer) - side_controls_bottom - extent).max(0.0);
-            if available < extent {
-                break;
-            }
-            actions.push((action.id.clone(), rect(x, side_controls_bottom, extent, extent)));
-            side_controls_bottom += extent;
-        }
-        let x = if out.direction == Direction::Ltr { header.origin.x } else { cursor };
-        let width = if out.direction == Direction::Ltr { cursor - x } else { right(header) - x };
-        (positive_rect(x, header.origin.y, width, header.size.height), None)
-    } else if inline {
+    let (heading, inline_content) = if inline {
         // Shared title/grip, declared custom actions, editable inline content,
         // then shared system actions. The whole sequence mirrors in RTL.
         let available = (header.size.width - edge_margin - extent * control_count as f32).max(0.0);
@@ -1373,7 +1324,7 @@ fn append_section(
     } else {
         (heading, None)
     };
-    let body_y = bottom(action_bar.unwrap_or(header)).max(side_controls_bottom) + metrics.content_header_height;
+    let body_y = bottom(action_bar.unwrap_or(header)) + metrics.content_header_height;
     let body = if section.collapsed || inline {
         None
     } else {
@@ -1526,7 +1477,6 @@ fn append_section(
         surface,
         collapsed: section.collapsed,
         inline,
-        side_strip,
         inline_content,
         collapse,
         close,

@@ -1331,21 +1331,7 @@ impl WorkspacePanelHost {
             let duration = solidcraft_theme::panel_motion_duration(ui.ctx(), runtime.environment().motion == Motion::Reduced);
             let progress = if duration <= 0.0 { 1.0 } else { ((now - started) as f32 / duration).clamp(0.0, 1.0) };
             let opacity = solidcraft_theme::panel_motion_ease(progress);
-            let side_strip_resize = self.interaction.side_resize_source(&frame.layout).and_then(|(source, edge)| {
-                let before = frame.layout.sections.iter().find(|card| &card.section == source)?;
-                let after = preview.projected.as_ref()?.sections.iter().find(|card| &card.section == source)?;
-                frame.layout.geometry_policy.side_strips.contains_key(&before.instance).then_some((
-                    egui_rect(before.outer),
-                    egui_rect(after.outer),
-                    edge.physical(before.zone, frame.layout.direction),
-                ))
-            });
-            if let Some((before, after, edge)) = side_strip_resize {
-                // Keep the width guide under the pointer without flashing a full-column overlay.
-                let x = if edge == HostResizeEdge::Left { after.left() } else { after.right() };
-                let guide = egui::Rect::from_min_max(egui::pos2(x - 1.0, before.top()), egui::pos2(x + 1.0, before.bottom()));
-                ui_kit::panel_host_preview(ui, guide, true, None, 1.0);
-            } else if let Some(projected) = &preview.projected {
+            if let Some(projected) = &preview.projected {
                 for section in &projected.sections {
                     if section.outer != preview.bounds
                         && frame
@@ -1364,9 +1350,7 @@ impl WorkspacePanelHost {
                     }
                 }
             }
-            if side_strip_resize.is_none() {
-                ui_kit::panel_host_preview(ui, egui_rect(preview.bounds), true, None, opacity);
-            }
+            ui_kit::panel_host_preview(ui, egui_rect(preview.bounds), true, None, opacity);
             if let Some(marker) = preview.tab_marker {
                 ui_kit::panel_host_tab_insertion(ui, egui_rect(marker), opacity);
             }
@@ -2554,7 +2538,7 @@ impl PanelHost for WorkspaceContentHost<'_> {
                                 drag: matches!(target, HostPointerTarget::Header { .. } | HostPointerTarget::Tab { .. }),
                                 title: matches!(target, HostPointerTarget::Header { .. }),
                                 grip_only: matches!(target, HostPointerTarget::Header { .. })
-                                    && (paint_section.side_strip || tab_drop.is_some() || section.tabs.len() + section.hidden_tabs.len() > 1),
+                                    && (tab_drop.is_some() || section.tabs.len() + section.hidden_tabs.len() > 1),
                                 rtl: self.layout.direction == Direction::Rtl,
                             },
                             if matches!(target, HostPointerTarget::Header { instance } | HostPointerTarget::Tab { instance }
@@ -2665,7 +2649,7 @@ impl PanelHost for WorkspaceContentHost<'_> {
                 let t = solidcraft_theme::Tokens::get();
                 // The title and its controls share the card background. One
                 // kit separator spans the header, rather than per-control tiles.
-                if !section.inline && !paint_section.side_strip {
+                if !section.inline {
                     let header = egui_rect(paint_section.header);
                     if !section.collapsed {
                         t.secondary_hline(ui.painter(), header.x_range(), header.bottom(), t.dialog_rule);
@@ -2997,9 +2981,6 @@ fn paint_drop_tabs(
 }
 
 fn content_header_bounds(section: &HostSection) -> Option<LogicalRect> {
-    if section.side_strip {
-        return None;
-    }
     let body = section.body?;
     let y = super::layout::bottom(section.action_bar.unwrap_or(section.header));
     let height = body.origin.y - y;
@@ -3104,8 +3085,7 @@ impl WorkspacePanelHost {
                 if runtime.layout().interaction().focused.as_ref() != Some(instance) || section.collapsed {
                     presentation.push(HostSharedAction::Focus);
                 }
-                let side_strip = frame.layout.sections.iter().any(|card| card.section == section.id && card.side_strip);
-                if !side_strip && section_collapsible(layout, runtime.layout().registry(), section).unwrap_or(false) {
+                if section_collapsible(layout, runtime.layout().registry(), section).unwrap_or(false) {
                     presentation.push(HostSharedAction::Collapse);
                 }
                 let mut placement: Vec<_> = [Zone::Left, Zone::Right, Zone::Bottom, Zone::Floating]

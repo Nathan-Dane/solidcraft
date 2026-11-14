@@ -13930,12 +13930,3 @@ fn desktop_panel_windows_reserve_ids_only_after_commit_and_fit_the_current_monit
     adapter.commit(&create);
     assert_ne!(adapter.viewport_id(&host), Some(previous));
 }
-
-#[test]
-fn side_width_gap_snaps_to_the_nearest_available_endpoint() {
-    let gap = super::layout::WidthGap { strip: 56.0, normal: 160.0 };
-    for (width, expected) in [(56.0, 56.0), (107.0, 56.0), (108.0, 56.0), (109.0, 160.0), (160.0, 160.0), (180.0, 180.0)] {
-        assert_eq!(gap.snap(width, 56.0, 300.0), expected);
-    }
-    assert_eq!(gap.snap(100.0, 80.0, 300.0), 160.0);
-}

@@ -430,7 +430,6 @@ pub(crate) fn enable_production(app: &mut crate::SolveApp) -> PanelResult<()> {
     integration.tick(&app.session)?;
     let mut options = HostOptions { content_header_height: 0.0, ..Default::default() };
     options.geometry.default_opaque = false;
-    options.geometry.side_strips.insert(InstanceId::new(Product::History.id())?, history_width_gap());
     options.metrics.footer_height = 0.0;
     integration.enable_host(options)?;
     let mut catalogue = commands::InMemoryCatalogue::default();
@@ -594,10 +593,6 @@ pub(crate) fn place_assistant(app: &mut crate::SolveApp, zone: Option<Zone>, wid
     place_compatibly(app, &[(Product::Assistant, zone)], false, width, collapsed)
 }
 
-fn history_width_gap() -> WidthGap {
-    WidthGap { strip: crate::ui_kit::history_width(false), normal: crate::ui_kit::history_width(true) }
-}
-
 fn place_compatibly(
     app: &mut crate::SolveApp,
     targets: &[(Product, Option<Zone>)],
@@ -617,10 +612,6 @@ fn place_compatibly(
         let Ok(source) = layout.containing(&instance) else { continue };
         let separate_history = *product == Product::History && *zone == Some(Zone::Left) && !under_browser;
         let zone = zone.unwrap_or(source.location.zone());
-        let snap_width = |width: f32, min: f32, max: f32| {
-            let width = width.clamp(min, max);
-            if *product == Product::History && zone.side() && !under_browser { history_width_gap().snap(width, min, max) } else { width }
-        };
         let side_anchor = layout
             .sections
             .iter()
@@ -637,8 +628,7 @@ fn place_compatibly(
         let section = if source.location.zone() != zone || needs_stack || needs_column {
             let section = next_section_id_with_reservations(layout, &reserved.sections)?;
             reserved.sections.insert(section.clone());
-            let min_width = integration.runtime().layout().registry().get(&layout.instance(&instance)?.kind)?.min_size.width;
-            let size = Size { width: snap_width(width.unwrap_or(source.size.width), min_width, 1200.0), height: source.size.height };
+            let size = Size { width: width.unwrap_or(source.size.width).clamp(240.0, 1200.0), height: source.size.height };
             let destination = if let Some(browser) = below {
                 Destination::Relative {
                     section: browser.id.clone(),
@@ -668,8 +658,7 @@ fn place_compatibly(
             section
         } else {
             if let (Some(width), Some(column)) = (width, &source.column) {
-                let (min, max) = column_bounds(layout, integration.runtime().layout().registry(), column)?;
-                mutations.push(Mutation::SetColumnWidth { column: column.clone(), width: snap_width(width, min, max.min(1200.0).max(min)) });
+                mutations.push(Mutation::SetColumnWidth { column: column.clone(), width: width.clamp(240.0, 1200.0) });
             }
             source.id.clone()
         };
@@ -930,7 +919,7 @@ fn registry() -> PanelResult<PanelRegistry> {
                 _ => Zone::Left,
             },
             min_size: Size {
-                width: if history { crate::ui_kit::history_width(false) } else { 240.0 },
+                width: 240.0,
                 height: match product {
                     Product::RenderLibrary => 180.0,
                     Product::Bom => 200.0,
@@ -1106,7 +1095,6 @@ impl PanelController for ProductionController {
             extent: snapshot.panels.iter().find(|panel| panel.product == self.product).and_then(|panel| panel.extent),
             inset: solidcraft_theme::Tokens::get().space_2 * 2.0,
             policy: spec.side_height_policy,
-            fill_at_narrow_width: self.product == Product::History,
         }))
     }
     fn prepare_lifecycle(&self, event: &LifecycleEvent) -> PanelResult<()> {
@@ -1146,7 +1134,6 @@ impl PanelController for ProductionController {
 
 #[derive(Debug)]
 struct ProductionMetrics {
-    fill_at_narrow_width: bool,
     extent: Option<ContentExtent>,
     inset: f32,
     policy: SideHeightPolicy,
@@ -1159,8 +1146,7 @@ impl HostContentMetrics for ProductionMetrics {
             .extent
             .filter(|extent| extent.width_independent || (extent.flow == Flow::Tall && (extent.width - request.width).abs() < 0.5))
             .map_or(MAX_LOGICAL, |extent| (request.chrome_height + extent.height + self.inset).min(MAX_LOGICAL));
-        let policy = if self.fill_at_narrow_width && request.width <= history_width_gap().strip { SideHeightPolicy::Fill } else { self.policy };
-        Ok(SideContentMeasure { request: request.clone(), needed_height, policy })
+        Ok(SideContentMeasure { request: request.clone(), needed_height, policy: self.policy })
     }
     fn revision(&self) -> u64 {
         use std::hash::{Hash, Hasher};
@@ -1177,7 +1163,6 @@ impl HostContentMetrics for ProductionMetrics {
             })
             .hash(&mut hash);
         self.inset.to_bits().hash(&mut hash);
-        self.fill_at_narrow_width.hash(&mut hash);
         matches!(self.policy, SideHeightPolicy::Fill).hash(&mut hash);
         hash.finish()
     }
@@ -1417,11 +1402,7 @@ impl FramePanelContent for ProductionFrame<'_> {
         }
         let scope = LocalScope { workspace: context.workspace.clone(), document: context.document.clone(), viewport: context.viewport.clone() };
         if let Some(capture) = capture.filter(|_| !context.preview_geometry) {
-            // Keep the last regular History height for the next width preview.
-            // The icon strip fills its column and has no need for the row extent.
-            if let Some(mut extent) = capture.extent
-                && !(product == Product::History && context.outer.size.width <= history_width_gap().strip)
-            {
+            if let Some(mut extent) = capture.extent {
                 extent.width = context.outer.size.width;
                 extent.flow = context.flow;
                 extent.composer = capture.composer;
