@@ -1334,7 +1334,7 @@ impl WorkspacePanelHost {
             let side_strip_resize = self.interaction.side_resize_source(&frame.layout).and_then(|(source, edge)| {
                 let before = frame.layout.sections.iter().find(|card| &card.section == source)?;
                 let after = preview.projected.as_ref()?.sections.iter().find(|card| &card.section == source)?;
-                frame.layout.geometry_policy.side_strips.contains(&before.instance).then_some((
+                frame.layout.geometry_policy.side_strips.contains_key(&before.instance).then_some((
                     egui_rect(before.outer),
                     egui_rect(after.outer),
                     edge.physical(before.zone, frame.layout.direction),

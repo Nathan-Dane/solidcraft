@@ -575,7 +575,7 @@ pub struct HostGeometryPolicy {
     pub requested_opacity: Option<f32>,
     pub default_opaque: bool,
     pub effective_surfaces: BTreeMap<SectionId, PanelSurface>,
-    pub(crate) side_strips: BTreeSet<InstanceId>,
+    pub(crate) side_strips: BTreeMap<InstanceId, WidthGap>,
     pub(crate) hidden_header_actions: BTreeMap<InstanceId, BTreeSet<ControlId>>,
     pub(crate) header_title_widths: BTreeMap<InstanceId, f32>,
     pub(crate) tab_title_widths: BTreeMap<InstanceId, f32>,
@@ -617,7 +617,7 @@ impl Default for HostGeometryPolicy {
             requested_opacity: None,
             default_opaque: true,
             effective_surfaces: BTreeMap::new(),
-            side_strips: BTreeSet::new(),
+            side_strips: BTreeMap::new(),
             hidden_header_actions: BTreeMap::new(),
             header_title_widths: BTreeMap::new(),
             tab_title_widths: BTreeMap::new(),
@@ -1215,8 +1215,26 @@ fn header_actions_below(
                 .is_some_and(|title| width < title + metrics.control_extent * (primary + count) as f32 + solidcraft_theme::Tokens::get().space_2))
 }
 
-pub(super) fn narrow_side_strip(width: f32) -> bool {
-    width <= crate::ui_kit::history_width(false) + solidcraft_theme::Tokens::get().space_8
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub(crate) struct WidthGap {
+    pub strip: f32,
+    pub normal: f32,
+}
+
+impl WidthGap {
+    pub(super) fn snap(self, width: f32, min: f32, max: f32) -> f32 {
+        if (self.strip..self.normal).contains(&width) {
+            let lower = self.strip >= min && self.strip <= max;
+            let upper = self.normal >= min && self.normal <= max;
+            if lower && (!upper || width - self.strip <= self.normal - width) {
+                return self.strip;
+            }
+            if upper {
+                return self.normal;
+            }
+        }
+        width
+    }
 }
 
 fn append_section(
@@ -1234,8 +1252,7 @@ fn append_section(
     let side_strip = !section.collapsed
         && section.tabs.len() == 1
         && section.location.zone().side()
-        && policy.side_strips.contains(instance)
-        && narrow_side_strip(outer.size.width);
+        && policy.side_strips.get(instance).is_some_and(|widths| outer.size.width <= widths.strip);
     let collapsible = !side_strip && section_collapsible(proposed, service.registry(), section)?;
     let (flow, _) = responsive(section.location.zone(), outer.size, None)?;
     // A single row owns inline controls AND content; no hidden second body.

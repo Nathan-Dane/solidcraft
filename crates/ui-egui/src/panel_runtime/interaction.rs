@@ -1319,6 +1319,18 @@ pub(crate) fn keyboard_resize_action(
             if edge != HostResizeEdge::BottomRight && ((horizontal && dx == 0.0) || (!horizontal && dy == 0.0)) {
                 return Err(error(Rule::Availability, "resize key is perpendicular to focused edge"));
             }
+            let dx = if let Some(gap) = side_resize_width_gap(layout, &section) {
+                let direction = if edge == HostResizeEdge::Left { -1.0 } else { 1.0 };
+                let delta = dx * direction;
+                let width = outer.size.width;
+                if width + delta > gap.strip && width + delta < gap.normal {
+                    (if delta > 0.0 { gap.normal - width } else { gap.strip - width }) * direction
+                } else {
+                    dx
+                }
+            } else {
+                dx
+            };
             resize_preview(service, layout, &section, edge, size, outer, dx, dy)
         }
         Some(GestureKind::Pair { first, second, first_size, second_size, zone, outer }) => {
@@ -1829,6 +1841,12 @@ fn selected_target<'a>(targets: &'a [HostDropTarget], layout: &HostLayout, at: P
     })
 }
 
+fn side_resize_width_gap(layout: &HostLayout, section: &SectionId) -> Option<super::layout::WidthGap> {
+    let card = layout.sections.iter().find(|card| &card.section == section && card.zone.side())?;
+    (card.tabs.len() + card.hidden_tabs.len() <= 1).then_some(())?;
+    layout.geometry_policy.side_strips.get(&card.instance).copied()
+}
+
 fn resize_preview(
     service: &LayoutService,
     layout: &HostLayout,
@@ -1889,7 +1907,7 @@ fn resize_preview(
         let mutation = if matches!(edge, HostResizeEdge::Left | HostResizeEdge::Right) && source.location.zone().side() {
             Mutation::SetColumnWidth {
                 column: source.column.clone().ok_or_else(|| error(Rule::MissingTarget, "side resize has no column"))?,
-                width: size.width,
+                width: side_resize_width_gap(layout, section).map_or(size.width, |gap| gap.snap(size.width, min.width, max.width)),
             }
         } else if source.location.zone() == Zone::Bottom && edge == HostResizeEdge::Top {
             Mutation::SetBottomHeight { section: section.clone(), height: size.height }

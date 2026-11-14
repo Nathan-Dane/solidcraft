@@ -430,7 +430,7 @@ pub(crate) fn enable_production(app: &mut crate::SolveApp) -> PanelResult<()> {
     integration.tick(&app.session)?;
     let mut options = HostOptions { content_header_height: 0.0, ..Default::default() };
     options.geometry.default_opaque = false;
-    options.geometry.side_strips.insert(InstanceId::new(Product::History.id())?);
+    options.geometry.side_strips.insert(InstanceId::new(Product::History.id())?, history_width_gap());
     options.metrics.footer_height = 0.0;
     integration.enable_host(options)?;
     let mut catalogue = commands::InMemoryCatalogue::default();
@@ -594,6 +594,10 @@ pub(crate) fn place_assistant(app: &mut crate::SolveApp, zone: Option<Zone>, wid
     place_compatibly(app, &[(Product::Assistant, zone)], false, width, collapsed)
 }
 
+fn history_width_gap() -> WidthGap {
+    WidthGap { strip: crate::ui_kit::history_width(false), normal: crate::ui_kit::history_width(true) }
+}
+
 fn place_compatibly(
     app: &mut crate::SolveApp,
     targets: &[(Product, Option<Zone>)],
@@ -613,6 +617,10 @@ fn place_compatibly(
         let Ok(source) = layout.containing(&instance) else { continue };
         let separate_history = *product == Product::History && *zone == Some(Zone::Left) && !under_browser;
         let zone = zone.unwrap_or(source.location.zone());
+        let snap_width = |width: f32, min: f32, max: f32| {
+            let width = width.clamp(min, max);
+            if *product == Product::History && zone.side() && !under_browser { history_width_gap().snap(width, min, max) } else { width }
+        };
         let side_anchor = layout
             .sections
             .iter()
@@ -630,7 +638,7 @@ fn place_compatibly(
             let section = next_section_id_with_reservations(layout, &reserved.sections)?;
             reserved.sections.insert(section.clone());
             let min_width = integration.runtime().layout().registry().get(&layout.instance(&instance)?.kind)?.min_size.width;
-            let size = Size { width: width.unwrap_or(source.size.width).clamp(min_width, 1200.0), height: source.size.height };
+            let size = Size { width: snap_width(width.unwrap_or(source.size.width), min_width, 1200.0), height: source.size.height };
             let destination = if let Some(browser) = below {
                 Destination::Relative {
                     section: browser.id.clone(),
@@ -661,7 +669,7 @@ fn place_compatibly(
         } else {
             if let (Some(width), Some(column)) = (width, &source.column) {
                 let (min, max) = column_bounds(layout, integration.runtime().layout().registry(), column)?;
-                mutations.push(Mutation::SetColumnWidth { column: column.clone(), width: width.clamp(min, max.min(1200.0).max(min)) });
+                mutations.push(Mutation::SetColumnWidth { column: column.clone(), width: snap_width(width, min, max.min(1200.0).max(min)) });
             }
             source.id.clone()
         };
@@ -1151,7 +1159,7 @@ impl HostContentMetrics for ProductionMetrics {
             .extent
             .filter(|extent| extent.width_independent || (extent.flow == Flow::Tall && (extent.width - request.width).abs() < 0.5))
             .map_or(MAX_LOGICAL, |extent| (request.chrome_height + extent.height + self.inset).min(MAX_LOGICAL));
-        let policy = if self.fill_at_narrow_width && narrow_side_strip(request.width) { SideHeightPolicy::Fill } else { self.policy };
+        let policy = if self.fill_at_narrow_width && request.width <= history_width_gap().strip { SideHeightPolicy::Fill } else { self.policy };
         Ok(SideContentMeasure { request: request.clone(), needed_height, policy })
     }
     fn revision(&self) -> u64 {
@@ -1412,7 +1420,7 @@ impl FramePanelContent for ProductionFrame<'_> {
             // Keep the last regular History height for the next width preview.
             // The icon strip fills its column and has no need for the row extent.
             if let Some(mut extent) = capture.extent
-                && !(product == Product::History && narrow_side_strip(context.outer.size.width))
+                && !(product == Product::History && context.outer.size.width <= history_width_gap().strip)
             {
                 extent.width = context.outer.size.width;
                 extent.flow = context.flow;
